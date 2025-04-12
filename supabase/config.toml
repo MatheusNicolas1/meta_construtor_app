@@ -1,0 +1,22 @@
+
+project_id = "jchnjeihrutgmfjwnfyo"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+
+[db]
+port = 54322
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://localhost:54321"
+
+[functions]
+[functions.analyze-rdo]
+verify_jwt = false
+
+[functions.whatsapp-webhook]
+verify_jwt = false

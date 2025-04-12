@@ -1,0 +1,186 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light Mode Colors */
+    --background: 0 0% 100%;
+    --foreground: 218 75% 29%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 218 75% 29%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 218 75% 29%;
+
+    --primary: 25 100% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 218 75% 29%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 54%;
+
+    --accent: 25 100% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 25 100% 50%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    /* Dark Mode Colors */
+    --background: 218 75% 15%;
+    --foreground: 0 0% 100%;
+
+    --card: 218 75% 12%;
+    --card-foreground: 0 0% 100%;
+
+    --popover: 218 75% 12%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 25 100% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 218 75% 35%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 218 75% 20%;
+    --muted-foreground: 0 0% 64%;
+
+    --accent: 25 100% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 218 75% 25%;
+    --input: 218 75% 25%;
+    --ring: 25 100% 50%;
+
+    --sidebar-background: 218 75% 10%;
+    --sidebar-foreground: 0 0% 96%;
+    --sidebar-primary: 25 100% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 218 75% 15%;
+    --sidebar-accent-foreground: 0 0% 96%;
+    --sidebar-border: 218 75% 20%;
+    --sidebar-ring: 25 100% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-inter transition-colors duration-200;
+  }
+}
+
+.page-transition-enter {
+  animation: slide-in 0.5s ease-out forwards;
+}
+
+.page-transition-exit {
+  animation: slide-out 0.5s ease-out forwards;
+}
+
+/* Dark Mode & Light Mode transition effects */
+.dark-transition,
+.dark-transition * {
+  transition-property: background-color, border-color, color, fill;
+  transition-duration: 0.3s;
+  transition-timing-function: ease-out;
+}
+
+@keyframes slide-in {
+  0% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-out {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+}
+
+/* Custom chart styles for dark mode */
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  stroke: rgba(150, 150, 150, 0.3);
+}
+
+.dark .recharts-tooltip-wrapper .recharts-default-tooltip {
+  background-color: rgba(30, 30, 30, 0.9) !important;
+  border-color: rgba(60, 60, 60, 0.9) !important;
+  color: white !important;
+}
+
+.dark .recharts-tooltip-wrapper .recharts-default-tooltip .recharts-tooltip-label,
+.dark .recharts-tooltip-wrapper .recharts-default-tooltip .recharts-tooltip-item-list {
+  color: white !important;
+}
+
+.dark .recharts-text {
+  fill: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Custom styles for dark mode */
+.dark .bg-meta-gray {
+  background-color: hsl(218, 75%, 8%);
+}
+
+.dark .bg-white,
+.dark .bg-background {
+  background-color: hsl(218, 75%, 12%);
+}
+
+.dark .border-meta-gray {
+  border-color: hsl(218, 75%, 25%);
+}
+
+.dark .text-meta-dark {
+  color: hsl(0, 0%, 100%);
+}
+
+.dark .hover\:bg-meta-gray:hover {
+  background-color: hsl(218, 75%, 15%);
+}
+
+.dark .text-meta-gray-dark {
+  color: hsl(0, 0%, 80%);
+}
+
+@import './styles/auth.css';

@@ -1,73 +1,60 @@
-# Welcome to your Lovable project
+# Meta Construtor App
 
-## Project info
+## Sobre o Projeto
 
-**URL**: https://lovable.dev/projects/15940b05-2a1c-40f4-9a5b-31f03ed63e6e
+O Meta Construtor é um aplicativo web para gerenciamento de obras e projetos de construção civil. Permite o acompanhamento de obras, geração de relatórios diários (RDOs), análise de progresso e gestão de equipes.
 
-## How can I edit this code?
+## Funcionalidades
 
-There are several ways of editing your application.
+- Autenticação e registro de usuários
+- Gerenciamento de obras e projetos
+- Relatórios Diários de Obra (RDOs)
+- Análise de progresso com visualizações gráficas
+- Gestão de equipes e recursos
+- Suporte a múltiplos idiomas
+- Tema claro/escuro
 
-**Use Lovable**
+## Tecnologias Utilizadas
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/15940b05-2a1c-40f4-9a5b-31f03ed63e6e) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
+Este projeto é construído com:
 
 - Vite
 - TypeScript
 - React
-- shadcn-ui
+- Shadcn UI
 - Tailwind CSS
+- Supabase (autenticação e banco de dados)
+- React Router
+- React Query
 
-## How can I deploy this project?
+## Como Executar o Projeto
 
-Simply open [Lovable](https://lovable.dev/projects/15940b05-2a1c-40f4-9a5b-31f03ed63e6e) and click on Share -> Publish.
+Siga estes passos para executar o projeto localmente:
 
-## Can I connect a custom domain to my Lovable project?
+```sh
+# Passo 1: Clone o repositório
+git clone https://github.com/MatheusNicolas1/meta_construtor_app.git
 
-Yes it is!
+# Passo 2: Navegue até o diretório do projeto
+cd meta_construtor_app
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+# Passo 3: Instale as dependências
+npm install
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+# Passo 4: Inicie o servidor de desenvolvimento
+npm run dev
+```
+
+## Variáveis de Ambiente
+
+Crie um arquivo `.env` na raiz do projeto e defina as seguintes variáveis:
+
+```
+VITE_SUPABASE_URL=sua-url-do-supabase
+VITE_SUPABASE_KEY=sua-chave-anon-do-supabase
+VITE_API_KEY=sua-api-key
+```
+
+## Deploy
+
+O projeto está hospedado na Vercel: [Meta Construtor App](https://meta-construtor-app.vercel.app)

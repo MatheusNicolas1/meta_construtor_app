@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
 import SupabaseConnectionTest from "@/components/SupabaseConnectionTest";
+import SupabaseAuthTest from "@/components/SupabaseAuthTest";
 
 const Support = () => {
   const { locale } = useLocale();
@@ -264,6 +265,12 @@ const Support = () => {
       <div className="mt-8">
         <h3 className="text-xl font-medium mb-4">{t('support.connection.title', 'Teste de Conexão')}</h3>
         <SupabaseConnectionTest />
+      </div>
+
+      {/* Teste de autenticação com o Supabase */}
+      <div className="mt-8">
+        <h3 className="text-xl font-medium mb-4">{t('support.auth.title', 'Teste de Autenticação')}</h3>
+        <SupabaseAuthTest />
       </div>
     </div>
   );

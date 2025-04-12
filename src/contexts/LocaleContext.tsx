@@ -28,6 +28,7 @@ type LocaleContextType = {
   locale: Locale;
   setLocale: (locale: Locale) => void;
   locationData: LocationData | null;
+  setLocationData: (locationData: LocationData | null) => void;
   isLocationModalOpen: boolean;
   setIsLocationModalOpen: (isOpen: boolean) => void;
   confirmLocation: () => void;
@@ -58,6 +59,23 @@ const availableCountries: Record<string, CountryData> = {
   
   // BRL country
   'BR': { name: 'Brasil', code: 'BR', currency: 'BRL', locale: 'pt-BR' },
+};
+
+// Map language codes to country codes for automatic detection
+const languageToCountryMap: Record<string, string> = {
+  'pt': 'BR',
+  'pt-BR': 'BR',
+  'en': 'US',
+  'en-US': 'US',
+  'en-GB': 'IE',
+  'es': 'ES',
+  'es-ES': 'ES',
+  'fr': 'FR',
+  'fr-FR': 'FR',
+  'de': 'DE',
+  'de-DE': 'DE',
+  'it': 'IT',
+  'it-IT': 'IT',
 };
 
 // Fixed exchange rates (approximations)
@@ -96,23 +114,60 @@ export const LocaleProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
         
         if (!hasShownLocationPrompt) {
-          // For demo purposes, select a random country
-          const countryCodes = Object.keys(availableCountries);
-          const randomCountry = countryCodes[Math.floor(Math.random() * countryCodes.length)];
-          const country = availableCountries[randomCountry];
+          // Try to detect the user's language from the browser
+          const browserLanguage = navigator.language;
+          const browserLanguages = navigator.languages || [browserLanguage];
           
-          setLocationData({
-            country: country.name,
-            code: country.code,
-            currency: country.currency,
-            locale: country.locale
-          });
+          // Try to find a matching country code from browser language
+          let detectedCountryCode = null;
+          for (const lang of browserLanguages) {
+            const baseLanguage = lang.split('-')[0]; // e.g., get 'pt' from 'pt-BR'
+            
+            // First try the full language code, then the base language
+            if (languageToCountryMap[lang]) {
+              detectedCountryCode = languageToCountryMap[lang];
+              break;
+            } else if (languageToCountryMap[baseLanguage]) {
+              detectedCountryCode = languageToCountryMap[baseLanguage];
+              break;
+            }
+          }
+          
+          // If we found a matching country, use it
+          if (detectedCountryCode && availableCountries[detectedCountryCode]) {
+            const country = availableCountries[detectedCountryCode];
+            setLocationData({
+              country: country.name,
+              code: country.code,
+              currency: country.currency,
+              locale: country.locale
+            });
+          } else {
+            // Fallback to Brasil if we can't detect the country
+            const country = availableCountries['BR'];
+            setLocationData({
+              country: country.name,
+              code: country.code,
+              currency: country.currency,
+              locale: country.locale
+            });
+          }
           
           setIsLocationModalOpen(true);
         }
       } catch (error) {
         console.error('Error detecting location:', error);
         toast.error('Erro ao detectar sua localização');
+        
+        // Fallback to Brasil on error
+        const country = availableCountries['BR'];
+        setLocationData({
+          country: country.name,
+          code: country.code,
+          currency: country.currency,
+          locale: country.locale
+        });
+        setIsLocationModalOpen(true);
       }
     };
     
@@ -145,6 +200,7 @@ export const LocaleProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         locale,
         setLocale,
         locationData,
+        setLocationData,
         isLocationModalOpen,
         setIsLocationModalOpen,
         confirmLocation,

@@ -1,0 +1,18 @@
+{
+  "framework": "vite",
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "outputDirectory": "dist",
+  "github": {
+    "silent": true
+  },
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "env": {
+    "VITE_SUPABASE_URL": "https://jchnjeihrutgmfjwnfyo.supabase.co",
+    "VITE_SUPABASE_KEY": "eyJHbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBlcmJhc2UiLCJyZWYiOiJqY2huamVpbnJ1dGdtZmp3bmZ5byIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzEwMTkyMDIxLCJleHAiOjIwMjU3NTgwMjF9.MKknOXWEWELTFWNljm58PFSoj6QT-zUMisacQXqtqHs",
+    "VITE_API_KEY": "my-secret-api-key-123456"
+  }
+} 

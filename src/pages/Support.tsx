@@ -1,10 +1,13 @@
-
 import { useLocale } from "@/contexts/LocaleContext";
 import { useTranslation } from "@/locales/translations";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { HelpCircle, MessageSquare } from "lucide-react";
+import { HelpCircle, MessageSquare, Send } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useState } from "react";
+import SupabaseConnectionTest from "@/components/SupabaseConnectionTest";
 
 const Support = () => {
   const { locale } = useLocale();
@@ -201,6 +204,66 @@ const Support = () => {
           <MessageSquare className="mr-2 h-5 w-5" />
           {t.supportPage.contactSupport}
         </Button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+        <Card className="overflow-hidden">
+          <CardContent className="p-6">
+            <div className="flex gap-3 items-center mb-4">
+              <HelpCircle className="h-6 w-6 text-meta-blue" />
+              <h3 className="text-xl font-medium">{t('support.faq.title')}</h3>
+            </div>
+            
+            <div className="space-y-4">
+              {faqs.map((faq, index) => (
+                <div key={index}>
+                  <h4 className="font-medium mb-1">{t(`support.faq.questions.${faq}.question`)}</h4>
+                  <p className="text-muted-foreground text-sm">{t(`support.faq.questions.${faq}.answer`)}</p>
+                  {index < faqs.length - 1 && <Separator className="my-4" />}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="overflow-hidden">
+          <CardContent className="p-6">
+            <div className="flex gap-3 items-center mb-4">
+              <MessageSquare className="h-6 w-6 text-meta-orange" />
+              <h3 className="text-xl font-medium">{t('support.contact.title')}</h3>
+            </div>
+            
+            <p className="text-muted-foreground mb-4">{t('support.contact.description')}</p>
+            
+            <div className="space-y-4">
+              <div>
+                <p className="font-medium mb-1">{t('support.contact.email')}:</p>
+                <p className="text-muted-foreground text-sm">suporte@metaconstrutor.com.br</p>
+              </div>
+              
+              <div>
+                <p className="font-medium mb-1">{t('support.contact.phone')}:</p>
+                <p className="text-muted-foreground text-sm">+55 (11) 9999-9999</p>
+              </div>
+              
+              <div>
+                <p className="font-medium mb-1">{t('support.contact.whatsapp')}:</p>
+                <p className="text-muted-foreground text-sm">+55 (11) 9999-9999</p>
+              </div>
+              
+              <div>
+                <p className="font-medium mb-1">{t('support.contact.hours')}:</p>
+                <p className="text-muted-foreground text-sm">{t('support.contact.businessHours')}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Teste de conexão com o Supabase */}
+      <div className="mt-8">
+        <h3 className="text-xl font-medium mb-4">{t('support.connection.title', 'Teste de Conexão')}</h3>
+        <SupabaseConnectionTest />
       </div>
     </div>
   );

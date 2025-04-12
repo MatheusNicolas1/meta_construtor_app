@@ -1,5 +1,4 @@
-
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useTranslation } from '@/locales/translations';
 import { Globe } from 'lucide-react';
@@ -23,31 +22,38 @@ import {
 // Available countries with their currencies and locales for dropdown
 const availableCountries = [
   // USD countries
-  { code: 'US', name: 'United States', currency: 'USD' },
-  { code: 'EC', name: 'Ecuador', currency: 'USD' },
-  { code: 'SV', name: 'El Salvador', currency: 'USD' },
-  { code: 'PA', name: 'Panama', currency: 'USD' },
-  { code: 'PR', name: 'Puerto Rico', currency: 'USD' },
+  { code: 'US', name: 'United States', currency: 'USD', locale: 'en-US' },
+  { code: 'EC', name: 'Ecuador', currency: 'USD', locale: 'es-ES' },
+  { code: 'SV', name: 'El Salvador', currency: 'USD', locale: 'es-ES' },
+  { code: 'PA', name: 'Panama', currency: 'USD', locale: 'es-ES' },
+  { code: 'PR', name: 'Puerto Rico', currency: 'USD', locale: 'es-ES' },
   
   // EUR countries
-  { code: 'DE', name: 'Germany (Deutschland)', currency: 'EUR' },
-  { code: 'FR', name: 'France', currency: 'EUR' },
-  { code: 'IT', name: 'Italy (Italia)', currency: 'EUR' },
-  { code: 'ES', name: 'Spain (España)', currency: 'EUR' },
-  { code: 'PT', name: 'Portugal', currency: 'EUR' },
-  { code: 'IE', name: 'Ireland', currency: 'EUR' },
-  { code: 'AT', name: 'Austria (Österreich)', currency: 'EUR' },
+  { code: 'DE', name: 'Germany (Deutschland)', currency: 'EUR', locale: 'de-DE' },
+  { code: 'FR', name: 'France', currency: 'EUR', locale: 'fr-FR' },
+  { code: 'IT', name: 'Italy (Italia)', currency: 'EUR', locale: 'it-IT' },
+  { code: 'ES', name: 'Spain (España)', currency: 'EUR', locale: 'es-ES' },
+  { code: 'PT', name: 'Portugal', currency: 'EUR', locale: 'pt-BR' },
+  { code: 'IE', name: 'Ireland', currency: 'EUR', locale: 'en-US' },
+  { code: 'AT', name: 'Austria (Österreich)', currency: 'EUR', locale: 'de-DE' },
   
   // BRL country
-  { code: 'BR', name: 'Brasil', currency: 'BRL' },
+  { code: 'BR', name: 'Brasil', currency: 'BRL', locale: 'pt-BR' },
 ];
 
 const LocationModal: React.FC = () => {
-  const { locale, locationData, isLocationModalOpen, setIsLocationModalOpen, confirmLocation, setLocale } = useLocale();
+  const { locale, locationData, setLocationData, isLocationModalOpen, setIsLocationModalOpen, confirmLocation } = useLocale();
   const t = useTranslation(locale);
   const [selectedCountry, setSelectedCountry] = useState<string | undefined>(
     locationData?.code || undefined
   );
+
+  // Update selectedCountry when locationData changes
+  useEffect(() => {
+    if (locationData?.code) {
+      setSelectedCountry(locationData.code);
+    }
+  }, [locationData]);
 
   // Sort countries alphabetically for the dropdown
   const sortedCountries = useMemo(() => {
@@ -60,8 +66,13 @@ const LocationModal: React.FC = () => {
     // Find the country data
     const country = availableCountries.find(c => c.code === value);
     if (country) {
-      // Update locationData in context (we'll need to enhance the context for this)
-      // This is a simplified version, the real implementation will be in the LocaleContext
+      // Update locationData in context
+      setLocationData({
+        country: country.name,
+        code: country.code,
+        currency: country.currency as any,
+        locale: country.locale as any
+      });
     }
   };
 

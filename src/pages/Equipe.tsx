@@ -309,12 +309,12 @@ const Configuracoes = () => {
                       {user?.email?.substring(0, 2).toUpperCase() || "U"}
                     </AvatarFallback>
                   </Avatar>
-                  <div>
+        <div>
                     <Button variant="outline" className="mb-2">Alterar foto</Button>
                     <p className="text-sm text-muted-foreground">
                       JPG, GIF ou PNG. Tamanho máximo de 1MB.
-                    </p>
-                  </div>
+          </p>
+        </div>
                 </div>
                 
                 <div className="grid gap-4 md:grid-cols-2">
@@ -334,8 +334,8 @@ const Configuracoes = () => {
                     <Label htmlFor="phone">Telefone</Label>
                     <Input id="phone" type="tel" defaultValue={user?.user_metadata?.phone || ""} />
                   </div>
-                </div>
-                
+      </div>
+
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="notifications">Notificações por email</Label>
@@ -344,7 +344,7 @@ const Configuracoes = () => {
                   <p className="text-sm text-muted-foreground">
                     Receba notificações sobre atualizações de projetos, RDOs e análises.
                   </p>
-                </div>
+          </div>
               </CardContent>
               <CardFooter className="flex justify-end">
                 <Button onClick={handleSaveProfile}>Salvar alterações</Button>
@@ -410,18 +410,18 @@ const Configuracoes = () => {
                     <Select defaultValue="editor">
                       <SelectTrigger className="w-[180px]">
                         <SelectValue placeholder="Selecione a função" />
-                      </SelectTrigger>
-                      <SelectContent>
+              </SelectTrigger>
+              <SelectContent>
                         <SelectItem value="admin">Administrador</SelectItem>
                         <SelectItem value="manager">Gerente</SelectItem>
                         <SelectItem value="collaborator">Colaborador</SelectItem>
-                      </SelectContent>
-                    </Select>
+              </SelectContent>
+            </Select>
                     <Button onClick={handleInviteMember}>Convidar</Button>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+          </div>
+        </CardContent>
+      </Card>
           </TabsContent>
           
           <TabsContent value="preferencias">
@@ -452,10 +452,10 @@ const Configuracoes = () => {
                   </div>
                 </div>
                 
-                <div className="space-y-4">
+        <div className="space-y-4">
                   <h3 className="font-medium">Linguagem</h3>
                   <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
+                <div className="space-y-2">
                       <Label htmlFor="language">Idioma</Label>
                       <Select value={locale} onValueChange={handleLanguageChange}>
                         <SelectTrigger id="language">
@@ -599,7 +599,7 @@ const Configuracoes = () => {
                                locale === 'en-US' ? 'Enter WhatsApp number' : 
                                'Escriba el número de WhatsApp'}
                 />
-              </div>
+        </div>
               
               <div className="space-y-2">
                 <Label htmlFor="role">
@@ -648,7 +648,7 @@ const Configuracoes = () => {
                 {locale === 'pt-BR' ? 'Adicionar' : 
                  locale === 'en-US' ? 'Add' : 
                  'Añadir'}
-              </Button>
+                      </Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -763,7 +763,7 @@ const Configuracoes = () => {
                   {locale === 'pt-BR' ? 'Salvar' : 
                    locale === 'en-US' ? 'Save' : 
                    'Guardar'}
-                </Button>
+                      </Button>
               </DialogFooter>
             </form>
           )}

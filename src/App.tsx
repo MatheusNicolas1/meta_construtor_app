@@ -27,7 +27,7 @@ import RDOs from "./pages/RDOs";
 import CreateRDO from "./pages/CreateRDO";
 import RDODetalhe from "./pages/RDODetalhe";
 import Analyses from "./pages/Analyses";
-import Equipe from "./pages/Equipe";
+import Configuracoes from "./pages/Configuracoes";
 import Support from "./pages/Support"; // Import the new Support page
 import Tutorial from "./pages/Tutorial";
 import NotFound from "./pages/NotFound";
@@ -72,7 +72,7 @@ const ProtectedRoutes = () => {
         <Route path="rdos/new" element={<CreateRDO />} />
         <Route path="rdos/:id" element={<RDODetalhe />} />
         <Route path="analyses" element={<Analyses />} />
-        <Route path="equipe" element={<Equipe />} />
+        <Route path="configuracoes" element={<Configuracoes />} />
         <Route path="suporte" element={<Support />} />
         <Route path="tutorial" element={<Tutorial />} />
         <Route path="planos" element={<PlansPage />} />

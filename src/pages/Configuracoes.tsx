@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { UserPlus, Edit, Trash2, Globe, Save } from "lucide-react";
@@ -15,6 +15,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -43,6 +44,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { useTheme } from "next-themes";
+import { cn } from "@/lib/utils";
 
 type TeamMember = {
   id: string;
@@ -72,7 +74,7 @@ const Configuracoes = () => {
   const isMobile = useIsMobile();
   const { locale, setLocale } = useLocale();
   const t = useTranslation(locale);
-  const { user } = useAuth();
+  const { user, refreshSession } = useAuth();
   const { toast: useToastToast } = useToast();
   const { setTheme, theme } = useTheme();
   const [activeTab, setActiveTab] = useState("conta");
@@ -88,42 +90,211 @@ const Configuracoes = () => {
     whatsapp: "",
     role: "collaborator"
   });
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileData, setProfileData] = useState({
+    fullName: "",
+    email: "",
+    company: "",
+    phone: "",
+    avatar_url: ""
+  });
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Mock data since we're not connecting to the backend yet
-    const mockMembers = [
-      {
-        id: '1',
-        name: 'Maria Gonçalves',
-        email: 'maria@exemplo.com',
-        whatsapp: '+55 11 98765-4321',
-        role: t.teamPage.managers,
-        rdosGenerated: 5,
-        avatar: ""
-      },
-      {
-        id: '2',
-        name: 'Matheus',
-        email: 'matheus@exemplo.com',
-        whatsapp: '+55 11 91234-5678',
-        role: t.teamPage.administrators,
-        rdosGenerated: 3,
-        avatar: ""
-      },
-      {
-        id: '3',
-        name: 'João Silva',
-        email: 'joao@exemplo.com',
-        whatsapp: '+55 11 99876-5432',
-        role: t.teamPage.collaborators,
-        rdosGenerated: 8,
-        avatar: ""
+    if (user) {
+      // Carregar dados do usuário a partir dos metadados
+      setProfileData({
+        fullName: user.user_metadata?.full_name || '',
+        email: user.email || '',
+        company: user.user_metadata?.company || '',
+        phone: user.user_metadata?.phone || '',
+        avatar_url: user.user_metadata?.avatar_url || '',
+      });
+
+      // Buscar dados adicionais da tabela profiles se necessário
+      loadUserProfile(user.id);
+    }
+  }, [user]);
+
+  const loadUserProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error('Erro ao carregar perfil:', error);
+        return;
       }
-    ];
+
+      if (data) {
+        setProfileData(prevData => ({
+          ...prevData,
+          fullName: data.full_name || prevData.fullName,
+          company: data.company || prevData.company,
+          phone: data.phone || prevData.phone,
+          avatar_url: data.avatar_url || prevData.avatar_url,
+        }));
+      }
+    } catch (error) {
+      console.error('Erro ao carregar perfil:', error);
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setProfileData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    try {
+      // Verificar tamanho (máximo 1MB)
+      if (file.size > 1024 * 1024) {
+        toast.error("A imagem deve ter no máximo 1MB");
+        return;
+      }
+
+      // Verificar tipo
+      if (!['image/jpeg', 'image/png', 'image/gif'].includes(file.type)) {
+        toast.error("Formato de arquivo não suportado. Use JPG, PNG ou GIF");
+        return;
+      }
+
+      console.log("Iniciando upload de avatar...");
+      
+      // Upload para o Supabase Storage - usar pasta com ID do usuário
+      const fileName = `${user.id}/avatar-${Date.now()}`;
+      console.log("Caminho do arquivo:", fileName);
+      
+      const { data, error } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file);
+
+      if (error) {
+        console.error("Erro no upload:", error);
+        throw error;
+      }
+
+      console.log("Upload realizado com sucesso:", data);
+
+      // Obter URL pública
+      const { data: urlData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      if (urlData) {
+        console.log("URL pública obtida:", urlData.publicUrl);
+        
+        // Atualizar state
+        setProfileData({
+          ...profileData,
+          avatar_url: urlData.publicUrl
+        });
+
+        toast.success("Foto atualizada com sucesso!");
+      }
+    } catch (error) {
+      console.error("Erro ao fazer upload:", error);
+      toast.error("Erro ao atualizar foto. Tente novamente.");
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
     
-    setMembers(mockMembers);
-    setLoading(false);
-  }, [locale, t]);
+    setSavingProfile(true);
+    console.log("Salvando perfil com dados:", profileData);
+    
+    try {
+      // Atualizar metadados no auth
+      const { error: authError } = await supabase.auth.updateUser({
+        data: {
+          full_name: profileData.fullName,
+          company: profileData.company,
+          phone: profileData.phone,
+          avatar_url: profileData.avatar_url
+        }
+      });
+
+      if (authError) {
+        console.error("Erro ao atualizar metadados do usuário:", authError);
+        throw authError;
+      }
+
+      console.log("Metadados do usuário atualizados com sucesso");
+
+      // Verificar se o perfil já existe e atualizar/criar na tabela profiles
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .single();
+
+      const profilePayload = {
+        id: user.id,
+        full_name: profileData.fullName,
+        company: profileData.company,
+        phone: profileData.phone,
+        avatar_url: profileData.avatar_url,
+        updated_at: new Date().toISOString()
+      };
+
+      console.log("Payload para atualização do perfil:", profilePayload);
+      
+      let error;
+      
+      if (existingProfile) {
+        console.log("Atualizando perfil existente");
+        // Atualizar perfil existente
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update(profilePayload)
+          .eq('id', user.id);
+          
+        error = updateError;
+        
+        if (updateError) {
+          console.error("Erro ao atualizar perfil:", updateError);
+        }
+      } else {
+        console.log("Criando novo perfil");
+        // Criar novo perfil
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            ...profilePayload,
+            created_at: new Date().toISOString()
+          });
+          
+        error = insertError;
+        
+        if (insertError) {
+          console.error("Erro ao criar perfil:", insertError);
+        }
+      }
+
+      if (error) throw error;
+      
+      // Recarregar a sessão para obter os metadados atualizados
+      await refreshSession();
+      console.log("Sessão atualizada com sucesso");
+      
+      useToastToast({
+        title: "Perfil atualizado",
+        description: "Suas informações de perfil foram atualizadas com sucesso!",
+      });
+    } catch (error) {
+      console.error("Erro ao salvar perfil:", error);
+      toast.error("Erro ao salvar perfil. Tente novamente.");
+    } finally {
+      setSavingProfile(false);
+    }
+  };
 
   const handleEdit = (id: string) => {
     const memberToEdit = members.find(member => member.id === id);
@@ -194,8 +365,21 @@ const Configuracoes = () => {
       name: newMember.name,
       email: newMember.email,
       whatsapp: newMember.whatsapp,
-      role: newMember.role === 'admin' ? t.teamPage.administrators : 
-           newMember.role === 'manager' ? t.teamPage.managers : t.teamPage.collaborators,
+      role: newMember.role === 'admin' ? (locale === 'pt-BR' ? 'Administrador' : 
+            locale === 'en-US' ? 'Administrator' : 
+            locale === 'es-ES' ? 'Administrador' :
+            locale === 'fr-FR' ? 'Administrateur' :
+            'Administrator') : 
+           newMember.role === 'manager' ? (locale === 'pt-BR' ? 'Gerente' : 
+            locale === 'en-US' ? 'Manager' : 
+            locale === 'es-ES' ? 'Gerente' :
+            locale === 'fr-FR' ? 'Gérant' :
+            'Manager') : 
+           (locale === 'pt-BR' ? 'Colaborador' : 
+            locale === 'en-US' ? 'Collaborator' : 
+            locale === 'es-ES' ? 'Colaborador' :
+            locale === 'fr-FR' ? 'Collaborateur' :
+            'Collaborator'),
       rdosGenerated: 0,
       avatar: ""
     };
@@ -230,10 +414,10 @@ const Configuracoes = () => {
     toast.success(messages[selectedLocale]);
   };
 
-  const handleSaveProfile = () => {
+  const handleSavePreferences = () => {
     useToastToast({
-      title: "Perfil atualizado",
-      description: "Suas informações de perfil foram atualizadas com sucesso!",
+      title: "Preferências salvas",
+      description: "Suas preferências foram atualizadas com sucesso!",
     });
   };
   
@@ -244,13 +428,6 @@ const Configuracoes = () => {
     });
   };
   
-  const handleSavePreferences = () => {
-    useToastToast({
-      title: "Preferências salvas",
-      description: "Suas preferências foram atualizadas com sucesso!",
-    });
-  };
-
   if (loading) {
     return (
       <div className="text-center py-8">
@@ -262,7 +439,7 @@ const Configuracoes = () => {
   return (
     <div className="container mx-auto py-6">
       <div className="flex flex-col gap-4">
-        <h1 className="text-3xl font-bold">{locale === 'pt-BR' ? 'Configurações' : 
+        <h1 className="text-3xl font-bold text-center sm:text-left">{locale === 'pt-BR' ? 'Configurações' : 
           locale === 'en-US' ? 'Settings' : 
           locale === 'es-ES' ? 'Configuración' :
           locale === 'fr-FR' ? 'Paramètres' :
@@ -270,21 +447,21 @@ const Configuracoes = () => {
         
         <Tabs defaultValue="conta" value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-3 mb-8">
-            <TabsTrigger value="conta">
+            <TabsTrigger value="conta" className="text-xs sm:text-sm px-1 sm:px-3 py-2">
               {locale === 'pt-BR' ? 'Conta' : 
               locale === 'en-US' ? 'Account' : 
               locale === 'es-ES' ? 'Cuenta' :
               locale === 'fr-FR' ? 'Compte' :
               'Konto'}
             </TabsTrigger>
-            <TabsTrigger value="equipe">
+            <TabsTrigger value="equipe" className="text-xs sm:text-sm px-1 sm:px-3 py-2">
               {locale === 'pt-BR' ? 'Equipe' : 
               locale === 'en-US' ? 'Team' : 
               locale === 'es-ES' ? 'Equipo' :
               locale === 'fr-FR' ? 'Équipe' :
               'Team'}
             </TabsTrigger>
-            <TabsTrigger value="preferencias">
+            <TabsTrigger value="preferencias" className="text-xs sm:text-sm px-1 sm:px-3 py-2">
               {locale === 'pt-BR' ? 'Preferências' : 
               locale === 'en-US' ? 'Preferences' : 
               locale === 'es-ES' ? 'Preferencias' :
@@ -296,58 +473,99 @@ const Configuracoes = () => {
           <TabsContent value="conta">
             <Card>
               <CardHeader>
-                <CardTitle>Perfil do Usuário</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-center sm:text-left">Perfil do Usuário</CardTitle>
+                <CardDescription className="text-center sm:text-left">
                   Gerencie suas informações de perfil e configurações de conta
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex flex-col sm:flex-row gap-8 items-start sm:items-center">
-                  <Avatar className="w-24 h-24">
-                    <AvatarImage src={user?.user_metadata?.avatar_url || ""} />
+                <div className="flex flex-col sm:flex-row gap-8 items-center justify-center sm:justify-start">
+                  <Avatar className="w-24 h-24 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                    <AvatarImage src={profileData.avatar_url || ""} />
                     <AvatarFallback className="text-2xl">
-                      {user?.email?.substring(0, 2).toUpperCase() || "U"}
+                      {profileData.fullName?.substring(0, 2).toUpperCase() || profileData.email?.substring(0, 2).toUpperCase() || "U"}
                     </AvatarFallback>
                   </Avatar>
-                  <div>
-                    <Button variant="outline" className="mb-2">Alterar foto</Button>
+                  <div className="text-center sm:text-left">
+                    <Button variant="outline" className="mb-2 w-full sm:w-auto" onClick={() => fileInputRef.current?.click()}>Alterar foto</Button>
+                    <input 
+                      type="file" 
+                      ref={fileInputRef} 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={handleFileChange}
+                    />
                     <p className="text-sm text-muted-foreground">
                       JPG, GIF ou PNG. Tamanho máximo de 1MB.
                     </p>
                   </div>
                 </div>
                 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Nome completo</Label>
-                    <Input id="name" defaultValue={user?.user_metadata?.full_name || ""} />
+                <div className="grid gap-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <Label htmlFor="fullName" className="min-w-[150px] text-left">Nome completo</Label>
+                    <Input 
+                      id="fullName" 
+                      name="fullName" 
+                      value={profileData.fullName} 
+                      onChange={handleInputChange}
+                    />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" defaultValue={user?.email || ""} disabled />
+                  
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <Label htmlFor="email" className="min-w-[150px] text-left">Email</Label>
+                    <Input 
+                      id="email" 
+                      type="email" 
+                      value={profileData.email} 
+                      disabled 
+                      className="bg-muted"
+                    />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="company">Empresa</Label>
-                    <Input id="company" defaultValue={user?.user_metadata?.company || ""} />
+                  
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <Label htmlFor="phone" className="min-w-[150px] text-left">Telefone</Label>
+                    <Input 
+                      id="phone" 
+                      type="tel" 
+                      value={profileData.phone} 
+                      onChange={handleInputChange}
+                    />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Telefone</Label>
-                    <Input id="phone" type="tel" defaultValue={user?.user_metadata?.phone || ""} />
+                  
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <Label htmlFor="company" className="min-w-[150px] text-left">Empresa</Label>
+                    <Input 
+                      id="company" 
+                      value={profileData.company} 
+                      onChange={handleInputChange}
+                    />
                   </div>
                 </div>
                 
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="notifications">Notificações por email</Label>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <Label htmlFor="notifications" className="min-w-[150px] text-left">Notificações por email</Label>
+                  <div className="flex-1 flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground text-left mr-2">
+                      Receba notificações sobre atualizações de projetos, RDOs e análises.
+                    </p>
                     <Switch id="notifications" defaultChecked />
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    Receba notificações sobre atualizações de projetos, RDOs e análises.
-                  </p>
                 </div>
               </CardContent>
-              <CardFooter className="flex justify-end">
-                <Button onClick={handleSaveProfile}>Salvar alterações</Button>
+              <CardFooter className="flex justify-center sm:justify-end">
+                <Button 
+                  onClick={handleSaveProfile} 
+                  className="w-full sm:w-auto" 
+                  disabled={savingProfile}
+                >
+                  {savingProfile ? (
+                    <>
+                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent"></div>
+                      Salvando...
+                    </>
+                  ) : 'Salvar alterações'}
+                </Button>
               </CardFooter>
             </Card>
           </TabsContent>
@@ -373,52 +591,51 @@ const Configuracoes = () => {
                 
                 <div className="border rounded-lg">
                   <div className="grid grid-cols-12 p-4 border-b bg-muted font-medium">
-                    <div className="col-span-5">Usuário</div>
-                    <div className="col-span-4">Email</div>
-                    <div className="col-span-2">Função</div>
-                    <div className="col-span-1"></div>
+                    <div className="col-span-12 sm:col-span-5">Usuário</div>
+                    <div className="hidden md:block col-span-4">Email</div>
+                    <div className="hidden sm:block sm:col-span-2 text-center sm:text-left">Função</div>
+                    <div className="hidden sm:block sm:col-span-1 text-right">Ações</div>
                   </div>
                   
                   {members.map((member) => (
-                    <div key={member.id} className="grid grid-cols-12 p-4 border-b last:border-0 items-center">
-                      <div className="col-span-5 flex items-center gap-3">
+                    <div 
+                      key={member.id} 
+                      className="grid grid-cols-12 p-4 border-b last:border-0 items-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900/20 transition-colors"
+                      onClick={() => handleEdit(member.id)}
+                    >
+                      <div className="col-span-12 sm:col-span-5 flex items-center gap-3 justify-start">
                         <Avatar>
                           <AvatarFallback>{member.name.substring(0, 2)}</AvatarFallback>
                         </Avatar>
-                        <span className="font-medium">{member.name}</span>
+                        <div className="flex flex-col w-full overflow-hidden">
+                          <span className="font-medium truncate">{member.name}</span>
+                          <span className={cn(
+                            "text-xs mt-1 sm:hidden truncate",
+                            member.role === 'Administrador' || member.role === 'Administrator' ? "text-meta-blue font-medium" : 
+                            member.role === 'Gerente' || member.role === 'Manager' ? "text-meta-orange font-medium" : 
+                            "text-muted-foreground"
+                          )}>
+                            {member.role}
+                          </span>
+                        </div>
                       </div>
-                      <div className="col-span-4 text-muted-foreground">{member.email}</div>
-                      <div className="col-span-2">
+                      <div className="hidden md:block col-span-4 text-muted-foreground">{member.email}</div>
+                      <div className="hidden sm:block sm:col-span-2 text-center sm:text-left">
                         <Badge variant={
-                          member.role === "admin" ? "default" : 
-                          member.role === "manager" ? "outline" : "secondary"
+                          member.role === 'Administrador' || member.role === 'Administrator' ? "default" : 
+                          member.role === 'Gerente' || member.role === 'Manager' ? "outline" : "secondary"
                         }>
                           {member.role}
                         </Badge>
                       </div>
-                      <div className="col-span-1 text-right">
-                        <Button variant="ghost" size="sm" onClick={() => handleEdit(member.id)}>...</Button>
+                      <div className="hidden sm:block sm:col-span-1 text-right">
+                        <Button variant="ghost" size="sm" onClick={(e) => {
+                          e.stopPropagation();
+                          handleEdit(member.id);
+                        }}>...</Button>
                       </div>
                     </div>
                   ))}
-                </div>
-                
-                <div className="space-y-4">
-                  <h3 className="font-medium">Convidar novos membros</h3>
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <Input placeholder="Endereço de email" type="email" className="flex-1" />
-                    <Select defaultValue="editor">
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Selecione a função" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="admin">Administrador</SelectItem>
-                        <SelectItem value="manager">Gerente</SelectItem>
-                        <SelectItem value="collaborator">Colaborador</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Button onClick={handleInviteMember}>Convidar</Button>
-                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -427,17 +644,17 @@ const Configuracoes = () => {
           <TabsContent value="preferencias">
             <Card>
               <CardHeader>
-                <CardTitle>Preferências</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-center sm:text-left">Preferências</CardTitle>
+                <CardDescription className="text-center sm:text-left">
                   Personalize a aparência e o comportamento da aplicação
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-4">
-                  <h3 className="font-medium">Aparência</h3>
+                  <h3 className="font-medium text-center md:text-left">Aparência</h3>
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="theme">Tema</Label>
+                      <Label htmlFor="theme" className="block text-center md:text-left">Tema</Label>
                       <Select value={theme} onValueChange={setTheme}>
                         <SelectTrigger id="theme">
                           <SelectValue placeholder="Selecione o tema" />
@@ -453,10 +670,10 @@ const Configuracoes = () => {
                 </div>
                 
                 <div className="space-y-4">
-                  <h3 className="font-medium">Linguagem</h3>
+                  <h3 className="font-medium text-center md:text-left">Linguagem</h3>
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="language">Idioma</Label>
+                      <Label htmlFor="language" className="block text-center md:text-left">Idioma</Label>
                       <Select value={locale} onValueChange={handleLanguageChange}>
                         <SelectTrigger id="language">
                           <SelectValue placeholder="Selecione o idioma" />
@@ -474,10 +691,10 @@ const Configuracoes = () => {
                 </div>
                 
                 <div className="space-y-4">
-                  <h3 className="font-medium">Exibição de dados</h3>
+                  <h3 className="font-medium text-center md:text-left">Exibição de dados</h3>
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="dateFormat">Formato de data</Label>
+                      <Label htmlFor="dateFormat" className="block text-center md:text-left">Formato de data</Label>
                       <Select defaultValue="dd-mm-yyyy">
                         <SelectTrigger id="dateFormat">
                           <SelectValue placeholder="Selecione o formato" />
@@ -491,7 +708,7 @@ const Configuracoes = () => {
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="timeFormat">Formato de hora</Label>
+                      <Label htmlFor="timeFormat" className="block text-center md:text-left">Formato de hora</Label>
                       <Select defaultValue="24h">
                         <SelectTrigger id="timeFormat">
                           <SelectValue placeholder="Selecione o formato" />
@@ -506,30 +723,30 @@ const Configuracoes = () => {
                 </div>
                 
                 <div className="space-y-4">
-                  <h3 className="font-medium">Comportamento</h3>
+                  <h3 className="font-medium text-center md:text-left">Comportamento</h3>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label htmlFor="confirmActions">Confirmar ações importantes</Label>
+                      <Label htmlFor="confirmActions" className="text-center md:text-left">Confirmar ações importantes</Label>
                       <Switch id="confirmActions" defaultChecked />
                     </div>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground text-center md:text-left">
                       Exibir diálogos de confirmação para ações como exclusão e saída sem salvar
                     </p>
                   </div>
                   
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label htmlFor="autoSave">Salvar automaticamente</Label>
+                      <Label htmlFor="autoSave" className="text-center md:text-left">Salvar automaticamente</Label>
                       <Switch id="autoSave" />
                     </div>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground text-center md:text-left">
                       Salvar alterações automaticamente enquanto você trabalha
                     </p>
                   </div>
                 </div>
               </CardContent>
-              <CardFooter className="flex justify-end">
-                <Button onClick={handleSavePreferences}>Salvar preferências</Button>
+              <CardFooter className="flex justify-center sm:justify-end">
+                <Button onClick={handleSavePreferences} className="w-full sm:w-auto">Salvar preferências</Button>
               </CardFooter>
             </Card>
           </TabsContent>
@@ -538,8 +755,8 @@ const Configuracoes = () => {
 
       {/* Add Member Modal */}
       <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-        <DialogContent>
-          <DialogHeader>
+        <DialogContent className="max-w-md mx-auto">
+          <DialogHeader className="text-center sm:text-left">
             <DialogTitle>{locale === 'pt-BR' ? 'Adicionar Novo Membro' : 
                             locale === 'en-US' ? 'Add New Member' : 
                             'Añadir Nuevo Miembro'}</DialogTitle>
@@ -553,7 +770,7 @@ const Configuracoes = () => {
           <form onSubmit={handleAddMember}>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="name">
+                <Label htmlFor="name" className="block text-center sm:text-left">
                   {locale === 'pt-BR' ? 'Nome' : 
                    locale === 'en-US' ? 'Name' : 
                    'Nombre'}
@@ -569,7 +786,7 @@ const Configuracoes = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">
+                <Label htmlFor="email" className="block text-center sm:text-left">
                   {locale === 'pt-BR' ? 'E-mail' : 
                    locale === 'en-US' ? 'Email' : 
                    'Correo electrónico'}
@@ -586,7 +803,7 @@ const Configuracoes = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="whatsapp">
+                <Label htmlFor="whatsapp" className="block text-center sm:text-left">
                   {locale === 'pt-BR' ? 'WhatsApp' : 
                    locale === 'en-US' ? 'WhatsApp' : 
                    'WhatsApp'}
@@ -602,7 +819,7 @@ const Configuracoes = () => {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="role">
+                <Label htmlFor="role" className="block text-center sm:text-left">
                   {locale === 'pt-BR' ? 'Função' : 
                    locale === 'en-US' ? 'Role' : 
                    'Función'}
@@ -637,13 +854,13 @@ const Configuracoes = () => {
               </div>
             </div>
             
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsAddModalOpen(false)}>
+            <DialogFooter className="flex-col sm:flex-row gap-2">
+              <Button type="button" variant="outline" onClick={() => setIsAddModalOpen(false)} className="w-full sm:w-auto">
                 {locale === 'pt-BR' ? 'Cancelar' : 
                  locale === 'en-US' ? 'Cancel' : 
                  'Cancelar'}
               </Button>
-              <Button type="submit" className="bg-meta-orange hover:bg-meta-orange/90">
+              <Button type="submit" className="bg-meta-orange hover:bg-meta-orange/90 w-full sm:w-auto">
                 <UserPlus className="mr-2 h-4 w-4" />
                 {locale === 'pt-BR' ? 'Adicionar' : 
                  locale === 'en-US' ? 'Add' : 
@@ -656,8 +873,8 @@ const Configuracoes = () => {
 
       {/* Edit Member Modal */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent>
-          <DialogHeader>
+        <DialogContent className="max-w-md mx-auto">
+          <DialogHeader className="text-center sm:text-left">
             <DialogTitle>{locale === 'pt-BR' ? 'Editar Membro' : 
                             locale === 'en-US' ? 'Edit Member' : 
                             'Editar Miembro'}</DialogTitle>
@@ -672,7 +889,7 @@ const Configuracoes = () => {
             <form onSubmit={handleSaveEdit}>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-name">
+                  <Label htmlFor="edit-name" className="block text-center sm:text-left">
                     {locale === 'pt-BR' ? 'Nome' : 
                      locale === 'en-US' ? 'Name' : 
                      'Nombre'}
@@ -685,7 +902,7 @@ const Configuracoes = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="edit-email">
+                  <Label htmlFor="edit-email" className="block text-center sm:text-left">
                     {locale === 'pt-BR' ? 'E-mail' : 
                      locale === 'en-US' ? 'Email' : 
                      'Correo electrónico'}
@@ -699,7 +916,7 @@ const Configuracoes = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="edit-whatsapp">
+                  <Label htmlFor="edit-whatsapp" className="block text-center sm:text-left">
                     {locale === 'pt-BR' ? 'WhatsApp' : 
                      locale === 'en-US' ? 'WhatsApp' : 
                      'WhatsApp'}
@@ -712,19 +929,37 @@ const Configuracoes = () => {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="edit-role">
+                  <Label htmlFor="edit-role" className="block text-center sm:text-left">
                     {locale === 'pt-BR' ? 'Função' : 
                      locale === 'en-US' ? 'Role' : 
                      'Función'}
                   </Label>
                   <Select 
                     value={
-                      currentMember.role === t.teamPage.administrators ? 'admin' :
-                      currentMember.role === t.teamPage.managers ? 'manager' : 'collaborator'
+                      currentMember.role === 'Administrador' || currentMember.role === 'Administrator' ? 'admin' :
+                      currentMember.role === 'Gerente' || currentMember.role === 'Manager' ? 'manager' : 'collaborator'
                     } 
                     onValueChange={(value) => {
-                      const newRole = value === 'admin' ? t.teamPage.administrators : 
-                                     value === 'manager' ? t.teamPage.managers : t.teamPage.collaborators;
+                      let newRole = '';
+                      if (value === 'admin') {
+                        newRole = locale === 'pt-BR' ? 'Administrador' : 
+                                  locale === 'en-US' ? 'Administrator' : 
+                                  locale === 'es-ES' ? 'Administrador' :
+                                  locale === 'fr-FR' ? 'Administrateur' :
+                                  'Administrator';
+                      } else if (value === 'manager') {
+                        newRole = locale === 'pt-BR' ? 'Gerente' : 
+                                  locale === 'en-US' ? 'Manager' : 
+                                  locale === 'es-ES' ? 'Gerente' :
+                                  locale === 'fr-FR' ? 'Gérant' :
+                                  'Manager';
+                      } else {
+                        newRole = locale === 'pt-BR' ? 'Colaborador' : 
+                                  locale === 'en-US' ? 'Collaborator' : 
+                                  locale === 'es-ES' ? 'Colaborador' :
+                                  locale === 'fr-FR' ? 'Collaborateur' :
+                                  'Collaborator';
+                      }
                       setCurrentMember({...currentMember, role: newRole});
                     }}
                   >
@@ -752,13 +987,13 @@ const Configuracoes = () => {
                 </div>
               </div>
               
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsEditModalOpen(false)}>
+              <DialogFooter className="flex-col sm:flex-row gap-2">
+                <Button type="button" variant="outline" onClick={() => setIsEditModalOpen(false)} className="w-full sm:w-auto">
                   {locale === 'pt-BR' ? 'Cancelar' : 
                    locale === 'en-US' ? 'Cancel' : 
                    'Cancelar'}
                 </Button>
-                <Button type="submit" className="bg-meta-orange hover:bg-meta-orange/90">
+                <Button type="submit" className="bg-meta-orange hover:bg-meta-orange/90 w-full sm:w-auto">
                   <Save className="mr-2 h-4 w-4" />
                   {locale === 'pt-BR' ? 'Salvar' : 
                    locale === 'en-US' ? 'Save' : 
@@ -772,8 +1007,8 @@ const Configuracoes = () => {
 
       {/* Delete Confirmation Alert */}
       <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
+        <AlertDialogContent className="max-w-md mx-auto">
+          <AlertDialogHeader className="text-center sm:text-left">
             <AlertDialogTitle>
               {locale === 'pt-BR' ? 'Confirmar Exclusão' : 
                locale === 'en-US' ? 'Confirm Deletion' : 
@@ -785,15 +1020,15 @@ const Configuracoes = () => {
                `¿Está seguro de que desea eliminar a ${currentMember?.name}? Esta acción no se puede deshacer.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel className="w-full sm:w-auto">
               {locale === 'pt-BR' ? 'Cancelar' : 
                locale === 'en-US' ? 'Cancel' : 
                'Cancelar'}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto"
             >
               {locale === 'pt-BR' ? 'Excluir' : 
                locale === 'en-US' ? 'Delete' : 

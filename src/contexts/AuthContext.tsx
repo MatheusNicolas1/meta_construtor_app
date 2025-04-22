@@ -17,6 +17,7 @@ type AuthContextType = {
     error: AuthError | null;
   }>;
   signOut: () => Promise<{ error: AuthError | null }>;
+  refreshSession: () => Promise<void>;
 };
 
 // Criação do contexto de autenticação
@@ -49,6 +50,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Atualizar a sessão do usuário
+  const refreshSession = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      setSession(session);
+      setUser(session.user);
+    }
+  };
 
   // Registrar usuário
   const signUp = async (email: string, password: string, name: string) => {
@@ -151,6 +161,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     signUp,
     signIn,
     signOut,
+    refreshSession,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

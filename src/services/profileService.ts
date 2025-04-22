@@ -70,13 +70,22 @@ export const profileService = {
 
   // Atualizar avatar do usuário
   async updateAvatar(userId: string, filePath: string): Promise<{ data: any; error: any }> {
-    const avatarUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${filePath}`;
+    const { data: urlData } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(filePath);
+    
+    const avatarUrl = urlData.publicUrl;
+    console.log("Profile service - atualizando avatar_url:", avatarUrl);
     
     const { data, error } = await supabase
       .from('profiles')
       .update({ avatar_url: avatarUrl })
       .eq('id', userId)
       .select();
+
+    if (error) {
+      console.error("Erro ao atualizar avatar_url no perfil:", error);
+    }
 
     return { data, error };
   },

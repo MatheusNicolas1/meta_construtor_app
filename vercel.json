@@ -1,33 +1,5 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "buildCommand": "npm run build",
-        "outputDirectory": "dist"
-      }
-    }
-  ],
-  "routes": [
-    {
-      "src": "^/assets/(.*)",
-      "dest": "/assets/$1"
-    },
-    {
-      "src": "^/api/(.*)",
-      "dest": "/api/$1"
-    },
-    {
-      "src": ".*",
-      "dest": "/index.html"
-    }
-  ],
-  "github": {
-    "enabled": true,
-    "silent": true
-  },
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
@@ -56,5 +28,9 @@
         }
       ]
     }
-  ]
+  ],
+  "github": {
+    "enabled": true,
+    "silent": true
+  }
 } 

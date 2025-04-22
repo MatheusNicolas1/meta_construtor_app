@@ -9,7 +9,8 @@ import {
   X,
   Building,
   Users,
-  HelpCircle
+  HelpCircle,
+  Settings
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -38,6 +39,15 @@ const AppLayout = () => {
 
   // Check if dark mode is active
   const isDarkMode = theme === "dark";
+
+  const navigation = [
+    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { name: "Obras", href: "/obras", icon: Building },
+    { name: "RDOs", href: "/rdos", icon: ClipboardList },
+    { name: "Análises", href: "/analyses", icon: BarChart },
+    { name: "Configurações", href: "/configuracoes", icon: Settings },
+    { name: "Suporte", href: "/suporte", icon: HelpCircle },
+  ];
 
   return (
     <div className="min-h-screen flex flex-col bg-meta-gray">
@@ -99,14 +109,18 @@ const AppLayout = () => {
               {t.navigation.analyses}
             </NavLink>
             <NavLink 
-              to="/equipe" 
+              to="/configuracoes" 
               className={({ isActive }) => cn(
                 "flex items-center gap-2 text-meta-dark hover:text-meta-orange transition-colors font-medium",
                 isActive && "text-meta-orange"
               )}
             >
-              <Users className="w-5 h-5" />
-              {t.navigation.team}
+              <Settings className="w-5 h-5" />
+              {locale === 'pt-BR' ? 'Configurações' : 
+               locale === 'en-US' ? 'Settings' : 
+               locale === 'es-ES' ? 'Configuración' :
+               locale === 'fr-FR' ? 'Paramètres' :
+               'Einstellungen'}
             </NavLink>
             <div className="ml-2">
               <ThemeToggle />
@@ -199,16 +213,19 @@ const AppLayout = () => {
                 {t.navigation.analyses}
               </NavLink>
               <NavLink 
-                to="/equipe" 
+                to="/configuracoes" 
                 className={({ isActive }) => cn(
                   "flex items-center gap-2 text-meta-dark hover:text-meta-orange transition-colors py-2 px-4 rounded-md font-medium",
                   isActive && "bg-meta-gray text-meta-orange"
                 )}
               >
-                <Users className="w-5 h-5" />
-                {t.navigation.team}
+                <Settings className="w-5 h-5" />
+                {locale === 'pt-BR' ? 'Configurações' : 
+                 locale === 'en-US' ? 'Settings' : 
+                 locale === 'es-ES' ? 'Configuración' :
+                 locale === 'fr-FR' ? 'Paramètres' :
+                 'Einstellungen'}
               </NavLink>
-              {/* Support in mobile menu as icon + text for better visibility */}
               <NavLink 
                 to="/suporte" 
                 className={({ isActive }) => cn(

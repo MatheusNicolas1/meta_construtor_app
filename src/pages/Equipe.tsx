@@ -41,6 +41,8 @@ import { Label } from "@/components/ui/label";
 type TeamMember = {
   id: string;
   name: string;
+  email: string;
+  whatsapp: string;
   role: string;
   rdosGenerated: number;
 };
@@ -71,6 +73,8 @@ const Equipe = () => {
   const [currentMember, setCurrentMember] = useState<TeamMember | null>(null);
   const [newMember, setNewMember] = useState({
     name: "",
+    email: "",
+    whatsapp: "",
     role: "collaborator"
   });
 
@@ -80,18 +84,24 @@ const Equipe = () => {
       {
         id: '1',
         name: 'Maria Gonçalves',
+        email: 'maria@exemplo.com',
+        whatsapp: '+55 11 98765-4321',
         role: t.teamPage.managers,
         rdosGenerated: 5
       },
       {
         id: '2',
         name: 'Matheus',
+        email: 'matheus@exemplo.com',
+        whatsapp: '+55 11 91234-5678',
         role: t.teamPage.administrators,
         rdosGenerated: 3
       },
       {
         id: '3',
         name: 'João Silva',
+        email: 'joao@exemplo.com',
+        whatsapp: '+55 11 99876-5432',
         role: t.teamPage.collaborators,
         rdosGenerated: 8
       }
@@ -168,6 +178,8 @@ const Equipe = () => {
     const member: TeamMember = {
       id: Date.now().toString(), // Generate a unique ID
       name: newMember.name,
+      email: newMember.email,
+      whatsapp: newMember.whatsapp,
       role: newMember.role === 'admin' ? t.teamPage.administrators : 
            newMember.role === 'manager' ? t.teamPage.managers : t.teamPage.collaborators,
       rdosGenerated: 0
@@ -177,7 +189,7 @@ const Equipe = () => {
     setMembers([...members, member]);
     
     // Reset form and close modal
-    setNewMember({ name: "", role: "collaborator" });
+    setNewMember({ name: "", email: "", whatsapp: "", role: "collaborator" });
     setIsAddModalOpen(false);
     
     // Show success message
@@ -277,6 +289,12 @@ const Equipe = () => {
                   <div className="text-sm text-meta-gray-dark dark:text-meta-gray">
                     {member.role}
                   </div>
+                  <div className="text-sm flex items-center gap-2">
+                    <span className="font-medium">Email:</span> {member.email}
+                  </div>
+                  <div className="text-sm flex items-center gap-2">
+                    <span className="font-medium">WhatsApp:</span> {member.whatsapp}
+                  </div>
                   <div className="text-sm">
                     {member.rdosGenerated} {t.teamPage.rdosGenerated}
                   </div>
@@ -313,6 +331,8 @@ const Equipe = () => {
               <TableRow>
                 <TableHead>{t.teamPage.name}</TableHead>
                 <TableHead>{t.teamPage.role}</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>WhatsApp</TableHead>
                 <TableHead>{t.teamPage.rdosGenerated}</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -322,6 +342,8 @@ const Equipe = () => {
                 <TableRow key={member.id}>
                   <TableCell className="font-medium">{member.name}</TableCell>
                   <TableCell>{member.role}</TableCell>
+                  <TableCell>{member.email}</TableCell>
+                  <TableCell>{member.whatsapp}</TableCell>
                   <TableCell>{member.rdosGenerated}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
@@ -379,6 +401,39 @@ const Equipe = () => {
                   placeholder={locale === 'pt-BR' ? 'Digite o nome do membro' : 
                                locale === 'en-US' ? 'Enter member name' : 
                                'Escriba el nombre del miembro'}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email">
+                  {locale === 'pt-BR' ? 'E-mail' : 
+                   locale === 'en-US' ? 'Email' : 
+                   'Correo electrónico'}
+                </Label>
+                <Input 
+                  id="email" 
+                  type="email"
+                  value={newMember.email}
+                  onChange={(e) => setNewMember({...newMember, email: e.target.value})}
+                  placeholder={locale === 'pt-BR' ? 'Digite o e-mail do membro' : 
+                               locale === 'en-US' ? 'Enter member email' : 
+                               'Escriba el correo electrónico del miembro'}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="whatsapp">
+                  {locale === 'pt-BR' ? 'WhatsApp' : 
+                   locale === 'en-US' ? 'WhatsApp' : 
+                   'WhatsApp'}
+                </Label>
+                <Input 
+                  id="whatsapp" 
+                  value={newMember.whatsapp}
+                  onChange={(e) => setNewMember({...newMember, whatsapp: e.target.value})}
+                  placeholder={locale === 'pt-BR' ? 'Digite o número de WhatsApp' : 
+                               locale === 'en-US' ? 'Enter WhatsApp number' : 
+                               'Escriba el número de WhatsApp'}
                 />
               </div>
               
@@ -462,6 +517,33 @@ const Equipe = () => {
                     id="edit-name" 
                     value={currentMember.name}
                     onChange={(e) => setCurrentMember({...currentMember, name: e.target.value})}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-email">
+                    {locale === 'pt-BR' ? 'E-mail' : 
+                     locale === 'en-US' ? 'Email' : 
+                     'Correo electrónico'}
+                  </Label>
+                  <Input 
+                    id="edit-email" 
+                    type="email"
+                    value={currentMember.email}
+                    onChange={(e) => setCurrentMember({...currentMember, email: e.target.value})}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-whatsapp">
+                    {locale === 'pt-BR' ? 'WhatsApp' : 
+                     locale === 'en-US' ? 'WhatsApp' : 
+                     'WhatsApp'}
+                  </Label>
+                  <Input 
+                    id="edit-whatsapp" 
+                    value={currentMember.whatsapp}
+                    onChange={(e) => setCurrentMember({...currentMember, whatsapp: e.target.value})}
                   />
                 </div>
                 

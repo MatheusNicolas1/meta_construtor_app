@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Calendar, User, CloudRain, Users, Clipboard, Camera, Download, FileText, Clock, AlertTriangle, Tool } from "lucide-react";
+import { ArrowLeft, Calendar, User, CloudRain, Users, Clipboard, Camera, Download, FileText, Clock, AlertTriangle, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTheme } from "@/hooks/useTheme";
@@ -1057,7 +1057,7 @@ const RDODetalhe = () => {
               <Separator />
               <div>
                 <div className="flex items-center gap-2 mb-4">
-                  <Tool className="h-5 w-5 text-orange-500" />
+                  <Wrench className="h-5 w-5 text-orange-500" />
                   <h3 className="font-semibold text-orange-500">Problemas com Equipamentos</h3>
                 </div>
                 <div 

@@ -33,30 +33,64 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setLoading(true);
     
     // Obter a sessão atual
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    const initializeAuth = async () => {
+      try {
+        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Erro ao obter sessão:', error);
+          return;
+        }
+
+        if (currentSession) {
+          setSession(currentSession);
+          setUser(currentSession.user);
+        }
+      } catch (error) {
+        console.error('Erro ao inicializar autenticação:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeAuth();
 
     // Escutar por mudanças na autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+      async (event, currentSession) => {
+        console.log('Auth state changed:', event);
+        
+        if (event === 'TOKEN_REFRESHED') {
+          console.log('Token refreshed');
+        }
+        
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
         setLoading(false);
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Atualizar a sessão do usuário
   const refreshSession = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      setSession(session);
-      setUser(session.user);
+    try {
+      const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error('Erro ao atualizar sessão:', error);
+        return;
+      }
+
+      if (currentSession) {
+        setSession(currentSession);
+        setUser(currentSession.user);
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar sessão:', error);
     }
   };
 
@@ -67,6 +101,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            name: name
+          }
+        }
       });
 
       if (error) {
@@ -144,6 +183,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (error) {
         throw error;
       }
+      setUser(null);
+      setSession(null);
       return { error: null };
     } catch (error) {
       console.error('Erro no logout:', error);

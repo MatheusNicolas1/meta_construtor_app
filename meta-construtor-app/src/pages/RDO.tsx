@@ -26,9 +26,14 @@ import {
   Save,
   X,
   Building,
-  Download
+  Download,
+  Loader2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { rdoService, type CriarRDOCompleto, type RDO } from '@/services/rdoService';
+import { obraService } from '@/services/obraService';
+import { equipeService } from '@/services/equipeService';
+import { equipamentoService } from '@/services/equipamentoService';
 
 interface ImagemRDO {
   id: string;
@@ -95,55 +100,72 @@ export default function RDO() {
     materiaisUtilizados: ''
   });
 
-  const obras = [
-    { 
-      id: '1', 
-      nome: 'Shopping Center Norte', 
-      endereco: 'Av. Paulista, 1000 - São Paulo, SP',
-      atividades: ['Fundação', 'Estrutura', 'Alvenaria', 'Acabamento']
-    },
-    { 
-      id: '2', 
-      nome: 'Residencial Jardins', 
-      endereco: 'Rua das Flores, 500 - São Paulo, SP',
-      atividades: ['Escavação', 'Fundação', 'Alvenaria', 'Cobertura']
-    },
-    { 
-      id: '3', 
-      nome: 'Torre Empresarial', 
-      endereco: 'Av. Faria Lima, 2000 - São Paulo, SP',
-      atividades: ['Estrutura', 'Vedação', 'Instalações', 'Acabamento']
-    }
-  ];
+  // Estados para dados do Supabase
+  const [obras, setObras] = useState<any[]>([]);
+  const [equipes, setEquipes] = useState<any[]>([]);
+  const [equipamentosDisponiveis, setEquipamentosDisponiveis] = useState<any[]>([]);
+  const [rdos, setRdos] = useState<RDO[]>([]);
+  const [carregandoDados, setCarregandoDados] = useState(true);
+  const [filtroStatus, setFiltroStatus] = useState<string>('');
+  const [filtroObra, setFiltroObra] = useState<string>('');
+  const [busca, setBusca] = useState('');
 
-  const equipes = ['Equipe Alpha', 'Equipe Beta', 'Equipe Charlie', 'Equipe Delta'];
-  const equipamentosDisponiveis = [
-    'Betoneira', 'Guindaste', 'Escavadeira', 'Compressor', 'Gerador', 
-    'Vibrador de Concreto', 'Serra Circular', 'Furadeira', 'Martelo Pneumático'
-  ];
+  // Filtrar RDOs baseado nos filtros selecionados
+  const rdosFiltrados = rdos.filter(rdo => {
+    const matchBusca = !busca || 
+      rdo.responsavel.toLowerCase().includes(busca.toLowerCase()) ||
+      rdo.atividades_executadas.toLowerCase().includes(busca.toLowerCase()) ||
+      rdo.obra?.nome.toLowerCase().includes(busca.toLowerCase());
+    
+    const matchStatus = !filtroStatus || rdo.status === filtroStatus;
+    const matchObra = !filtroObra || rdo.obra_id === filtroObra;
+    
+    return matchBusca && matchStatus && matchObra;
+  });
 
-  const [rdos] = useState([
-    {
-      id: 1,
-      project: 'Shopping Center Norte',
-      projectId: '1',
-      date: '2024-01-20',
-      team: 'Equipe Alpha',
-      responsible: 'João Silva',
-      status: 'enviado',
-      activities: 'Concretagem da laje do 2º pavimento'
-    },
-    {
-      id: 2,
-      project: 'Residencial Jardins',
-      projectId: '2',
-      date: '2024-01-19',
-      team: 'Equipe Beta',
-      responsible: 'Maria Santos',
-      status: 'rascunho',
-      activities: 'Execução de alvenaria - blocos 1 a 3'
-    }
-  ]);
+  // Carregar dados do Supabase
+  useEffect(() => {
+    const carregarDados = async () => {
+      try {
+        setCarregandoDados(true);
+        
+        // Carregar obras
+        const { data: obrasData, error: obrasError } = await obraService.listarObras();
+        if (!obrasError && obrasData) {
+          setObras(obrasData);
+        }
+
+        // Carregar equipes
+        const { data: equipesData, error: equipesError } = await equipeService.listarEquipes();
+        if (!equipesError && equipesData) {
+          setEquipes(equipesData);
+        }
+
+        // Carregar equipamentos
+        const { data: equipamentosData, error: equipamentosError } = await equipamentoService.listarEquipamentos();
+        if (!equipamentosError && equipamentosData) {
+          setEquipamentosDisponiveis(equipamentosData);
+        }
+
+        // Carregar RDOs
+        const { data: rdosData, error: rdosError } = await rdoService.listarRDOs();
+        if (!rdosError && rdosData) {
+          setRdos(rdosData);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar dados:', error);
+        toast({
+          title: "Erro ao carregar dados",
+          description: "Não foi possível carregar os dados. Tente novamente.",
+          variant: "destructive"
+        });
+      } finally {
+        setCarregandoDados(false);
+      }
+    };
+
+    carregarDados();
+  }, []);
 
   // Carregar atividades da obra selecionada
   useEffect(() => {
@@ -154,15 +176,15 @@ export default function RDO() {
         setFormData(prev => ({
           ...prev,
           location: obraSelecionada.endereco,
-          atividadesProgresso: obraSelecionada.atividades.map(atividade => ({
-            nome: atividade,
+          atividadesProgresso: obraSelecionada.orcamento_analitico?.map((item: any) => ({
+            nome: item.descricao,
             progresso: 0,
             observacoes: ''
-          }))
+          })) || []
         }));
       }
     }
-  }, [formData.project]);
+  }, [formData.project, obras]);
 
   const obterLocalizacao = async () => {
     setLocalizacaoCarregando(true);
@@ -239,18 +261,49 @@ export default function RDO() {
     setCarregando(true);
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Armazenar imagens vinculadas à obra
+      // Encontrar IDs reais da obra e equipe
       const obraSelecionada = obras.find(obra => obra.nome === formData.project);
-      if (obraSelecionada && formData.photos.length > 0) {
-        const obraId = obraSelecionada.id;
-        if (!imagensPorObra[obraId]) {
-          imagensPorObra[obraId] = [];
-        }
-        imagensPorObra[obraId].push(...formData.photos);
-        
-        console.log(`Imagens armazenadas para obra ${obraId}:`, imagensPorObra[obraId]);
+      const equipeSelecionada = equipes.find(equipe => equipe.nome === formData.team);
+
+      if (!obraSelecionada) {
+        throw new Error('Obra não encontrada');
+      }
+
+      if (!equipeSelecionada) {
+        throw new Error('Equipe não encontrada');
+      }
+
+      // Preparar dados do RDO para o Supabase
+      const rdoData: CriarRDOCompleto = {
+        obra_id: obraSelecionada.id,
+        equipe_id: equipeSelecionada.id,
+        data: new Date().toISOString().split('T')[0],
+        atividades_executadas: formData.activities,
+        atividades_planejadas: formData.plannedActivities,
+        materiais_utilizados: formData.materiaisUtilizados,
+        clima: formData.weather,
+        responsavel: formData.responsible,
+        localizacao: formData.location,
+        horas_ociosas: formData.horasOciosas,
+        motivo_ociosidade: formData.motivoOciosidade,
+        acidentes: formData.acidentes,
+        status: status,
+        observacoes: `Equipamentos: ${JSON.stringify(formData.equipamentos)}`,
+        progresso_atividades: formData.atividadesProgresso,
+        equipamentos_utilizados: formData.equipamentos,
+        imagens: formData.photos.map(photo => photo.file)
+      };
+
+      // Salvar RDO no Supabase usando rdoService
+      const { data, error } = await rdoService.criarRDO(rdoData);
+      
+      if (error) {
+        throw error;
+      }
+
+      // Atualizar lista de RDOs
+      if (data) {
+        setRdos(prev => [data, ...prev]);
       }
 
       toast({
@@ -261,10 +314,11 @@ export default function RDO() {
       });
 
       handleFecharModal();
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Erro ao salvar RDO:', error);
       toast({
         title: "Erro ao salvar",
-        description: "Não foi possível salvar o RDO. Tente novamente.",
+        description: error.message || "Não foi possível salvar o RDO. Tente novamente.",
         variant: "destructive"
       });
     } finally {
@@ -290,6 +344,53 @@ export default function RDO() {
       atividadesProgresso: [],
       acidentes: '',
       materiaisUtilizados: ''
+    });
+  };
+
+  const recarregarRDOs = async () => {
+    try {
+      setCarregandoDados(true);
+      const { data: rdosData, error } = await rdoService.listarRDOs();
+      if (!error && rdosData) {
+        setRdos(rdosData);
+        toast({
+          title: "Dados atualizados",
+          description: "Lista de RDOs recarregada com sucesso."
+        });
+      } else {
+        toast({
+          title: "Erro ao recarregar",
+          description: "Não foi possível recarregar os dados.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao recarregar RDOs:', error);
+      toast({
+        title: "Erro ao recarregar",
+        description: "Não foi possível recarregar os dados.",
+        variant: "destructive"
+      });
+    } finally {
+      setCarregandoDados(false);
+    }
+  };
+
+  const visualizarRDO = (rdo: RDO) => {
+    // TODO: Implementar modal de visualização do RDO
+    console.log('Visualizar RDO:', rdo);
+    toast({
+      title: "Visualização de RDO",
+      description: "Funcionalidade em desenvolvimento."
+    });
+  };
+
+  const editarRDO = (rdo: RDO) => {
+    // TODO: Implementar edição do RDO
+    console.log('Editar RDO:', rdo);
+    toast({
+      title: "Edição de RDO",
+      description: "Funcionalidade em desenvolvimento."
     });
   };
 
@@ -325,7 +426,7 @@ export default function RDO() {
     }));
   };
 
-  const exportarRDO = (rdo: any) => {
+  const exportarRDO = (rdo: RDO) => {
     // Gerar documento PDF do RDO com cabeçalho padrão
     const conteudoPDF = `
 METACONSTRUTOR - SISTEMA DE GESTÃO DE OBRAS
@@ -334,15 +435,33 @@ Responsável Técnico: João Silva (CREA: 123456)
 
 ========== RELATÓRIO DIÁRIO DE OBRA ==========
 
-Obra: ${rdo.project}
-Data: ${new Date(rdo.date).toLocaleDateString('pt-BR')}
-Equipe: ${rdo.team}
-Responsável: ${rdo.responsible}
+Obra: ${rdo.obra?.nome || 'Não definido'}
+Data: ${new Date(rdo.data).toLocaleDateString('pt-BR')}
+Equipe: ${rdo.equipe?.nome || 'Não definido'}
+Responsável: ${rdo.responsavel}
 
 Atividades Executadas:
-${rdo.activities}
+${rdo.atividades_executadas}
 
-Status: ${rdo.status === 'enviado' ? 'Enviado' : 'Rascunho'}
+Atividades Planejadas:
+${rdo.atividades_planejadas}
+
+Materiais Utilizados:
+${rdo.materiais_utilizados}
+
+Clima: ${rdo.clima}
+Localização: ${rdo.localizacao}
+
+Horas Ociosas: ${rdo.horas_ociosas}h
+${rdo.motivo_ociosidade ? `Motivo: ${rdo.motivo_ociosidade}` : ''}
+
+${rdo.acidentes ? `Acidentes/Ocorrências: ${rdo.acidentes}` : ''}
+
+Status: ${rdo.status === 'enviado' ? 'Enviado' : 
+         rdo.status === 'aprovado' ? 'Aprovado' :
+         rdo.status === 'rejeitado' ? 'Rejeitado' : 'Rascunho'}
+
+${rdo.observacoes ? `Observações: ${rdo.observacoes}` : ''}
 
 -----------------------------------------
 Este documento foi gerado automaticamente pelo sistema MetaConstrutor
@@ -352,7 +471,7 @@ Este documento foi gerado automaticamente pelo sistema MetaConstrutor
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `RDO_${rdo.project}_${rdo.date}.txt`;
+    a.download = `RDO_${rdo.obra?.nome || 'Obra'}_${rdo.data}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -376,13 +495,18 @@ Este documento foi gerado automaticamente pelo sistema MetaConstrutor
             </p>
           </div>
           
-          <Dialog open={modalAberto} onOpenChange={setModalAberto}>
-            <DialogTrigger asChild>
-              <Button className="btn-standard">
-                <Plus className="h-4 w-4" />
-                Novo RDO
-              </Button>
-            </DialogTrigger>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={recarregarRDOs} disabled={carregandoDados}>
+              <Loader2 className={`h-4 w-4 ${carregandoDados ? 'animate-spin' : ''}`} />
+              Recarregar
+            </Button>
+            <Dialog open={modalAberto} onOpenChange={setModalAberto}>
+              <DialogTrigger asChild>
+                <Button className="btn-standard">
+                  <Plus className="h-4 w-4" />
+                  Novo RDO
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
@@ -422,7 +546,7 @@ Este documento foi gerado automaticamente pelo sistema MetaConstrutor
                         </SelectTrigger>
                         <SelectContent>
                           {equipes.map(equipe => (
-                            <SelectItem key={equipe} value={equipe}>{equipe}</SelectItem>
+                            <SelectItem key={equipe.id} value={equipe.nome}>{equipe.nome}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -541,7 +665,7 @@ Este documento foi gerado automaticamente pelo sistema MetaConstrutor
                         </SelectTrigger>
                         <SelectContent>
                           {equipamentosDisponiveis.map(equip => (
-                            <SelectItem key={equip} value={equip}>{equip}</SelectItem>
+                            <SelectItem key={equip.id} value={equip.nome}>{equip.nome}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -739,72 +863,145 @@ Este documento foi gerado automaticamente pelo sistema MetaConstrutor
                 </Button>
               </div>
             </DialogContent>
-          </Dialog>
+            </Dialog>
+          </div>
         </div>
+
+        {/* Filtros */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-lg">Filtros</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="busca">Buscar</Label>
+                <Input
+                  id="busca"
+                  placeholder="Buscar por responsável ou atividade..."
+                  value={busca}
+                  onChange={(e) => setBusca(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="filtroObra">Obra</Label>
+                <Select value={filtroObra} onValueChange={setFiltroObra}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todas as obras" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Todas as obras</SelectItem>
+                    {obras.map(obra => (
+                      <SelectItem key={obra.id} value={obra.id}>{obra.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="filtroStatus">Status</Label>
+                <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos os status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Todos os status</SelectItem>
+                    <SelectItem value="rascunho">Rascunho</SelectItem>
+                    <SelectItem value="enviado">Enviado</SelectItem>
+                    <SelectItem value="aprovado">Aprovado</SelectItem>
+                    <SelectItem value="rejeitado">Rejeitado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Lista de RDOs */}
-        <div className="grid-responsive">
-          {rdos.map((rdo) => (
-            <Card key={rdo.id} className="card-standard">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1 flex-1">
-                    <CardTitle className="text-lg">{rdo.project}</CardTitle>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Calendar className="h-4 w-4" />
-                      <span>{new Date(rdo.date).toLocaleDateString('pt-BR')}</span>
+        {!carregandoDados && rdos.length > 0 && (
+          <div className="mb-4">
+            <p className="text-sm text-muted-foreground">
+              Mostrando {rdosFiltrados.length} de {rdos.length} RDOs
+            </p>
+          </div>
+        )}
+        
+        {carregandoDados ? (
+          <div className="flex justify-center items-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <span className="ml-2 text-muted-foreground">Carregando RDOs...</span>
+          </div>
+        ) : (
+          <div className="grid-responsive">
+            {rdosFiltrados.map((rdo) => (
+              <Card key={rdo.id} className="card-standard">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1 flex-1">
+                      <CardTitle className="text-lg">{rdo.obra?.nome}</CardTitle>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Calendar className="h-4 w-4" />
+                        <span>{new Date(rdo.data).toLocaleDateString('pt-BR')}</span>
+                      </div>
+                    </div>
+                    <Badge variant={
+                      rdo.status === 'enviado' ? 'default' : 
+                      rdo.status === 'aprovado' ? 'success' :
+                      rdo.status === 'rejeitado' ? 'destructive' : 'secondary'
+                    }>
+                      {rdo.status === 'enviado' ? 'Enviado' : 
+                       rdo.status === 'aprovado' ? 'Aprovado' :
+                       rdo.status === 'rejeitado' ? 'Rejeitado' : 'Rascunho'}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">Equipe:</span>
+                      <span className="truncate">{rdo.equipe?.nome}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">Responsável:</span>
+                      <span className="truncate">{rdo.responsavel}</span>
                     </div>
                   </div>
-                  <Badge variant={rdo.status === 'enviado' ? 'default' : 'secondary'}>
-                    {rdo.status === 'enviado' ? 'Enviado' : 'Rascunho'}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Equipe:</span>
-                    <span className="truncate">{rdo.team}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Responsável:</span>
-                    <span className="truncate">{rdo.responsible}</span>
-                  </div>
-                </div>
-                
-                <p className="text-sm text-muted-foreground line-clamp-2">
-                  {rdo.activities}
-                </p>
+                  
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    {rdo.atividades_executadas}
+                  </p>
 
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm">
-                    Visualizar
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    Editar
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => exportarRDO(rdo)}
-                  >
-                    <Download className="h-4 w-4 mr-1" />
-                    PDF
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => visualizarRDO(rdo)}>
+                      Visualizar
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => editarRDO(rdo)}>
+                      Editar
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => exportarRDO(rdo)}
+                    >
+                      <Download className="h-4 w-4 mr-1" />
+                      PDF
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
 
-        {rdos.length === 0 && (
+        {rdosFiltrados.length === 0 && !carregandoDados && (
           <div className="text-center py-12">
             <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium mb-2">Nenhum RDO encontrado</h3>
+            <h3 className="text-lg font-medium mb-2">
+              {rdos.length === 0 ? 'Nenhum RDO encontrado' : 'Nenhum RDO corresponde aos filtros'}
+            </h3>
             <p className="text-muted-foreground mb-4">
-              Comece criando seu primeiro RDO
+              {rdos.length === 0 ? 'Comece criando seu primeiro RDO' : 'Tente ajustar os filtros ou limpar a busca'}
             </p>
             <Button onClick={() => setModalAberto(true)} className="btn-standard">
               <Plus className="mr-2 h-4 w-4" />

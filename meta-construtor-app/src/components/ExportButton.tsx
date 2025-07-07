@@ -42,11 +42,14 @@ export function ExportButton({ type, data, className }: ExportButtonProps) {
     console.log('Exportando:', { type, config: exportConfig, data });
     
     try {
-      // Simular processamento de exportação
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      // Simular download do arquivo
       const fileName = `${type}_${exportConfig.format}_${new Date().toISOString().split('T')[0]}.${exportConfig.format === 'pdf' ? 'pdf' : 'xlsx'}`;
+      
+      // Gerar conteúdo baseado no tipo e formato
+      if (exportConfig.format === 'pdf') {
+        await gerarPDF(fileName);
+      } else {
+        await gerarExcel(fileName);
+      }
       
       toast({
         title: "Exportação Concluída",
@@ -55,6 +58,7 @@ export function ExportButton({ type, data, className }: ExportButtonProps) {
       
       setIsOpen(false);
     } catch (error) {
+      console.error('Erro na exportação:', error);
       toast({
         title: "Erro na Exportação",
         description: "Não foi possível gerar o arquivo. Tente novamente.",
@@ -63,6 +67,121 @@ export function ExportButton({ type, data, className }: ExportButtonProps) {
     } finally {
       setIsExporting(false);
     }
+  };
+
+  const gerarPDF = async (fileName: string) => {
+    // Cabeçalho padrão MetaConstrutor
+    const cabecalho = `
+METACONSTRUTOR - SISTEMA DE GESTÃO DE OBRAS
+Data de Emissão: ${new Date().toLocaleDateString('pt-BR')}
+Empresa: MetaConstrutor Ltda
+Responsável Técnico: João Silva (CREA: 123456)
+
+==========================================
+`;
+
+    let conteudo = cabecalho;
+
+    // Conteúdo específico baseado no tipo
+    switch (type) {
+      case 'relatorio':
+        conteudo += `
+RELATÓRIO GERAL DE OBRAS
+
+Período: ${exportConfig.dateFrom} a ${exportConfig.dateTo}
+Obras Selecionadas: ${exportConfig.obra === 'all' ? 'Todas' : 'Específica'}
+
+${data ? JSON.stringify(data, null, 2) : 'Dados não disponíveis'}
+`;
+        break;
+      case 'rdo':
+        conteudo += `
+RELATÓRIO DIÁRIO DE OBRA (RDO)
+
+${data ? `
+Obra: ${data.project || 'Não informado'}
+Data: ${data.date || new Date().toLocaleDateString('pt-BR')}
+Responsável: ${data.responsible || 'Não informado'}
+Atividades: ${data.activities || 'Não informado'}
+Clima: ${data.weather || 'Não informado'}
+` : 'Dados do RDO não disponíveis'}
+`;
+        break;
+      case 'obra':
+        conteudo += `
+RELATÓRIO DETALHADO DA OBRA
+
+${data ? `
+Nome: ${data.nome || 'Não informado'}
+Endereço: ${data.endereco || 'Não informado'}
+Responsável: ${data.responsavel || 'Não informado'}
+Orçamento: ${data.orcamento ? new Intl.NumberFormat('pt-BR', {style: 'currency', currency: 'BRL'}).format(data.orcamento) : 'Não informado'}
+Status: ${data.status || 'Não informado'}
+Progresso: ${data.progresso || 0}%
+` : 'Dados da obra não disponíveis'}
+`;
+        break;
+      default:
+        conteudo += `\nRELATÓRIO DE ${type.toUpperCase()}\n\nDados não disponíveis para este tipo de relatório.`;
+    }
+
+    conteudo += `\n\n==========================================\nEste documento foi gerado automaticamente pelo sistema MetaConstrutor\nwww.metaconstrutor.com`;
+
+    // Criar e baixar arquivo
+    const blob = new Blob([conteudo], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const gerarExcel = async (fileName: string) => {
+    // Gerar dados estruturados para Excel
+    let dadosExcel = '';
+    
+    // Cabeçalho CSV
+    dadosExcel += 'METACONSTRUTOR - SISTEMA DE GESTAO DE OBRAS\n';
+    dadosExcel += `Data de Emissao,${new Date().toLocaleDateString('pt-BR')}\n`;
+    dadosExcel += 'Responsavel Tecnico,João Silva (CREA: 123456)\n\n';
+
+    // Dados específicos baseado no tipo
+    switch (type) {
+      case 'relatorio':
+        dadosExcel += 'Tipo,Nome,Status,Orcamento,Responsavel,Data Inicio\n';
+        if (data && Array.isArray(data)) {
+          data.forEach(item => {
+            dadosExcel += `Obra,"${item.nome || ''}","${item.status || ''}","${item.orcamento || ''}","${item.responsavel || ''}","${item.dataInicio || ''}"\n`;
+          });
+        }
+        break;
+      case 'obra':
+        dadosExcel += 'Campo,Valor\n';
+        if (data) {
+          Object.entries(data).forEach(([key, value]) => {
+            dadosExcel += `"${key}","${value}"\n`;
+          });
+        }
+        break;
+      default:
+        dadosExcel += 'Informacao,Valor\n';
+        dadosExcel += `"Tipo de Relatorio","${type}"\n`;
+        dadosExcel += '"Status","Dados nao disponiveis"\n';
+    }
+
+    // Criar e baixar arquivo CSV (compatível com Excel)
+    const blob = new Blob([dadosExcel], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName.replace('.xlsx', '.csv');
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const getTitle = () => {

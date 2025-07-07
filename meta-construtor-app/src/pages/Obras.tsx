@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,11 +13,19 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Edit, Trash2, Calendar as CalendarIcon, MapPin, Users, DollarSign, Activity, Calculator, Package, Eye, Upload, FileText, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Calendar as CalendarIcon, MapPin, Users, DollarSign, Activity, Calculator, Package, Eye, Upload, FileText, X, AlertCircle, Building } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { useAuth, useCanViewFinancial, useEmpresa } from '@/contexts/AuthContext';
+import { obraService, type CriarObraCompleta } from '@/services/obraService';
+import { equipeService } from '@/services/equipeService';
+import { equipamentoService } from '@/services/equipamentoService';
+import { supabaseUtils } from '@/lib/supabase';
+import type { ObraResumo, NovoOrcamentoAnalitico } from '@/lib/supabase';
 
 type ObraStatus = 'Ativa' | 'Finalizada' | 'Pausada';
 
@@ -56,7 +64,7 @@ interface AnexoObra {
 
 interface EquipeObra {
   id: number;
-  equipeId?: number;
+  equipeId?: string;
   nomeEquipe: string;
 }
 
@@ -81,30 +89,7 @@ interface Obra {
   equipesDetalhadas?: EquipeObra[];
 }
 
-// Dados mockados para equipes e equipamentos
-const equipesDisponiveis = [
-  { id: 1, nome: 'Equipe Alpha' },
-  { id: 2, nome: 'Equipe Beta' },
-  { id: 3, nome: 'Equipe Charlie' },
-  { id: 4, nome: 'Equipe de Diego' },
-  { id: 5, nome: 'Equipe Silva' }
-];
-
-const equipamentosDisponiveis = [
-  'Betoneira',
-  'Escavadeira',
-  'Retroescavadeira',
-  'Caminhão basculante',
-  'Guindaste',
-  'Compactador',
-  'Martelo pneumático',
-  'Serra circular',
-  'Furadeira',
-  'Parafusadeira',
-  'Andaime',
-  'Gerador',
-  'Bomba de concreto'
-];
+// As listas de equipes e equipamentos são carregadas dinamicamente do Supabase
 
 export default function Obras() {
   const { toast } = useToast();
@@ -123,50 +108,77 @@ export default function Obras() {
   const [numeroEquipes, setNumeroEquipes] = useState(1);
   const [equipesObra, setEquipesObra] = useState<EquipeObra[]>([{ id: 1, nomeEquipe: '' }]);
 
-  const [obras, setObras] = useState<Obra[]>([
-    {
-      id: 1,
-      nome: 'Torre Empresarial',
-      endereco: 'Av. Paulista, 1000 - São Paulo/SP',
-      orcamento: 2500000,
-      dataInicio: '2024-01-15',
-      dataPrevisao: '2024-12-15',
-      status: 'Ativa',
-      responsavel: 'João Silva',
-      equipes: 3,
-      atividadesPrevistas: 45,
-      atividadesConcluidas: 28,
-      progresso: 62
-    },
-    {
-      id: 2,
-      nome: 'Shopping Center Norte',
-      endereco: 'Rua das Palmeiras, 500 - Guarulhos/SP',
-      orcamento: 5800000,
-      dataInicio: '2023-08-20',
-      dataPrevisao: '2024-06-30',
-      status: 'Finalizada',
-      responsavel: 'Maria Santos',
-      equipes: 5,
-      atividadesPrevistas: 78,
-      atividadesConcluidas: 78,
-      progresso: 100
-    },
-    {
-      id: 3,
-      nome: 'Residencial Jardins',
-      endereco: 'Rua dos Lírios, 250 - Campinas/SP',
-      orcamento: 1200000,
-      dataInicio: '2024-03-10',
-      dataPrevisao: '2024-11-10',
-      status: 'Ativa',
-      responsavel: 'Carlos Oliveira',
-      equipes: 2,
-      atividadesPrevistas: 32,
-      atividadesConcluidas: 18,
-      progresso: 56
+  const [obras, setObras] = useState<Obra[]>([]);
+  const [equipesDisponiveis, setEquipesDisponiveis] = useState<any[]>([]);
+  const [equipamentosDisponiveis, setEquipamentosDisponiveis] = useState<any[]>([]);
+
+  // Carregar dados reais do Supabase
+  useEffect(() => {
+    carregarObras();
+    carregarEquipesDisponiveis();
+    carregarEquipamentosDisponiveis();
+  }, []);
+
+  const carregarObras = async () => {
+    try {
+      const { data, error } = await obraService.listarObras();
+      if (error) {
+        console.error('Erro ao carregar obras:', error);
+        toast({
+          title: "Erro ao carregar obras",
+          description: "Não foi possível carregar a lista de obras.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (data) {
+        // Converter dados do Supabase para o formato da interface
+        const obrasFormatadas = data.map(obra => ({
+          id: parseInt(obra.id),
+          nome: obra.nome,
+          endereco: obra.endereco,
+          orcamento: obra.orcamento,
+          dataInicio: obra.data_inicio,
+          dataPrevisao: obra.data_previsao,
+          status: obra.status as ObraStatus,
+          responsavel: obra.responsavel,
+          equipes: obra.total_equipes || 0,
+          atividadesPrevistas: 0,
+          atividadesConcluidas: 0,
+          progresso: 0
+        }));
+        setObras(obrasFormatadas);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar obras:', error);
     }
-  ]);
+  };
+
+  const carregarEquipesDisponiveis = async () => {
+    try {
+      const { data, error } = await equipeService.listarEquipes({ status: 'disponivel' });
+      if (!error && data) {
+        setEquipesDisponiveis(data.map(equipe => ({
+          id: equipe.id,
+          nome: equipe.nome
+        })));
+      }
+    } catch (error) {
+      console.error('Erro ao carregar equipes:', error);
+    }
+  };
+
+  const carregarEquipamentosDisponiveis = async () => {
+    try {
+      const { data, error } = await equipamentoService.listarEquipamentos({ status: 'disponivel' });
+      if (!error && data) {
+        setEquipamentosDisponiveis(data.map(eq => eq.nome));
+      }
+    } catch (error) {
+      console.error('Erro ao carregar equipamentos:', error);
+    }
+  };
 
   const [novaObra, setNovaObra] = useState({
     nome: '',
@@ -215,9 +227,9 @@ export default function Obras() {
     setEquipesObra(novasEquipes);
   };
 
-  const handleEquipeChange = (equipeId: number, nomeEquipe: string) => {
+  const handleEquipeChange = (equipeId: number, nomeEquipe: string, equipeIdSupabase?: string) => {
     setEquipesObra(equipesObra.map(e => 
-      e.id === equipeId ? { ...e, nomeEquipe } : e
+      e.id === equipeId ? { ...e, nomeEquipe, equipeId: equipeIdSupabase } : e
     ));
   };
 
@@ -340,48 +352,76 @@ export default function Obras() {
         return;
       }
 
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
       const orcamentoFinal = tipoOrcamento === 'analitico' ? calcularOrcamentoTotal() : parseFloat(novaObra.orcamento);
 
-      const obraData: Obra = {
-        id: editingObra?.id || Date.now(),
-        nome: novaObra.nome,
-        endereco: novaObra.endereco,
-        orcamento: orcamentoFinal,
-        dataInicio: format(dataInicio, 'yyyy-MM-dd'),
-        dataPrevisao: format(dataPrevisao, 'yyyy-MM-dd'),
-        status: novaObra.status,
-        responsavel: novaObra.responsavel,
-        equipes: parseInt(novaObra.equipes),
-        atividadesPrevistas: parseInt(novaObra.atividadesPrevistas),
-        atividadesConcluidas: editingObra?.atividadesConcluidas || 0,
-        progresso: editingObra?.progresso || 0,
-        tipoOrcamento,
-        atividades: tipoOrcamento === 'analitico' ? atividades : undefined,
-        materiais: incluirMateriais ? materiais : undefined,
-        equipamentos: equipamentos.length > 0 ? equipamentos : undefined,
-        anexos: anexos.length > 0 ? anexos : undefined,
-        equipesDetalhadas: equipesObra.filter(e => e.nomeEquipe)
+      // Preparar dados para o Supabase
+      const dadosObra: CriarObraCompleta = {
+        obra: {
+          nome: novaObra.nome,
+          endereco: novaObra.endereco,
+          orcamento: orcamentoFinal,
+          data_inicio: format(dataInicio, 'yyyy-MM-dd'),
+          data_previsao: format(dataPrevisao, 'yyyy-MM-dd'),
+          status: novaObra.status === 'Ativa' ? 'ativa' : 'pausada',
+          responsavel: novaObra.responsavel,
+        },
+        orcamentoAnalitico: tipoOrcamento === 'analitico' ? atividades.map(atividade => ({
+          nome_atividade: atividade.nome,
+          categoria: 'geral',
+          unidade: atividade.unidade,
+          quantitativo: atividade.quantitativo,
+          valor_unitario: atividade.valorUnitario,
+          status: 'planejada'
+        })) : undefined,
+        equipes: equipesObra.filter(e => e.nomeEquipe).map(e => e.equipeId?.toString()).filter(Boolean) as string[],
+        equipamentos: equipamentos.map(eq => ({
+          equipamento_id: eq.id.toString(),
+          quantidade: eq.quantidade,
+          observacoes: `Tipo: ${eq.tipo}`
+        })),
+        documentos: anexos.map(anexo => anexo.arquivo)
       };
 
       if (editingObra) {
-        setObras(obras.map(obra => obra.id === editingObra.id ? obraData : obra));
+        // Atualizar obra existente
+        const { data, error } = await obraService.atualizarObra(editingObra.id.toString(), {
+          nome: dadosObra.obra.nome,
+          endereco: dadosObra.obra.endereco,
+          orcamento: dadosObra.obra.orcamento,
+          data_inicio: dadosObra.obra.data_inicio,
+          data_previsao: dadosObra.obra.data_previsao,
+          status: dadosObra.obra.status,
+          responsavel: dadosObra.obra.responsavel,
+        });
+
+        if (error) {
+          throw new Error('Erro ao atualizar obra');
+        }
+
         toast({
           title: "Obra atualizada!",
           description: "Os dados da obra foram atualizados com sucesso.",
         });
       } else {
-        setObras([...obras, obraData]);
+        // Criar nova obra
+        const { data, error } = await obraService.criarObraCompleta(dadosObra);
+
+        if (error) {
+          throw new Error('Erro ao criar obra');
+        }
+
         toast({
           title: "Nova obra criada!",
           description: "A obra foi cadastrada com sucesso no sistema.",
         });
       }
 
+      // Recarregar lista de obras
+      await carregarObras();
       setIsModalOpen(false);
       resetForm();
     } catch (error) {
+      console.error('Erro ao salvar obra:', error);
       toast({
         title: "Erro ao salvar",
         description: "Não foi possível salvar a obra. Tente novamente.",
@@ -421,13 +461,21 @@ export default function Obras() {
     
     setIsLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setObras(obras.filter(obra => obra.id !== id));
+      const { error } = await obraService.deletarObra(id.toString());
+      
+      if (error) {
+        throw new Error('Erro ao excluir obra');
+      }
+
+      // Recarregar lista de obras
+      await carregarObras();
+      
       toast({
         title: "Obra excluída!",
         description: "A obra foi removida do sistema com sucesso.",
       });
     } catch (error) {
+      console.error('Erro ao excluir obra:', error);
       toast({
         title: "Erro ao excluir",
         description: "Não foi possível excluir a obra. Tente novamente.",
@@ -860,7 +908,10 @@ export default function Obras() {
                       <Label className="form-label">Equipe {index + 1}</Label>
                       <Select 
                         value={equipe.nomeEquipe} 
-                        onValueChange={(value) => handleEquipeChange(equipe.id, value)}
+                        onValueChange={(value) => {
+                          const equipeSelecionada = equipesDisponiveis.find(eq => eq.nome === value);
+                          handleEquipeChange(equipe.id, value, equipeSelecionada?.id);
+                        }}
                       >
                         <SelectTrigger className="form-input">
                           <SelectValue placeholder="Selecione uma equipe" />

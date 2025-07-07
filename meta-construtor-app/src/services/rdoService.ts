@@ -1,4 +1,4 @@
-import { supabase } from '../integrations/supabase/client';
+import { supabase } from '../lib/supabase';
 
 export interface CriarRDOCompleto {
   obra_id: string;

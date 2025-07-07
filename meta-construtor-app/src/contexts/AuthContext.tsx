@@ -1,300 +1,402 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase, supabaseUtils } from '@/lib/supabase';
-import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
-
-export interface User {
-  id: string;
-  email: string;
-  name?: string;
-  role: string;
-  avatar_url?: string;
-  cargo?: string;
-  empresa?: string;
-  telefone?: string;
-}
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { User, Session } from '@supabase/supabase-js';
+import { supabase, supabaseUtils, type Profile, type Empresa } from '@/lib/supabase';
 
 interface AuthContextType {
   user: User | null;
-  isLoading: boolean;
-  login: (email: string, password: string) => Promise<{ error?: string }>;
-  logout: () => Promise<void>;
-  signup: (email: string, password: string, userData?: any) => Promise<{ error?: string }>;
-  hasPermission: (permission: string) => boolean;
-  updateProfile: (updates: Partial<User>) => Promise<{ error?: string }>;
+  profile: Profile | null;
+  empresa: Empresa | null;
+  session: Session | null;
+  loading: boolean;
+  canViewFinancialData: boolean;
+  signIn: (email: string, password: string) => Promise<{ error?: any }>;
+  signUp: (email: string, password: string, userData: {
+    nome: string;
+    cargo?: string;
+    telefone?: string;
+  }) => Promise<{ error?: any }>;
+  signOut: () => Promise<{ error?: any }>;
+  updateProfile: (updates: Partial<Profile>) => Promise<{ error?: any }>;
+  updatePassword: (password: string) => Promise<{ error?: any }>;
+  resetPassword: (email: string) => Promise<{ error?: any }>;
+  checkPermission: (permission: string) => boolean;
+  isAdmin: () => boolean;
+  isManager: () => boolean;
+  isDirector: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [empresa, setEmpresa] = useState<Empresa | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [canViewFinancialData, setCanViewFinancialData] = useState(false);
 
+  // Carregar dados iniciais do usuário
   useEffect(() => {
-    // Verificar sessão inicial
-    const getInitialSession = async () => {
+    let mounted = true;
+
+    async function getInitialSession() {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          await loadUserProfile(session.user);
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (mounted) {
+          if (error) {
+            console.error('Erro ao obter sessão:', error);
+          } else {
+            setSession(session);
+            setUser(session?.user ?? null);
+            
+            if (session?.user) {
+              await loadUserData(session.user.id);
+            }
+          }
+          setLoading(false);
         }
       } catch (error) {
-        console.error('Erro ao verificar sessão inicial:', error);
-      } finally {
-        setIsLoading(false);
+        console.error('Erro ao carregar sessão inicial:', error);
+        if (mounted) {
+          setLoading(false);
+        }
       }
-    };
+    }
 
     getInitialSession();
 
-    // Escutar mudanças na autenticação
+    // Escutar mudanças de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (event === 'SIGNED_IN' && session?.user) {
-          await loadUserProfile(session.user);
-        } else if (event === 'SIGNED_OUT') {
-          setUser(null);
+        if (mounted) {
+          setSession(session);
+          setUser(session?.user ?? null);
+          
+          if (session?.user) {
+            await loadUserData(session.user.id);
+          } else {
+            setProfile(null);
+            setEmpresa(null);
+            setCanViewFinancialData(false);
+          }
+          
+          setLoading(false);
         }
-        setIsLoading(false);
       }
     );
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
   }, []);
 
-  const loadUserProfile = async (supabaseUser: SupabaseUser) => {
+  // Carregar dados do perfil e empresa do usuário
+  async function loadUserData(userId: string) {
     try {
-      // Buscar perfil do usuário na tabela profiles
-      const { data: profile, error } = await supabase
+      // Carregar perfil do usuário
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', supabaseUser.id)
+        .eq('id', userId)
         .single();
 
-      if (error && error.code === 'PGRST116') {
-        // Perfil não existe, criar um
-        const { data: newProfile, error: createError } = await supabase
-          .from('profiles')
-          .insert([{
-            id: supabaseUser.id,
-            nome: supabaseUser.user_metadata?.nome || supabaseUser.email?.split('@')[0] || 'Usuário',
-            cargo: 'Colaborador',
-            empresa: 'MetaConstrutor',
-          }])
-          .select()
-          .single();
-
-        if (createError) {
-          console.error('Erro ao criar perfil:', createError);
-          return;
-        }
-
-        profile.data = newProfile;
-      } else if (error) {
-        console.error('Erro ao buscar perfil:', error);
+      if (profileError) {
+        console.error('Erro ao carregar perfil:', profileError);
         return;
       }
 
-      // Definir role baseado no cargo ou email
-      let role = 'worker'; // padrão
-      if (profile?.cargo) {
-        const cargo = profile.cargo.toLowerCase();
-        if (cargo.includes('admin') || cargo.includes('diretor')) {
-          role = 'admin';
-        } else if (cargo.includes('gerente') || cargo.includes('coordenador')) {
-          role = 'manager';
-        } else if (cargo.includes('supervisor') || cargo.includes('mestre')) {
-          role = 'supervisor';
+      setProfile(profileData);
+
+      // Carregar dados da empresa se o usuário tem empresa vinculada
+      if (profileData?.empresa_id) {
+        const { data: empresaData, error: empresaError } = await supabase
+          .from('empresas')
+          .select('*')
+          .eq('id', profileData.empresa_id)
+          .single();
+
+        if (empresaError) {
+          console.error('Erro ao carregar empresa:', empresaError);
+        } else {
+          setEmpresa(empresaData);
         }
       }
 
-      // Verificar se é email de admin
-      if (supabaseUser.email?.includes('@metaconstrutor.com') || 
-          supabaseUser.email?.includes('admin@')) {
-        role = 'admin';
+      // Verificar permissões financeiras
+      try {
+        const canView = await supabaseUtils.canViewFinancialData();
+        setCanViewFinancialData(canView);
+      } catch (error) {
+        console.error('Erro ao verificar permissões financeiras:', error);
+        setCanViewFinancialData(false);
       }
-
-      setUser({
-        id: supabaseUser.id,
-        email: supabaseUser.email || '',
-        name: profile?.nome || supabaseUser.user_metadata?.nome || 'Usuário',
-        role,
-        avatar_url: profile?.avatar_url,
-        cargo: profile?.cargo,
-        empresa: profile?.empresa,
-        telefone: profile?.telefone,
-      });
-
     } catch (error) {
-      console.error('Erro ao carregar perfil do usuário:', error);
+      console.error('Erro ao carregar dados do usuário:', error);
     }
-  };
+  }
 
-  const login = async (email: string, password: string): Promise<{ error?: string }> => {
+  // Função de login
+  const signIn = async (email: string, password: string) => {
     try {
-      setIsLoading(true);
-      
+      setLoading(true);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
-        return { error: error.message };
+        return { error };
       }
 
-      if (data.user) {
-        await loadUserProfile(data.user);
-      }
-
-      return {};
+      // Dados serão carregados automaticamente pelo listener onAuthStateChange
+      return { error: null };
     } catch (error) {
       console.error('Erro no login:', error);
-      return { error: 'Erro interno do sistema' };
+      return { error };
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const signup = async (email: string, password: string, userData?: any): Promise<{ error?: string }> => {
+  // Função de cadastro
+  const signUp = async (
+    email: string, 
+    password: string, 
+    userData: {
+      nome: string;
+      cargo?: string;
+      telefone?: string;
+    }
+  ) => {
     try {
-      setIsLoading(true);
-
+      setLoading(true);
+      
+      // Criar usuário no Supabase Auth
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            nome: userData?.nome || email.split('@')[0],
-            cargo: userData?.cargo || 'Colaborador',
-            empresa: userData?.empresa || 'MetaConstrutor',
-          }
-        }
+            nome: userData.nome,
+          },
+        },
       });
 
       if (error) {
-        return { error: error.message };
+        return { error };
       }
 
-      // Se o usuário foi criado e confirmado automaticamente
-      if (data.user && !data.user.email_confirmed_at) {
-        return { 
-          error: 'Verifique seu email para confirmar a conta antes de fazer login.' 
-        };
+      // Se o usuário foi criado com sucesso, criar o perfil
+      if (data.user) {
+        // Buscar empresa padrão (primeira empresa ativa)
+        const { data: empresaPadrao } = await supabase
+          .from('empresas')
+          .select('id')
+          .eq('status', 'ativa')
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .single();
+
+        // Criar perfil do usuário
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert([{
+            id: data.user.id,
+            nome: userData.nome,
+            cargo: userData.cargo || 'colaborador',
+            telefone: userData.telefone,
+            empresa_id: empresaPadrao?.id || null,
+            nivel_acesso: 'colaborador',
+            status: 'ativo',
+          }]);
+
+        if (profileError) {
+          console.error('Erro ao criar perfil:', profileError);
+          return { error: profileError };
+        }
       }
 
-      return {};
+      return { error: null };
     } catch (error) {
-      console.error('Erro no signup:', error);
-      return { error: 'Erro interno do sistema' };
+      console.error('Erro no cadastro:', error);
+      return { error };
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const logout = async (): Promise<void> => {
+  // Função de logout
+  const signOut = async () => {
     try {
-      setIsLoading(true);
+      setLoading(true);
       const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('Erro no logout:', error);
+      
+      if (!error) {
+    setUser(null);
+        setProfile(null);
+        setEmpresa(null);
+        setSession(null);
+        setCanViewFinancialData(false);
       }
-      setUser(null);
+      
+      return { error };
     } catch (error) {
       console.error('Erro no logout:', error);
+      return { error };
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const updateProfile = async (updates: Partial<User>): Promise<{ error?: string }> => {
+  // Atualizar perfil do usuário
+  const updateProfile = async (updates: Partial<Profile>) => {
     try {
-      if (!user) return { error: 'Usuário não autenticado' };
-
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          nome: updates.name,
-          cargo: updates.cargo,
-          empresa: updates.empresa,
-          telefone: updates.telefone,
-          avatar_url: updates.avatar_url,
-        })
-        .eq('id', user.id);
-
-      if (error) {
-        return { error: error.message };
+      if (!user) {
+        return { error: 'Usuário não autenticado' };
       }
 
-      // Atualizar estado local
-      setUser(prev => prev ? { ...prev, ...updates } : null);
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id)
+        .select()
+        .single();
 
-      return {};
+      if (!error && data) {
+        setProfile(data);
+        
+        // Recarregar permissões se o nível de acesso foi alterado
+        if (updates.nivel_acesso) {
+          const canView = await supabaseUtils.canViewFinancialData();
+          setCanViewFinancialData(canView);
+        }
+      }
+
+      return { error };
     } catch (error) {
       console.error('Erro ao atualizar perfil:', error);
-      return { error: 'Erro interno do sistema' };
+      return { error };
     }
   };
 
-  const hasPermission = (permission: string): boolean => {
-    if (!user) return false;
+  // Atualizar senha
+  const updatePassword = async (password: string) => {
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
+      return { error };
+    } catch (error) {
+      console.error('Erro ao atualizar senha:', error);
+      return { error };
+    }
+  };
+
+  // Reset de senha
+  const resetPassword = async (email: string) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      return { error };
+    } catch (error) {
+      console.error('Erro ao resetar senha:', error);
+      return { error };
+    }
+  };
+
+  // Verificar permissão específica
+  const checkPermission = (permission: string): boolean => {
+    if (!profile) return false;
+
+    // Verificar permissões no objeto JSON do perfil
+    const permissions = profile.permissoes as any || {};
     
-    // Admin tem todas as permissões
-    if (user.role === 'admin') return true;
-    
-    // Definir permissões por role - mais permissivas
-    const permissions: Record<string, string[]> = {
-      admin: ['*'], // todas as permissões
-      manager: [
-        'dashboard.view',
-        'obras.view', 'obras.edit', 'obras.create',
-        'teams.view', 'teams.edit', 'teams.create', 'teams.presence',
-        'activities.view', 'activities.edit', 'activities.create',
-        'equipment.view', 'equipment.edit',
-        'rdo.view', 'rdo.edit', 'rdo.create',
-        'reports.view', 'reports.create'
-      ],
-      supervisor: [
-        'dashboard.view',
-        'obras.view',
-        'teams.view', 'teams.edit', 'teams.presence',
-        'activities.view', 'activities.edit',
-        'equipment.view',
-        'rdo.view', 'rdo.edit', 'rdo.create'
-      ],
-      worker: [
-        'dashboard.view',
-        'teams.view',
-        'rdo.view', 'rdo.create',
-        'activities.view'
-      ]
+    // Permissões automáticas baseadas no nível de acesso
+    const autoPermissions = {
+      diretor: ['all'], // Diretores têm todas as permissões
+      gerente: ['view_financial', 'manage_projects', 'manage_teams', 'view_reports'],
+      colaborador: ['view_basic', 'create_rdo']
     };
 
-    const userPermissions = permissions[user.role] || [];
-    return userPermissions.includes('*') || userPermissions.includes(permission);
+    const userLevel = profile.nivel_acesso || 'colaborador';
+    const levelPermissions = autoPermissions[userLevel] || [];
+
+    // Verificar se tem a permissão específica ou 'all'
+    return (
+      levelPermissions.includes('all') ||
+      levelPermissions.includes(permission) ||
+      permissions[permission] === true
+    );
+  };
+
+  // Verificar se é administrador (diretor)
+  const isAdmin = (): boolean => {
+    return profile?.nivel_acesso === 'diretor';
+  };
+
+  // Verificar se é gerente
+  const isManager = (): boolean => {
+    return profile?.nivel_acesso === 'gerente';
+  };
+
+  // Verificar se é diretor
+  const isDirector = (): boolean => {
+    return profile?.nivel_acesso === 'diretor';
+  };
+
+  const value: AuthContextType = {
+    user,
+    profile,
+    empresa,
+    session,
+    loading,
+    canViewFinancialData,
+    signIn,
+    signUp,
+    signOut,
+    updateProfile,
+    updatePassword,
+    resetPassword,
+    checkPermission,
+    isAdmin,
+    isManager,
+    isDirector,
   };
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      isLoading,
-      login,
-      logout,
-      signup,
-      hasPermission,
-      updateProfile,
-    }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-export const useAuth = () => {
+export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-};
+}
+
+// Hook para verificar se o usuário tem uma permissão específica
+export function usePermission(permission: string): boolean {
+  const { checkPermission } = useAuth();
+  return checkPermission(permission);
+}
+
+// Hook para verificar se pode visualizar dados financeiros
+export function useCanViewFinancial(): boolean {
+  const { canViewFinancialData } = useAuth();
+  return canViewFinancialData;
+}
+
+// Hook para obter informações da empresa atual
+export function useEmpresa(): Empresa | null {
+  const { empresa } = useAuth();
+  return empresa;
+}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ import {
   X
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { equipeService } from '@/services/equipeService';
 
 interface Colaborador {
   id: number;
@@ -64,72 +65,67 @@ export default function Teams() {
     status: 'ativo' as 'ativo' | 'inativo'
   });
 
-  const [colaboradores] = useState<Colaborador[]>([
-    {
-      id: 1,
-      nome: 'João Silva',
-      funcao: 'Pedreiro',
-      telefone: '(11) 99999-0001',
-      email: 'joao@email.com',
-      status: 'ativo',
-      equipeId: 1
-    },
-    {
-      id: 2,
-      nome: 'Maria Santos',
-      funcao: 'Servente',
-      telefone: '(11) 99999-0002',
-      email: 'maria@email.com',
-      status: 'ativo',
-      equipeId: 1
-    },
-    {
-      id: 3,
-      nome: 'Carlos Lima',
-      funcao: 'Eletricista',
-      telefone: '(11) 99999-0003',
-      email: 'carlos@email.com',
-      status: 'ativo',
-      equipeId: 2
-    },
-    {
-      id: 4,
-      nome: 'Ana Costa',
-      funcao: 'Engenheira',
-      telefone: '(11) 99999-0004',
-      email: 'ana@email.com',
-      status: 'ativo'
-    }
-  ]);
+  const [colaboradores, setColaboradores] = useState<Colaborador[]>([]);
+  const [equipes, setEquipes] = useState<Equipe[]>([]);
+  const [carregando, setCarregando] = useState(true);
 
-  const [equipes] = useState<Equipe[]>([
-    {
-      id: 1,
-      nome: 'Equipe Alpha',
-      lider: 'João Silva',
-      membros: [1, 2],
-      obraAtual: 'Shopping Center Norte',
-      status: 'ativa',
-      dataCriacao: '2024-01-15'
-    },
-    {
-      id: 2,
-      nome: 'Equipe Beta',
-      lider: 'Carlos Lima',
-      membros: [3],
-      obraAtual: 'Residencial Jardins',
-      status: 'ativa',
-      dataCriacao: '2024-01-20'
-    },
-    {
-      id: 3,
-      nome: 'Equipe Charlie',
-      lider: 'Ana Costa',
-      membros: [4],
-      status: 'disponivel',
-      dataCriacao: '2024-02-01'
+  // Carregar dados reais do Supabase
+  useEffect(() => {
+    carregarEquipesEColaboradores();
+  }, []);
+
+  const carregarEquipesEColaboradores = async () => {
+    try {
+      setCarregando(true);
+      
+      // Carregar equipes
+      const { data: equipesData, error: equipesError } = await equipeService.listarEquipes();
+      if (equipesError) {
+        console.error('Erro ao carregar equipes:', equipesError);
+        toast({
+          title: "Erro ao carregar equipes",
+          description: "Não foi possível carregar a lista de equipes.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (equipesData) {
+        // Converter dados do Supabase para formato da interface
+        const equipesFormatadas = equipesData.map(equipe => ({
+          id: parseInt(equipe.id),
+          nome: equipe.nome,
+          lider: equipe.lider,
+          membros: [], // Será preenchido com colaboradores
+          obraAtual: equipe.obra_id ? 'Obra em andamento' : undefined,
+          status: equipe.status as 'ativa' | 'inativa' | 'disponivel',
+          dataCriacao: equipe.created_at.split('T')[0]
+        }));
+        setEquipes(equipesFormatadas);
+      }
+
+      // Carregar colaboradores
+      const { data: colaboradoresData, error: colaboradoresError } = await equipeService.listarColaboradores();
+      if (colaboradoresError) {
+        console.error('Erro ao carregar colaboradores:', colaboradoresError);
+      } else if (colaboradoresData) {
+        const colaboradoresFormatados = colaboradoresData.map(colaborador => ({
+          id: parseInt(colaborador.id),
+          nome: colaborador.nome,
+          funcao: colaborador.funcao,
+          telefone: colaborador.telefone || '',
+          email: colaborador.email || '',
+          status: colaborador.status as 'ativo' | 'inativo',
+          equipeId: colaborador.equipe_id ? parseInt(colaborador.equipe_id) : undefined
+        }));
+        setColaboradores(colaboradoresFormatados);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+    } finally {
+      setCarregando(false);
     }
-  ]);
+  };
 
   const funcoes = ['Pedreiro', 'Servente', 'Eletricista', 'Encanador', 'Pintor', 'Carpinteiro', 'Engenheiro', 'Mestre de Obras', 'Operador de Máquinas'];
 
@@ -148,7 +144,7 @@ export default function Teams() {
     return colaboradores.filter(c => membrosIds.includes(c.id));
   };
 
-  const handleSalvarEquipe = () => {
+  const handleSalvarEquipe = async () => {
     if (!formDataEquipe.nome || !formDataEquipe.lider) {
       toast({
         title: "Campos obrigatórios",
@@ -158,15 +154,36 @@ export default function Teams() {
       return;
     }
 
-    toast({
-      title: "Equipe criada!",
-      description: `A equipe "${formDataEquipe.nome}" foi criada com sucesso.`
-    });
+    try {
+      const { data, error } = await equipeService.criarEquipe({
+        nome: formDataEquipe.nome,
+        lider: formDataEquipe.lider,
+        status: formDataEquipe.status
+      });
 
-    handleFecharModalEquipe();
+      if (error) {
+        throw new Error('Erro ao criar equipe');
+      }
+
+      toast({
+        title: "Equipe criada!",
+        description: `A equipe "${formDataEquipe.nome}" foi criada com sucesso.`
+      });
+
+      // Recarregar dados
+      await carregarEquipesEColaboradores();
+      handleFecharModalEquipe();
+    } catch (error) {
+      console.error('Erro ao salvar equipe:', error);
+      toast({
+        title: "Erro ao salvar",
+        description: "Não foi possível criar a equipe. Tente novamente.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleSalvarColaborador = () => {
+  const handleSalvarColaborador = async () => {
     if (!formDataColaborador.nome || !formDataColaborador.funcao) {
       toast({
         title: "Campos obrigatórios",
@@ -176,12 +193,35 @@ export default function Teams() {
       return;
     }
 
-    toast({
-      title: "Colaborador cadastrado!",
-      description: `${formDataColaborador.nome} foi cadastrado com sucesso.`
-    });
+    try {
+      const { data, error } = await equipeService.criarColaborador({
+        nome: formDataColaborador.nome,
+        funcao: formDataColaborador.funcao,
+        telefone: formDataColaborador.telefone,
+        email: formDataColaborador.email,
+        status: formDataColaborador.status
+      });
 
-    handleFecharModalColaborador();
+      if (error) {
+        throw new Error('Erro ao criar colaborador');
+      }
+
+      toast({
+        title: "Colaborador cadastrado!",
+        description: `${formDataColaborador.nome} foi cadastrado com sucesso.`
+      });
+
+      // Recarregar dados
+      await carregarEquipesEColaboradores();
+      handleFecharModalColaborador();
+    } catch (error) {
+      console.error('Erro ao salvar colaborador:', error);
+      toast({
+        title: "Erro ao salvar",
+        description: "Não foi possível cadastrar o colaborador. Tente novamente.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleFecharModalEquipe = () => {

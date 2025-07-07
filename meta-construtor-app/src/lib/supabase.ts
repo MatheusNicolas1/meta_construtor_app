@@ -3,9 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 // Configuração do Supabase baseada na connection string fornecida
 const supabaseUrl = 'https://cajwnsgjqkxejfqvlggm.supabase.co';
 
-// IMPORTANTE: Substitua estas chaves pelas suas chaves reais do projeto Supabase
-// Você pode encontrá-las em: https://supabase.com/dashboard/project/cajwnsgjqkxejfqvlggm/settings/api
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'your_anon_key_here';
+// Chaves do projeto Supabase
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhanduc2dqcWt4ZWpmcXZsZ2dtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE4NTM3MjMsImV4cCI6MjA2NzQyOTcyM30.NRkQNNWgf1_TksRxMLbw2tRDH3Ys8TnIMudfxqKcNy4';
 const supabaseServiceRoleKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || 'your_service_role_key_here';
 
 // Cliente principal para uso na aplicação (lado cliente)

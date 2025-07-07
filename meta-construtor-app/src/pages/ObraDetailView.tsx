@@ -309,9 +309,9 @@ Este documento foi gerado automaticamente pelo sistema MetaConstrutor
                 </CardTitle>
               </CardHeader>
               <CardContent className="card-content">
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {obra.rdos.map((rdo) => (
-                    <div key={rdo.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+                    <div key={rdo.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors mb-4">
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-[#ff5722]" />

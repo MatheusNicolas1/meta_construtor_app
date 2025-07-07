@@ -27,7 +27,9 @@ import {
   X,
   Building,
   Download,
-  Loader2
+  Loader2,
+  Edit,
+  CheckCircle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { rdoService, type CriarRDOCompleto, type RDO } from '@/services/rdoService';
@@ -376,22 +378,51 @@ export default function RDO() {
     }
   };
 
+  const [rdoSelecionado, setRdoSelecionado] = useState<RDO | null>(null);
+  const [modalVisualizacao, setModalVisualizacao] = useState(false);
+
   const visualizarRDO = (rdo: RDO) => {
-    // TODO: Implementar modal de visualização do RDO
-    console.log('Visualizar RDO:', rdo);
-    toast({
-      title: "Visualização de RDO",
-      description: "Funcionalidade em desenvolvimento."
-    });
+    setRdoSelecionado(rdo);
+    setModalVisualizacao(true);
   };
 
   const editarRDO = (rdo: RDO) => {
-    // TODO: Implementar edição do RDO
-    console.log('Editar RDO:', rdo);
-    toast({
-      title: "Edição de RDO",
-      description: "Funcionalidade em desenvolvimento."
-    });
+    // Preencher formulário com dados do RDO para edição
+    const obraSelecionada = obras.find(obra => obra.id === rdo.obra_id);
+    const equipeSelecionada = equipes.find(equipe => equipe.id === rdo.equipe_id);
+    
+    if (obraSelecionada && equipeSelecionada) {
+      setFormData({
+        project: obraSelecionada.nome,
+        team: equipeSelecionada.nome,
+        activities: rdo.atividades_executadas,
+        plannedActivities: rdo.atividades_planejadas,
+        materials: rdo.materiais_utilizados,
+        weather: rdo.clima as any,
+        responsible: rdo.responsavel,
+        location: rdo.localizacao,
+        photos: [],
+        horasOciosas: rdo.horas_ociosas,
+        motivoOciosidade: rdo.motivo_ociosidade,
+        equipamentos: Array.isArray(rdo.equipamentos_utilizados) ? rdo.equipamentos_utilizados : [],
+        atividadesProgresso: Array.isArray(rdo.progresso_atividades) ? rdo.progresso_atividades : [],
+        acidentes: rdo.acidentes,
+        materiaisUtilizados: rdo.materiais_utilizados
+      });
+      
+      setModalAberto(true);
+      
+      toast({
+        title: "Modo de edição",
+        description: "Formulário preenchido com dados do RDO para edição."
+      });
+    } else {
+      toast({
+        title: "Erro ao editar",
+        description: "Não foi possível carregar os dados para edição.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleUploadFoto = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1010,6 +1041,316 @@ Este documento foi gerado automaticamente pelo sistema MetaConstrutor
           </div>
         )}
       </div>
+
+      {/* Modal de Visualização Detalhada do RDO */}
+      <Dialog open={modalVisualizacao} onOpenChange={setModalVisualizacao}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              Visualização Detalhada do RDO
+            </DialogTitle>
+            <DialogDescription>
+              {rdoSelecionado && `RDO da obra ${rdoSelecionado.obra?.nome} - ${new Date(rdoSelecionado.data).toLocaleDateString('pt-BR')}`}
+            </DialogDescription>
+          </DialogHeader>
+
+          {rdoSelecionado && (
+            <div className="space-y-6">
+              {/* Informações Gerais */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Informações Gerais</CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Obra</Label>
+                    <p className="text-sm">{rdoSelecionado.obra?.nome}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Equipe</Label>
+                    <p className="text-sm">{rdoSelecionado.equipe?.nome}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Data</Label>
+                    <p className="text-sm">{new Date(rdoSelecionado.data).toLocaleDateString('pt-BR')}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Responsável</Label>
+                    <p className="text-sm">{rdoSelecionado.responsavel}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Clima</Label>
+                    <p className="text-sm capitalize">{rdoSelecionado.clima}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Status</Label>
+                    <Badge variant={
+                      rdoSelecionado.status === 'aprovado' ? 'default' :
+                      rdoSelecionado.status === 'enviado' ? 'secondary' :
+                      rdoSelecionado.status === 'rejeitado' ? 'destructive' : 'outline'
+                    }>
+                      {rdoSelecionado.status === 'aprovado' ? 'Aprovado' :
+                       rdoSelecionado.status === 'enviado' ? 'Enviado' :
+                       rdoSelecionado.status === 'rejeitado' ? 'Rejeitado' : 'Rascunho'}
+                    </Badge>
+                  </div>
+                  <div className="col-span-2">
+                    <Label className="text-sm font-medium text-muted-foreground">Localização</Label>
+                    <p className="text-sm">{rdoSelecionado.localizacao}</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Atividades */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Atividades Executadas</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm whitespace-pre-wrap">{rdoSelecionado.atividades_executadas}</p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Atividades Planejadas</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm whitespace-pre-wrap">{rdoSelecionado.atividades_planejadas}</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Progresso das Atividades */}
+              {rdoSelecionado.progresso_atividades && Array.isArray(rdoSelecionado.progresso_atividades) && rdoSelecionado.progresso_atividades.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Progresso das Atividades</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {rdoSelecionado.progresso_atividades.map((atividade: any, index: number) => (
+                      <div key={index} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm font-medium">{atividade.nome}</Label>
+                          <span className="text-sm text-muted-foreground">{atividade.progresso}%</span>
+                        </div>
+                        <Progress value={atividade.progresso} className="h-2" />
+                        {atividade.observacoes && (
+                          <p className="text-xs text-muted-foreground">{atividade.observacoes}</p>
+                        )}
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Equipamentos */}
+              {rdoSelecionado.equipamentos_utilizados && Array.isArray(rdoSelecionado.equipamentos_utilizados) && rdoSelecionado.equipamentos_utilizados.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Equipamentos Utilizados</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {rdoSelecionado.equipamentos_utilizados.map((equipamento: any, index: number) => (
+                        <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div>
+                            <p className="font-medium">{equipamento.nome}</p>
+                            {equipamento.observacoes && (
+                              <p className="text-xs text-muted-foreground">{equipamento.observacoes}</p>
+                            )}
+                          </div>
+                          <Badge variant={
+                            equipamento.status === 'funcionando' ? 'default' :
+                            equipamento.status === 'quebrado' ? 'destructive' : 'secondary'
+                          }>
+                            {equipamento.status === 'funcionando' ? 'Funcionando' :
+                             equipamento.status === 'quebrado' ? 'Quebrado' : 'Manutenção'}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Materiais e Outros */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Materiais Utilizados</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm whitespace-pre-wrap">{rdoSelecionado.materiais_utilizados || 'Nenhum material registrado'}</p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Horas Ociosas</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Total de horas:</span>
+                      <span className="text-lg font-bold text-orange-600">{rdoSelecionado.horas_ociosas}h</span>
+                    </div>
+                    {rdoSelecionado.motivo_ociosidade && (
+                      <div>
+                        <Label className="text-sm font-medium text-muted-foreground">Motivo:</Label>
+                        <p className="text-sm">{rdoSelecionado.motivo_ociosidade}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Acidentes e Observações */}
+              {(rdoSelecionado.acidentes || rdoSelecionado.observacoes) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {rdoSelecionado.acidentes && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg text-red-600">Acidentes/Ocorrências</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm whitespace-pre-wrap">{rdoSelecionado.acidentes}</p>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {rdoSelecionado.observacoes && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Observações</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm whitespace-pre-wrap">{rdoSelecionado.observacoes}</p>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              )}
+
+              {/* Imagens */}
+              {rdoSelecionado.imagens && rdoSelecionado.imagens.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Imagens Anexadas</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {rdoSelecionado.imagens.map((imagem: any, index: number) => (
+                        <div key={index} className="space-y-2">
+                          <div className="aspect-square border rounded-lg overflow-hidden bg-muted">
+                            <img
+                              src={imagem.url}
+                              alt={imagem.caption || `Imagem ${index + 1}`}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.src = '/placeholder.svg';
+                              }}
+                            />
+                          </div>
+                          {imagem.caption && (
+                            <p className="text-xs text-muted-foreground text-center">{imagem.caption}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Ações do RDO */}
+              <div className="flex flex-wrap gap-3 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  onClick={() => editarRDO(rdoSelecionado)}
+                  className="flex-1 sm:flex-none"
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Editar
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => exportarRDO(rdoSelecionado)}
+                  className="flex-1 sm:flex-none"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Exportar
+                </Button>
+                {rdoSelecionado.status === 'enviado' && (
+                  <>
+                    <Button
+                      variant="default"
+                      onClick={() => {
+                        rdoService.aprovarRDO(rdoSelecionado.id).then(({ data, error }) => {
+                          if (error) {
+                            toast({
+                              title: "Erro ao aprovar",
+                              description: "Não foi possível aprovar o RDO.",
+                              variant: "destructive"
+                            });
+                          } else {
+                            toast({
+                              title: "RDO aprovado!",
+                              description: "O RDO foi aprovado com sucesso."
+                            });
+                            recarregarRDOs();
+                            setModalVisualizacao(false);
+                          }
+                        });
+                      }}
+                      className="flex-1 sm:flex-none"
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Aprovar
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={() => {
+                        const motivo = prompt('Motivo da rejeição:');
+                        if (motivo) {
+                          rdoService.rejeitarRDO(rdoSelecionado.id, motivo).then(({ data, error }) => {
+                            if (error) {
+                              toast({
+                                title: "Erro ao rejeitar",
+                                description: "Não foi possível rejeitar o RDO.",
+                                variant: "destructive"
+                              });
+                            } else {
+                              toast({
+                                title: "RDO rejeitado!",
+                                description: "O RDO foi rejeitado com sucesso."
+                              });
+                              recarregarRDOs();
+                              setModalVisualizacao(false);
+                            }
+                          });
+                        }
+                      }}
+                      className="flex-1 sm:flex-none"
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Rejeitar
+                    </Button>
+                  </>
+                )}
+                <Button
+                  variant="outline"
+                  onClick={() => setModalVisualizacao(false)}
+                  className="flex-1 sm:flex-none"
+                >
+                  Fechar
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }

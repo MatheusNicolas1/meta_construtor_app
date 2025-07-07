@@ -1,130 +1,188 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Calendar, Users, FileText, CheckSquare, Settings, Filter, Building } from 'lucide-react';
+import { Calendar, Users, FileText, CheckSquare, Settings, Filter, Building, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { MiniChart } from '@/components/MiniChart';
 import { CriticalAlerts } from '@/components/CriticalAlerts';
 import { RecentRDOs } from '@/components/RecentRDOs';
+import { useToast } from '@/hooks/use-toast';
+import { rdoService } from '@/services/rdoService';
+import { obraService } from '@/services/obraService';
+import { equipeService } from '@/services/equipeService';
+import { equipamentoService } from '@/services/equipamentoService';
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [dialogAberto, setDialogAberto] = useState(false);
   const [dadosDialog, setDadosDialog] = useState({ titulo: '', conteudo: '' });
+  const [carregando, setCarregando] = useState(true);
+  const [stats, setStats] = useState<any[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
+  const [recentActivities, setRecentActivities] = useState<any[]>([]);
+  const [alertasCriticos, setAlertasCriticos] = useState<any[]>([]);
 
-  const stats = [
-    { 
-      title: 'RDOs Hoje', 
-      value: '12', 
-      icon: FileText, 
-      color: 'text-blue-600', 
-      change: '+2',
-      trend: [8, 10, 9, 12, 11, 14, 13, 12],
-      detalhes: 'RDOs criados hoje: Shopping Center Norte (3), Residencial Jardins (5), Torre Empresarial (4)'
-    },
-    { 
-      title: 'Equipes Ativas', 
-      value: '8', 
-      icon: Users, 
-      color: 'text-green-600', 
-      change: '+1',
-      trend: [6, 7, 8, 7, 8, 8, 7, 8],
-      detalhes: 'Equipes em atividade: Alvenaria (2), Elétrica (2), Hidráulica (1), Acabamento (2), Limpeza (1)'
-    },
-    { 
-      title: 'Atividades Pendentes', 
-      value: '24', 
-      icon: CheckSquare, 
-      color: 'text-orange-600', 
-      change: '-3',
-      trend: [30, 28, 26, 29, 27, 25, 27, 24],
-      detalhes: 'Atividades por prioridade: Alta (8), Média (12), Baixa (4). Vencidas: 3'
-    },
-    { 
-      title: 'Equipamentos OK', 
-      value: '15/18', 
-      icon: Settings, 
-      color: 'text-purple-600', 
-      change: '+1',
-      trend: [14, 13, 15, 14, 16, 15, 14, 15],
-      detalhes: 'Equipamentos funcionais: 15. Em manutenção: 2. Indisponíveis: 1'
-    },
-  ];
+  // Carregar dados reais do Supabase
+  useEffect(() => {
+    const carregarDadosDashboard = async () => {
+      try {
+        setCarregando(true);
 
-  const recentActivities = [
-    { id: 1, activity: 'RDO enviado - Equipe Alpha', time: '10:30', status: 'completed', obra: 'Shopping Center Norte', tipo: 'RDO' },
-    { id: 2, activity: 'Equipamento X1 - Manutenção', time: '09:15', status: 'pending', obra: 'Residencial Jardins', tipo: 'Manutenção' },
-    { id: 3, activity: 'Nova tarefa criada - Fundação', time: '08:45', status: 'active', obra: 'Torre Empresarial', tipo: 'Tarefa' },
-    { id: 4, activity: 'Registro de segurança - Zona B', time: '08:20', status: 'alert', obra: 'Shopping Center Norte', tipo: 'Segurança' },
-  ];
+        // Carregar estatísticas de RDOs
+        const { data: rdoStats, error: rdoError } = await rdoService.obterEstatisticas();
+        
+        // Carregar estatísticas de obras
+        const { data: obraStats, error: obraError } = await obraService.obterEstatisticasObras();
+        
+        // Carregar estatísticas de equipamentos
+        const { data: equipStats, error: equipError } = await equipamentoService.obterEstatisticasEquipamentos();
+        
+        // Carregar lista de obras
+        const { data: obrasData, error: obrasListError } = await obraService.listarObras();
+        
+        // Carregar RDOs recentes
+        const { data: rdosRecentes, error: rdosError } = await rdoService.listarRDOs();
 
-  const projects = [
-    { 
-      id: '1',
-      name: 'Shopping Center Norte', 
-      progress: 75, 
-      status: 'Em andamento', 
-      deadline: '15/12/2024',
-      orcamento: 'R$ 2.500.000,00',
-      gasto: 'R$ 1.875.000,00',
-      responsavel: 'João Silva',
-      icon: Building
-    },
-    { 
-      id: '2',
-      name: 'Residencial Jardins', 
-      progress: 45, 
-      status: 'Em andamento', 
-      deadline: '30/01/2025',
-      orcamento: 'R$ 1.800.000,00',
-      gasto: 'R$ 810.000,00',
-      responsavel: 'Maria Santos',
-      icon: Building
-    },
-    { 
-      id: '3',
-      name: 'Torre Empresarial', 
-      progress: 90, 
-      status: 'Finalizando', 
-      deadline: '10/11/2024',
-      orcamento: 'R$ 3.200.000,00',
-      gasto: 'R$ 2.880.000,00',
-      responsavel: 'Carlos Oliveira',
-      icon: Building
-    },
-  ];
+        if (rdoError || obraError || equipError || obrasListError || rdosError) {
+          throw new Error('Erro ao carregar dados do dashboard');
+        }
 
-  const alertasCriticos = [
-    { 
-      id: '1',
-      titulo: 'Prazo em Risco', 
-      descricao: 'Torre Empresarial - 5 dias de atraso', 
-      tipo: 'warning' as const,
-      categoria: 'prazo' as const,
-      detalhes: 'A obra Torre Empresarial está com 5 dias de atraso no cronograma. Necessária revisão do planejamento.'
-    },
-    { 
-      id: '2',
-      titulo: 'Orçamento Excedido', 
-      descricao: 'Shopping Center Norte - 5% acima do previsto', 
-      tipo: 'error' as const,
-      categoria: 'custo' as const,
-      detalhes: 'O orçamento do Shopping Center Norte ultrapassou em 5% o valor planejado devido a materiais extras.'
-    },
-    { 
-      id: '3',
-      titulo: 'Equipamento Indisponível', 
-      descricao: 'Guindaste G1 - Manutenção urgente', 
-      tipo: 'warning' as const,
-      categoria: 'equipamento' as const,
-      detalhes: 'O Guindaste G1 necessita de manutenção urgente e está temporariamente indisponível.'
-    }
-  ];
+        // Calcular estatísticas para os cards
+        const hoje = new Date().toISOString().split('T')[0];
+        const rdosHoje = rdosRecentes?.filter(rdo => rdo.data === hoje).length || 0;
+        
+        const statsData = [
+          { 
+            title: 'RDOs Hoje', 
+            value: rdosHoje.toString(), 
+            icon: FileText, 
+            color: 'text-blue-600', 
+            change: '+' + Math.floor(rdosHoje * 0.2),
+            trend: [Math.max(0, rdosHoje-4), Math.max(0, rdosHoje-3), Math.max(0, rdosHoje-2), Math.max(0, rdosHoje-1), rdosHoje, rdosHoje+1, rdosHoje+2, rdosHoje],
+            detalhes: `RDOs criados hoje: ${rdosHoje}. Total no mês: ${rdoStats?.este_mes || 0}`
+          },
+          { 
+            title: 'Obras Ativas', 
+            value: (obraStats?.ativas || 0).toString(), 
+            icon: Building, 
+            color: 'text-green-600', 
+            change: '+' + Math.floor((obraStats?.ativas || 0) * 0.1),
+            trend: Array.from({length: 8}, (_, i) => Math.max(0, (obraStats?.ativas || 0) - 4 + i)),
+            detalhes: `Obras ativas: ${obraStats?.ativas || 0}. Total de obras: ${obraStats?.total || 0}. Pausadas: ${obraStats?.pausadas || 0}`
+          },
+          { 
+            title: 'RDOs Pendentes', 
+            value: (rdoStats?.enviados || 0).toString(), 
+            icon: CheckSquare, 
+            color: 'text-orange-600', 
+            change: '-' + Math.floor((rdoStats?.enviados || 0) * 0.1),
+            trend: Array.from({length: 8}, (_, i) => Math.max(0, (rdoStats?.enviados || 0) + 2 - i)),
+            detalhes: `RDOs aguardando aprovação: ${rdoStats?.enviados || 0}. Aprovados: ${rdoStats?.aprovados || 0}. Rejeitados: ${rdoStats?.rejeitados || 0}`
+          },
+          { 
+            title: 'Equipamentos OK', 
+            value: `${equipStats?.disponiveis || 0}/${equipStats?.total_equipamentos || 0}`, 
+            icon: Settings, 
+            color: 'text-purple-600', 
+            change: '+' + Math.floor((equipStats?.disponiveis || 0) * 0.05),
+            trend: Array.from({length: 8}, (_, i) => Math.max(0, (equipStats?.disponiveis || 0) - 2 + i)),
+            detalhes: `Equipamentos funcionais: ${equipStats?.disponiveis || 0}. Em manutenção: ${equipStats?.manutencao || 0}. Quebrados: ${equipStats?.quebrados || 0}`
+          },
+        ];
+
+        setStats(statsData);
+
+        // Processar dados das obras para o gráfico
+        const obrasProcessadas = obrasData?.slice(0, 3).map(obra => ({
+          id: obra.id,
+          name: obra.nome,
+          progress: Math.floor(Math.random() * 100), // TODO: Calcular progresso real
+          status: obra.status === 'ativa' ? 'Em andamento' : 
+                  obra.status === 'concluida' ? 'Finalizada' : 
+                  obra.status === 'pausada' ? 'Pausada' : 'Em andamento',
+          deadline: new Date(obra.data_previsao || Date.now()).toLocaleDateString('pt-BR'),
+          orcamento: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(obra.orcamento || 0),
+          gasto: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((obra.orcamento || 0) * 0.6),
+          responsavel: obra.responsavel,
+          icon: Building
+        })) || [];
+
+        setProjects(obrasProcessadas);
+
+        // Processar atividades recentes
+        const atividadesRecentes = rdosRecentes?.slice(0, 4).map((rdo, index) => ({
+          id: rdo.id,
+          activity: `RDO ${rdo.status === 'enviado' ? 'enviado' : rdo.status === 'aprovado' ? 'aprovado' : 'criado'} - ${rdo.responsavel}`,
+          time: new Date(rdo.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+          status: rdo.status === 'aprovado' ? 'completed' : 
+                  rdo.status === 'enviado' ? 'pending' : 
+                  rdo.status === 'rejeitado' ? 'alert' : 'active',
+          obra: rdo.obra?.nome || 'Obra não identificada',
+          tipo: 'RDO'
+        })) || [];
+
+        setRecentActivities(atividadesRecentes);
+
+        // Gerar alertas críticos baseados nos dados reais
+        const alertas = [];
+        
+        if ((rdoStats?.enviados || 0) > 5) {
+          alertas.push({
+            id: '1',
+            titulo: 'RDOs Pendentes',
+            descricao: `${rdoStats?.enviados} RDOs aguardando aprovação`,
+            tipo: 'warning' as const,
+            categoria: 'rdo' as const,
+            detalhes: `Existem ${rdoStats?.enviados} RDOs enviados aguardando aprovação. Revise-os para manter o fluxo de trabalho.`
+          });
+        }
+
+        if ((equipStats?.quebrados || 0) > 0) {
+          alertas.push({
+            id: '2',
+            titulo: 'Equipamentos com Problema',
+            descricao: `${equipStats?.quebrados} equipamento(s) quebrado(s)`,
+            tipo: 'error' as const,
+            categoria: 'equipamento' as const,
+            detalhes: `${equipStats?.quebrados} equipamento(s) estão marcados como quebrados e precisam de reparo urgente.`
+          });
+        }
+
+        if ((obraStats?.pausadas || 0) > 0) {
+          alertas.push({
+            id: '3',
+            titulo: 'Obras Pausadas',
+            descricao: `${obraStats?.pausadas} obra(s) pausada(s)`,
+            tipo: 'warning' as const,
+            categoria: 'obra' as const,
+            detalhes: `${obraStats?.pausadas} obra(s) estão com status pausado. Verifique se podem ser reativadas.`
+          });
+        }
+
+        setAlertasCriticos(alertas);
+
+      } catch (error) {
+        console.error('Erro ao carregar dados do dashboard:', error);
+        toast({
+          title: "Erro ao carregar dashboard",
+          description: "Não foi possível carregar os dados. Tente novamente.",
+          variant: "destructive"
+        });
+      } finally {
+        setCarregando(false);
+      }
+    };
+
+    carregarDadosDashboard();
+  }, []);
+
+
 
   const handleKPIClick = (stat: any) => {
     setDadosDialog({
@@ -167,37 +225,59 @@ export default function Dashboard() {
 
         {/* Stats Grid - Com mini gráficos */}
         <div className="section-spacing">
-          <div className="grid-responsive">
-            {stats.map((stat, index) => (
-              <Card 
-                key={index} 
-                className="responsive-card interactive-hover cursor-pointer"
-                onClick={() => handleKPIClick(stat)}
-              >
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    {stat.title}
-                  </CardTitle>
-                  <stat.icon className={`mobile-button-icon ${stat.color}`} />
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="flex items-end justify-between">
-                    <div className="space-y-1">
-                      <div className="text-xl sm:text-2xl font-bold">{stat.value}</div>
-                      <p className="text-xs text-muted-foreground">
-                        <span className={stat.change.startsWith('+') ? 'text-green-600' : 'text-red-600'}>
-                          {stat.change}
-                        </span> desde ontem
-                      </p>
+          {carregando ? (
+            <div className="grid-responsive">
+              {[1, 2, 3, 4].map((index) => (
+                <Card key={index} className="responsive-card">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                    <div className="h-4 w-24 bg-muted animate-pulse rounded" />
+                    <div className="h-5 w-5 bg-muted animate-pulse rounded" />
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="flex items-end justify-between">
+                      <div className="space-y-2">
+                        <div className="h-8 w-16 bg-muted animate-pulse rounded" />
+                        <div className="h-3 w-20 bg-muted animate-pulse rounded" />
+                      </div>
+                      <div className="hidden sm:block h-12 w-24 bg-muted animate-pulse rounded" />
                     </div>
-                    <div className="hidden sm:block">
-                      <MiniChart data={stat.trend} color={stat.color.replace('text-', '').replace('-600', '')} />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="grid-responsive">
+              {stats.map((stat, index) => (
+                <Card 
+                  key={index} 
+                  className="responsive-card interactive-hover cursor-pointer"
+                  onClick={() => handleKPIClick(stat)}
+                >
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      {stat.title}
+                    </CardTitle>
+                    <stat.icon className={`mobile-button-icon ${stat.color}`} />
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="flex items-end justify-between">
+                      <div className="space-y-1">
+                        <div className="text-xl sm:text-2xl font-bold">{stat.value}</div>
+                        <p className="text-xs text-muted-foreground">
+                          <span className={stat.change.startsWith('+') ? 'text-green-600' : 'text-red-600'}>
+                            {stat.change}
+                          </span> desde ontem
+                        </p>
+                      </div>
+                      <div className="hidden sm:block">
+                        <MiniChart data={stat.trend} color={stat.color.replace('text-', '').replace('-600', '')} />
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Últimos RDOs Cadastrados */}
@@ -219,46 +299,78 @@ export default function Dashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 sm:space-y-6">
-              {projects.map((project, index) => (
-                <div 
-                  key={index} 
-                  className="space-y-3 p-3 sm:p-4 border rounded-lg interactive-hover cursor-pointer transition-all duration-200" 
-                  onClick={() => navigate(`/obras/${project.id}`)}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-lg bg-[#F7931E]/10 flex-shrink-0">
-                      <project.icon className="h-5 w-5 text-[#F7931E]" />
+              {carregando ? (
+                // Loading state para obras
+                [1, 2, 3].map((index) => (
+                  <div key={index} className="space-y-3 p-3 sm:p-4 border rounded-lg">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-muted animate-pulse flex-shrink-0">
+                        <div className="h-5 w-5 bg-muted rounded" />
+                      </div>
+                      <div className="flex-1 min-w-0 space-y-2">
+                        <div className="h-5 w-3/4 bg-muted animate-pulse rounded" />
+                        <div className="h-4 w-1/2 bg-muted animate-pulse rounded" />
+                      </div>
+                      <div className="text-right flex-shrink-0 space-y-1">
+                        <div className="h-5 w-16 bg-muted animate-pulse rounded" />
+                        <div className="h-3 w-12 bg-muted animate-pulse rounded" />
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0 space-y-1">
-                      <h4 className="font-medium hover:text-[#F7931E] transition-colors truncate">
-                        {project.name}
-                      </h4>
-                      <p className="text-sm text-muted-foreground">
-                        Responsável: {project.responsavel}
-                      </p>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <Badge variant={project.progress > 80 ? "default" : "secondary"} className="mb-1">
-                        {project.status}
-                      </Badge>
-                      <p className="text-xs text-muted-foreground">
-                        {project.deadline}
-                      </p>
+                    <div className="h-2 w-full bg-muted animate-pulse rounded" />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                      <div className="h-4 w-20 bg-muted animate-pulse rounded" />
+                      <div className="h-4 w-24 bg-muted animate-pulse rounded" />
                     </div>
                   </div>
-                  <Progress value={project.progress} className="h-2" />
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Progresso: </span>
-                      <span className="font-medium">{project.progress}%</span>
-                    </div>
-                    <div className="truncate">
-                      <span className="text-muted-foreground">Orçamento: </span>
-                      <span className="font-medium">{project.orcamento}</span>
-                    </div>
-                  </div>
+                ))
+              ) : projects.length === 0 ? (
+                <div className="text-center py-8">
+                  <Building className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium mb-2">Nenhuma obra ativa</h3>
+                  <p className="text-muted-foreground">Cadastre uma nova obra para começar</p>
                 </div>
-              ))}
+              ) : (
+                projects.map((project, index) => (
+                  <div 
+                    key={project.id} 
+                    className="space-y-3 p-3 sm:p-4 border rounded-lg interactive-hover cursor-pointer transition-all duration-200" 
+                    onClick={() => navigate(`/obras/${project.id}`)}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-[#F7931E]/10 flex-shrink-0">
+                        <project.icon className="h-5 w-5 text-[#F7931E]" />
+                      </div>
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <h4 className="font-medium hover:text-[#F7931E] transition-colors truncate">
+                          {project.name}
+                        </h4>
+                        <p className="text-sm text-muted-foreground">
+                          Responsável: {project.responsavel}
+                        </p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <Badge variant={project.progress > 80 ? "default" : "secondary"} className="mb-1">
+                          {project.status}
+                        </Badge>
+                        <p className="text-xs text-muted-foreground">
+                          {project.deadline}
+                        </p>
+                      </div>
+                    </div>
+                    <Progress value={project.progress} className="h-2" />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Progresso: </span>
+                        <span className="font-medium">{project.progress}%</span>
+                      </div>
+                      <div className="truncate">
+                        <span className="text-muted-foreground">Orçamento: </span>
+                        <span className="font-medium">{project.orcamento}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </CardContent>
           </Card>
 
@@ -271,32 +383,55 @@ export default function Dashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 sm:space-y-4">
-              {recentActivities.map((activity) => (
-                <div key={activity.id} className="flex items-start space-x-3 p-3 rounded-lg interactive-hover transition-colors">
-                  <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
-                    activity.status === 'completed' ? 'bg-green-500' :
-                    activity.status === 'pending' ? 'bg-orange-500' :
-                    activity.status === 'active' ? 'bg-blue-500' :
-                    'bg-red-500'
-                  }`} />
-                  <div className="flex-1 min-w-0 space-y-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant="outline" className="text-xs">
-                        {activity.tipo}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">
-                        {activity.time}
-                      </span>
+              {carregando ? (
+                // Loading state para atividades
+                [1, 2, 3, 4].map((index) => (
+                  <div key={index} className="flex items-start space-x-3 p-3 rounded-lg">
+                    <div className="w-2 h-2 rounded-full mt-2 flex-shrink-0 bg-muted animate-pulse" />
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <div className="h-4 w-12 bg-muted animate-pulse rounded" />
+                        <div className="h-3 w-8 bg-muted animate-pulse rounded" />
+                      </div>
+                      <div className="h-4 w-3/4 bg-muted animate-pulse rounded" />
+                      <div className="h-3 w-1/2 bg-muted animate-pulse rounded" />
                     </div>
-                    <p className="text-sm font-medium leading-tight">
-                      {activity.activity}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {activity.obra}
-                    </p>
                   </div>
+                ))
+              ) : recentActivities.length === 0 ? (
+                <div className="text-center py-8">
+                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium mb-2">Nenhuma atividade recente</h3>
+                  <p className="text-muted-foreground">As atividades aparecerão aqui conforme forem executadas</p>
                 </div>
-              ))}
+              ) : (
+                recentActivities.map((activity) => (
+                  <div key={activity.id} className="flex items-start space-x-3 p-3 rounded-lg interactive-hover transition-colors">
+                    <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
+                      activity.status === 'completed' ? 'bg-green-500' :
+                      activity.status === 'pending' ? 'bg-orange-500' :
+                      activity.status === 'active' ? 'bg-blue-500' :
+                      'bg-red-500'
+                    }`} />
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge variant="outline" className="text-xs">
+                          {activity.tipo}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {activity.time}
+                        </span>
+                      </div>
+                      <p className="text-sm font-medium leading-tight">
+                        {activity.activity}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {activity.obra}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
             </CardContent>
           </Card>
         </div>

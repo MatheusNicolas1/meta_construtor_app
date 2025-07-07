@@ -1,24 +1,142 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>meta-construtor-hub</title>
-    <meta name="description" content="Lovable Generated Project" />
-    <meta name="author" content="Lovable" />
+    <title>MetaConstrutor - Gestão de Obras</title>
+    <meta name="description" content="Sistema completo de gestão de obras com RDOs, controle de equipes, equipamentos e relatórios para empresas do setor da construção civil." />
+    <meta name="author" content="MetaConstrutor" />
+    <meta name="keywords" content="gestão de obras, RDO, relatório diário, construção civil, equipamentos, equipes, orçamento" />
 
-    <meta property="og:title" content="meta-construtor-hub" />
-    <meta property="og:description" content="Lovable Generated Project" />
+    <!-- PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="MetaConstrutor" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="msapplication-TileColor" content="#0A192F" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    <meta name="msapplication-navbutton-color" content="#F7931E" />
+    <meta name="theme-color" content="#F7931E" />
+    
+    <!-- Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/placeholder.svg" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/placeholder.svg" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/placeholder.svg" />
+    <link rel="apple-touch-icon" sizes="167x167" href="/placeholder.svg" />
+    
+    <!-- Splash Screens for iOS -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="apple-touch-startup-image" href="/placeholder.svg" />
+
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="MetaConstrutor - Gestão de Obras" />
+    <meta property="og:description" content="Sistema completo de gestão de obras com RDOs, controle de equipes, equipamentos e relatórios." />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    <meta property="og:url" content="https://meta-construtor.vercel.app" />
+    <meta property="og:image" content="/placeholder.svg" />
+    <meta property="og:site_name" content="MetaConstrutor" />
+    <meta property="og:locale" content="pt_BR" />
 
+    <!-- Twitter Meta Tags -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@lovable_dev" />
-    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    <meta name="twitter:title" content="MetaConstrutor - Gestão de Obras" />
+    <meta name="twitter:description" content="Sistema completo de gestão de obras com RDOs, controle de equipes, equipamentos e relatórios." />
+    <meta name="twitter:image" content="/placeholder.svg" />
+    
+    <!-- Preload Critical Resources -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    
+    <!-- DNS Prefetch for External Resources -->
+    <link rel="dns-prefetch" href="//supabase.com" />
+    
+    <!-- Robots and SEO -->
+    <meta name="robots" content="index, follow" />
+    <meta name="googlebot" content="index, follow" />
+    
+    <!-- Security Headers -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="X-Frame-Options" content="DENY" />
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
   </head>
 
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+              console.log('SW registered: ', registration);
+              
+              // Verificar atualizações do SW
+              registration.addEventListener('updatefound', () => {
+                const newWorker = registration.installing;
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    // Nova versão disponível
+                    if (confirm('Nova versão disponível. Deseja atualizar?')) {
+                      window.location.reload();
+                    }
+                  }
+                });
+              });
+            })
+            .catch((registrationError) => {
+              console.log('SW registration failed: ', registrationError);
+            });
+        });
+      }
+      
+      // Detectar quando o app está sendo executado como PWA
+      let displayMode = 'browser';
+      const mqStandalone = '(display-mode: standalone)';
+      if (navigator.standalone || window.matchMedia(mqStandalone).matches) {
+        displayMode = 'standalone';
+        document.documentElement.classList.add('pwa-mode');
+      }
+      
+      // Salvar informação do display mode
+      localStorage.setItem('displayMode', displayMode);
+      
+      // Prompt de instalação do PWA
+      let deferredPrompt;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        
+        // Mostrar botão de instalação customizado se necessário
+        const installButton = document.getElementById('install-button');
+        if (installButton) {
+          installButton.style.display = 'block';
+          installButton.addEventListener('click', async () => {
+            if (deferredPrompt) {
+              deferredPrompt.prompt();
+              const { outcome } = await deferredPrompt.userChoice;
+              console.log(`User response to the install prompt: ${outcome}`);
+              deferredPrompt = null;
+              installButton.style.display = 'none';
+            }
+          });
+        }
+      });
+      
+      // Event listener para quando o PWA é instalado
+      window.addEventListener('appinstalled', () => {
+        console.log('PWA was installed');
+        const installButton = document.getElementById('install-button');
+        if (installButton) {
+          installButton.style.display = 'none';
+        }
+      });
+    </script>
   </body>
 </html>

@@ -49,7 +49,7 @@ export default function Obras() {
   // Carregar dados (incluindo modo demo)
   useEffect(() => {
     if (!authLoading && isAuthenticated()) {
-      carregarObras();
+    carregarObras();
     }
   }, [authLoading, isAuthenticated]);
 
@@ -202,11 +202,11 @@ export default function Obras() {
         {/* Header */}
         <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4 flex-1">
-            <div>
-              <h1 className="page-title">Obras</h1>
-              <p className="page-description">Gerencie todas as obras e projetos em andamento</p>
-            </div>
-            
+          <div>
+            <h1 className="page-title">Obras</h1>
+            <p className="page-description">Gerencie todas as obras e projetos em andamento</p>
+          </div>
+          
             {/* Filtros - Desktop (Tabs) */}
             <div className="hidden sm:block">
               <Tabs value={filterStatus} onValueChange={setFilterStatus}>
@@ -237,29 +237,29 @@ export default function Obras() {
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
-            </div>
+                    </div>
 
             {/* Filtros - Mobile (Select) */}
             <div className="sm:hidden w-full max-w-xs">
               <Select value={filterStatus} onValueChange={setFilterStatus}>
                 <SelectTrigger className="text-foreground">
                   <SelectValue placeholder="Filtrar por status" />
-                </SelectTrigger>
+                      </SelectTrigger>
                 <SelectContent className="bg-background border-border">
                   <SelectItem value="Todas">Todas as obras</SelectItem>
                   <SelectItem value="Ativa">Obras ativas</SelectItem>
                   <SelectItem value="Pausada">Obras pausadas</SelectItem>
                   <SelectItem value="Finalizada">Obras finalizadas</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
           <Button onClick={() => navigate('/obras/nova')} className="btn-standard w-full sm:w-auto">
-            <Plus className="h-4 w-4" />
+                          <Plus className="h-4 w-4" />
             Nova Obra
-          </Button>
-        </div>
+                        </Button>
+                      </div>
 
         {/* Loading State */}
         {isLoading && (
@@ -267,9 +267,9 @@ export default function Obras() {
             <div className="text-center">
               <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
               <p className="text-muted-foreground">Carregando obras...</p>
-            </div>
-          </div>
-        )}
+                      </div>
+                    </div>
+                  )}
 
         {/* Lista de Obras */}
         {!isLoading && (
@@ -298,16 +298,16 @@ export default function Obras() {
               {/* Header Centralizado */}
               <div className="work-card-header">
                 <h3 className="work-card-title">
-                  {obra.nome}
-                </h3>
+                    {obra.nome}
+                  </h3>
                 <div className="work-card-subtitle">
                   <div className="card-info-item">
-                    <MapPin className="h-4 w-4 flex-shrink-0" />
-                    <span className="truncate">{obra.endereco}</span>
-                  </div>
+                      <MapPin className="h-4 w-4 flex-shrink-0" />
+                      <span className="truncate">{obra.endereco}</span>
+                    </div>
                   <div className="card-info-item">
-                    <Users className="h-4 w-4 flex-shrink-0" />
-                    <span>{obra.responsavel}</span>
+                      <Users className="h-4 w-4 flex-shrink-0" />
+                      <span>{obra.responsavel}</span>
                   </div>
                 </div>
               </div>
@@ -326,22 +326,22 @@ export default function Obras() {
                       <Activity className="h-5 w-5 text-blue-600 mx-auto mb-2" />
                       <span className="work-card-metric-value">{obra.progresso}%</span>
                       <span className="work-card-metric-label">Progresso</span>
-                    </div>
                   </div>
+                </div>
 
                   {/* Barra de Progresso */}
                   <div className="work-card-progress">
                     <div className="work-card-progress-info">
                       <span className="card-info-label">Atividades:</span>
                       <span className="card-info-value">{obra.atividadesConcluidas}/{obra.atividadesPrevistas}</span>
-                    </div>
-                    <div className="work-card-progress-bar">
-                      <div 
-                        className="card-progress-bar"
-                        style={{ width: `${obra.progresso}%` }}
-                      />
-                    </div>
                   </div>
+                    <div className="work-card-progress-bar">
+                    <div 
+                        className="card-progress-bar"
+                      style={{ width: `${obra.progresso}%` }}
+                    />
+                  </div>
+                </div>
 
                   {/* Datas */}
                   <div className="work-card-dates">
@@ -352,25 +352,25 @@ export default function Obras() {
                     <div className="work-card-date-item">
                       <p className="card-info-label">Previsão</p>
                       <p className="card-info-value text-sm">{format(new Date(obra.dataPrevisao), 'dd/MM/yyyy')}</p>
-                    </div>
                   </div>
-
-                  {/* Tipo de Orçamento */}
-                  {obra.tipoOrcamento && (
-                    <div className="card-info-item justify-center text-xs bg-muted/30 p-2 rounded-lg">
-                      {obra.tipoOrcamento === 'analitico' ? <Calculator className="h-4 w-4" /> : <DollarSign className="h-4 w-4" />}
-                      <span className="card-info-label">
-                        Orçamento {obra.tipoOrcamento === 'analitico' ? 'Analítico' : 'Sintético'}
-                      </span>
-                    </div>
-                  )}
                 </div>
 
+                  {/* Tipo de Orçamento */}
+                {obra.tipoOrcamento && (
+                    <div className="card-info-item justify-center text-xs bg-muted/30 p-2 rounded-lg">
+                    {obra.tipoOrcamento === 'analitico' ? <Calculator className="h-4 w-4" /> : <DollarSign className="h-4 w-4" />}
+                      <span className="card-info-label">
+                      Orçamento {obra.tipoOrcamento === 'analitico' ? 'Analítico' : 'Sintético'}
+                    </span>
+                  </div>
+                )}
+              </div>
+
                 {/* Ações Centralizadas */}
-                <div className="work-card-actions">
-                  <Button
+              <div className="work-card-actions">
+                <Button
                     variant="outline"
-                    size="sm"
+                  size="sm"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleEditObra(obra.id);
@@ -378,26 +378,26 @@ export default function Obras() {
                     className="flex-1"
                   >
                     <Edit className="h-4 w-4 mr-1" />
-                    Editar
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
+                  Editar
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDelete(obra.id);
                     }}
-                    disabled={isLoading}
+                  disabled={isLoading}
                     className="flex-1"
-                  >
+                >
                     <Trash2 className="h-4 w-4 mr-1" />
-                    Excluir
-                  </Button>
+                  Excluir
+                </Button>
                 </div>
               </div>
             </Card>
-            ))}
-          </div>
+          ))}
+        </div>
         )}
 
         {/* Estado vazio - nenhuma obra filtrada */}
@@ -405,7 +405,7 @@ export default function Obras() {
           <div className="content-center min-h-[400px]">
             <div className="text-center max-w-md mx-auto">
               <div className="mx-auto w-24 h-24 bg-muted rounded-full content-center mb-6">
-                <Activity className="h-12 w-12 text-muted-foreground" />
+              <Activity className="h-12 w-12 text-muted-foreground" />
               </div>
               <h3 className="text-xl font-semibold text-foreground mb-3">Nenhuma obra encontrada</h3>
               <p className="text-muted-foreground mb-6 text-balance">
@@ -441,8 +441,8 @@ export default function Obras() {
               </p>
               <Button onClick={() => navigate('/obras/nova')} className="btn-standard">
                 <Plus className="h-4 w-4 mr-2" />
-                Nova Obra
-              </Button>
+              Nova Obra
+            </Button>
             </div>
           </div>
         )}

@@ -1,385 +1,76 @@
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
   FileText, 
   Plus, 
-  MapPin, 
-  Camera, 
-  Upload, 
   Calendar,
   Users,
-  Wrench,
-  AlertTriangle,
-  Clock,
-  Package,
-  Save,
-  X,
   Building,
   Download,
   Loader2,
   Edit,
-  CheckCircle
+  Eye,
+  MapPin,
+  Cloud,
+  Hash,
+  FileDown,
+  Printer,
+  Share2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { rdoService, type CriarRDOCompleto, type RDO } from '@/services/rdoService';
-import { obraService } from '@/services/obraService';
-import { equipeService } from '@/services/equipeService';
-import { equipamentoService } from '@/services/equipamentoService';
-
-interface ImagemRDO {
-  id: string;
-  file: File;
-  url: string;
-  caption?: string;
-  obraId: string;
-}
-
-interface AtividadeRDO {
-  nome: string;
-  progresso: number;
-  observacoes: string;
-}
-
-interface EquipamentoRDO {
-  nome: string;
-  status: 'funcionando' | 'quebrado' | 'manutencao';
-  observacoes?: string;
-}
-
-interface RDOFormData {
-  project: string;
-  team: string;
-  activities: string;
-  plannedActivities: string;
-  materials: string;
-  weather: string;
-  responsible: string;
-  location: string;
-  photos: ImagemRDO[];
-  horasOciosas: number;
-  motivoOciosidade: string;
-  equipamentos: EquipamentoRDO[];
-  atividadesProgresso: AtividadeRDO[];
-  acidentes: string;
-  materiaisUtilizados: string;
-}
-
-// Simulando armazenamento de imagens por obra
-const imagensPorObra: { [obraId: string]: ImagemRDO[] } = {};
+import { rdoService, type RDO } from '@/services/rdoService';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 export default function RDO() {
+  const navigate = useNavigate();
   const { toast } = useToast();
-  const [modalAberto, setModalAberto] = useState(false);
-  const [carregando, setCarregando] = useState(false);
-  const [localizacaoCarregando, setLocalizacaoCarregando] = useState(false);
-
-  const [formData, setFormData] = useState<RDOFormData>({
-    project: '',
-    team: '',
-    activities: '',
-    plannedActivities: '',
-    materials: '',
-    weather: 'ensolarado',
-    responsible: '',
-    location: '',
-    photos: [],
-    horasOciosas: 0,
-    motivoOciosidade: '',
-    equipamentos: [],
-    atividadesProgresso: [],
-    acidentes: '',
-    materiaisUtilizados: ''
-  });
-
-  // Estados para dados do Supabase
-  const [obras, setObras] = useState<any[]>([]);
-  const [equipes, setEquipes] = useState<any[]>([]);
-  const [equipamentosDisponiveis, setEquipamentosDisponiveis] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [rdos, setRdos] = useState<RDO[]>([]);
-  const [carregandoDados, setCarregandoDados] = useState(true);
-  const [filtroStatus, setFiltroStatus] = useState<string>('');
-  const [filtroObra, setFiltroObra] = useState<string>('');
-  const [busca, setBusca] = useState('');
+  const [rdoSelecionado, setRdoSelecionado] = useState<RDO | null>(null);
+  const [modalVisualizacao, setModalVisualizacao] = useState(false);
 
-  // Filtrar RDOs baseado nos filtros selecionados
-  const rdosFiltrados = rdos.filter(rdo => {
-    const matchBusca = !busca || 
-      rdo.responsavel.toLowerCase().includes(busca.toLowerCase()) ||
-      rdo.atividades_executadas.toLowerCase().includes(busca.toLowerCase()) ||
-      rdo.obra?.nome.toLowerCase().includes(busca.toLowerCase());
-    
-    const matchStatus = !filtroStatus || rdo.status === filtroStatus;
-    const matchObra = !filtroObra || rdo.obra_id === filtroObra;
-    
-    return matchBusca && matchStatus && matchObra;
-  });
+  const carregarDados = async () => {
+    try {
+      setIsLoading(true);
+      
+      const rdosResponse = await rdoService.listarRDOs();
 
-  // Carregar dados do Supabase
-  useEffect(() => {
-    const carregarDados = async () => {
-      try {
-        setCarregandoDados(true);
-        
-        // Carregar obras
-        const { data: obrasData, error: obrasError } = await obraService.listarObras();
-        if (!obrasError && obrasData) {
-          setObras(obrasData);
-        }
-
-        // Carregar equipes
-        const { data: equipesData, error: equipesError } = await equipeService.listarEquipes();
-        if (!equipesError && equipesData) {
-          setEquipes(equipesData);
-        }
-
-        // Carregar equipamentos
-        const { data: equipamentosData, error: equipamentosError } = await equipamentoService.listarEquipamentos();
-        if (!equipamentosError && equipamentosData) {
-          setEquipamentosDisponiveis(equipamentosData);
-        }
-
-        // Carregar RDOs
-        const { data: rdosData, error: rdosError } = await rdoService.listarRDOs();
-        if (!rdosError && rdosData) {
-          setRdos(rdosData);
-        }
-      } catch (error) {
-        console.error('Erro ao carregar dados:', error);
-        toast({
-          title: "Erro ao carregar dados",
-          description: "Não foi possível carregar os dados. Tente novamente.",
-          variant: "destructive"
-        });
-      } finally {
-        setCarregandoDados(false);
+      if (rdosResponse.data) {
+        // Ordenar RDOs por data de criação (mais recente primeiro)
+        const rdosOrdenados = rdosResponse.data.sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        setRdos(rdosOrdenados);
       }
-    };
+      
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     carregarDados();
   }, []);
 
-  // Carregar atividades da obra selecionada
-  useEffect(() => {
-    if (formData.project) {
-      const obraSelecionada = obras.find(obra => obra.nome === formData.project);
-      if (obraSelecionada) {
-        // Atualizar localização automaticamente
-        setFormData(prev => ({
-          ...prev,
-          location: obraSelecionada.endereco,
-          atividadesProgresso: obraSelecionada.orcamento_analitico?.map((item: any) => ({
-            nome: item.descricao,
-            progresso: 0,
-            observacoes: ''
-          })) || []
-        }));
-      }
-    }
-  }, [formData.project, obras]);
-
-  const obterLocalizacao = async () => {
-    setLocalizacaoCarregando(true);
-    try {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          async (position) => {
-            const { latitude, longitude } = position.coords;
-            // Simular geocoding reverso
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            const endereco = `Lat: ${latitude.toFixed(6)}, Lng: ${longitude.toFixed(6)}`;
-            setFormData(prev => ({ ...prev, location: endereco }));
-            toast({
-              title: "Localização obtida!",
-              description: "Coordenadas atualizadas com sucesso."
-            });
-          },
-          (error) => {
-            toast({
-              title: "Erro de localização",
-              description: "Não foi possível obter sua localização.",
-              variant: "destructive"
-            });
-          }
-        );
-      }
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Erro ao obter localização.",
-        variant: "destructive"
-      });
-    } finally {
-      setLocalizacaoCarregando(false);
-    }
+  const calcularProgressoObra = (obraId: string) => {
+    const rdosObra = rdos.filter(rdo => rdo.obra_id === obraId);
+    if (rdosObra.length === 0) return 0;
+    return Math.min(rdosObra.length * 10, 100); // Simular progresso baseado em número de RDOs
   };
 
-  const adicionarEquipamento = () => {
-    setFormData(prev => ({
-      ...prev,
-      equipamentos: [...prev.equipamentos, { nome: '', status: 'funcionando', observacoes: '' }]
-    }));
+  const obterNumeroRDO = (index: number) => {
+    return String(rdos.length - index).padStart(3, '0');
   };
-
-  const removerEquipamento = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      equipamentos: prev.equipamentos.filter((_, i) => i !== index)
-    }));
-  };
-
-  const atualizarEquipamento = (index: number, campo: keyof EquipamentoRDO, valor: any) => {
-    const equipamentos = [...formData.equipamentos];
-    equipamentos[index] = { ...equipamentos[index], [campo]: valor };
-    setFormData(prev => ({ ...prev, equipamentos }));
-  };
-
-  const atualizarAtividade = (index: number, campo: keyof AtividadeRDO, valor: any) => {
-    const atividades = [...formData.atividadesProgresso];
-    atividades[index] = { ...atividades[index], [campo]: valor };
-    setFormData(prev => ({ ...prev, atividadesProgresso: atividades }));
-  };
-
-  const handleSalvarRDO = async (status: 'rascunho' | 'enviado') => {
-    if (!formData.project || !formData.team || !formData.responsible) {
-      toast({
-        title: "Campos obrigatórios",
-        description: "Preencha Obra, Equipe e Responsável para continuar.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setCarregando(true);
-
-    try {
-      // Encontrar IDs reais da obra e equipe
-      const obraSelecionada = obras.find(obra => obra.nome === formData.project);
-      const equipeSelecionada = equipes.find(equipe => equipe.nome === formData.team);
-
-      if (!obraSelecionada) {
-        throw new Error('Obra não encontrada');
-      }
-
-      if (!equipeSelecionada) {
-        throw new Error('Equipe não encontrada');
-      }
-
-      // Preparar dados do RDO para o Supabase
-      const rdoData: CriarRDOCompleto = {
-        obra_id: obraSelecionada.id,
-        equipe_id: equipeSelecionada.id,
-        data: new Date().toISOString().split('T')[0],
-        atividades_executadas: formData.activities,
-        atividades_planejadas: formData.plannedActivities,
-        materiais_utilizados: formData.materiaisUtilizados,
-        clima: formData.weather,
-        responsavel: formData.responsible,
-        localizacao: formData.location,
-        horas_ociosas: formData.horasOciosas,
-        motivo_ociosidade: formData.motivoOciosidade,
-        acidentes: formData.acidentes,
-        status: status,
-        observacoes: `Equipamentos: ${JSON.stringify(formData.equipamentos)}`,
-        progresso_atividades: formData.atividadesProgresso,
-        equipamentos_utilizados: formData.equipamentos,
-        imagens: formData.photos.map(photo => photo.file)
-      };
-
-      // Salvar RDO no Supabase usando rdoService
-      const { data, error } = await rdoService.criarRDO(rdoData);
-      
-      if (error) {
-        throw error;
-      }
-
-      // Atualizar lista de RDOs
-      if (data) {
-        setRdos(prev => [data, ...prev]);
-      }
-
-      toast({
-        title: status === 'enviado' ? "RDO enviado!" : "RDO salvo!",
-        description: status === 'enviado' 
-          ? "O RDO foi enviado e registrado com sucesso." 
-          : "O RDO foi salvo como rascunho."
-      });
-
-      handleFecharModal();
-    } catch (error: any) {
-      console.error('Erro ao salvar RDO:', error);
-      toast({
-        title: "Erro ao salvar",
-        description: error.message || "Não foi possível salvar o RDO. Tente novamente.",
-        variant: "destructive"
-      });
-    } finally {
-      setCarregando(false);
-    }
-  };
-
-  const handleFecharModal = () => {
-    setModalAberto(false);
-    setFormData({
-      project: '',
-      team: '',
-      activities: '',
-      plannedActivities: '',
-      materials: '',
-      weather: 'ensolarado',
-      responsible: '',
-      location: '',
-      photos: [],
-      horasOciosas: 0,
-      motivoOciosidade: '',
-      equipamentos: [],
-      atividadesProgresso: [],
-      acidentes: '',
-      materiaisUtilizados: ''
-    });
-  };
-
-  const recarregarRDOs = async () => {
-    try {
-      setCarregandoDados(true);
-      const { data: rdosData, error } = await rdoService.listarRDOs();
-      if (!error && rdosData) {
-        setRdos(rdosData);
-        toast({
-          title: "Dados atualizados",
-          description: "Lista de RDOs recarregada com sucesso."
-        });
-      } else {
-        toast({
-          title: "Erro ao recarregar",
-          description: "Não foi possível recarregar os dados.",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error('Erro ao recarregar RDOs:', error);
-      toast({
-        title: "Erro ao recarregar",
-        description: "Não foi possível recarregar os dados.",
-        variant: "destructive"
-      });
-    } finally {
-      setCarregandoDados(false);
-    }
-  };
-
-  const [rdoSelecionado, setRdoSelecionado] = useState<RDO | null>(null);
-  const [modalVisualizacao, setModalVisualizacao] = useState(false);
 
   const visualizarRDO = (rdo: RDO) => {
     setRdoSelecionado(rdo);
@@ -387,118 +78,49 @@ export default function RDO() {
   };
 
   const editarRDO = (rdo: RDO) => {
-    // Preencher formulário com dados do RDO para edição
-    const obraSelecionada = obras.find(obra => obra.id === rdo.obra_id);
-    const equipeSelecionada = equipes.find(equipe => equipe.id === rdo.equipe_id);
-    
-    if (obraSelecionada && equipeSelecionada) {
-      setFormData({
-        project: obraSelecionada.nome,
-        team: equipeSelecionada.nome,
-        activities: rdo.atividades_executadas,
-        plannedActivities: rdo.atividades_planejadas,
-        materials: rdo.materiais_utilizados,
-        weather: rdo.clima as any,
-        responsible: rdo.responsavel,
-        location: rdo.localizacao,
-        photos: [],
-        horasOciosas: rdo.horas_ociosas,
-        motivoOciosidade: rdo.motivo_ociosidade,
-        equipamentos: Array.isArray(rdo.equipamentos_utilizados) ? rdo.equipamentos_utilizados : [],
-        atividadesProgresso: Array.isArray(rdo.progresso_atividades) ? rdo.progresso_atividades : [],
-        acidentes: rdo.acidentes,
-        materiaisUtilizados: rdo.materiais_utilizados
-      });
-      
-      setModalAberto(true);
-      
-      toast({
-        title: "Modo de edição",
-        description: "Formulário preenchido com dados do RDO para edição."
-      });
-    } else {
-      toast({
-        title: "Erro ao editar",
-        description: "Não foi possível carregar os dados para edição.",
-        variant: "destructive"
-      });
-    }
+    toast({
+      title: "Funcionalidade em desenvolvimento",
+      description: "A edição de RDO estará disponível em breve.",
+    });
   };
 
-  const handleUploadFoto = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    if (files.length > 0) {
-      const obraSelecionada = obras.find(obra => obra.nome === formData.project);
-      const obraId = obraSelecionada?.id || '';
+  const exportarRDOPDF = (rdo: RDO) => {
+    const conteudo = `
+METACONSTRUTOR - RELATÓRIO DIÁRIO DE OBRA
 
-      const novasImagens: ImagemRDO[] = files.map((file, index) => ({
-        id: `${Date.now()}-${index}`,
-        file,
-        url: URL.createObjectURL(file),
-        obraId
-      }));
-
-      setFormData(prev => ({ 
-        ...prev, 
-        photos: [...prev.photos, ...novasImagens] 
-      }));
-
-      toast({
-        title: "Fotos adicionadas",
-        description: `${files.length} foto(s) foram adicionadas ao RDO.`
-      });
-    }
-  };
-
-  const removerFoto = (fotoId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      photos: prev.photos.filter(photo => photo.id !== fotoId)
-    }));
-  };
-
-  const exportarRDO = (rdo: RDO) => {
-    // Gerar documento PDF do RDO com cabeçalho padrão
-    const conteudoPDF = `
-METACONSTRUTOR - SISTEMA DE GESTÃO DE OBRAS
-Data de Emissão: ${new Date().toLocaleDateString('pt-BR')}
-Responsável Técnico: João Silva (CREA: 123456)
-
-========== RELATÓRIO DIÁRIO DE OBRA ==========
-
-Obra: ${rdo.obra?.nome || 'Não definido'}
-Data: ${new Date(rdo.data).toLocaleDateString('pt-BR')}
-Equipe: ${rdo.equipe?.nome || 'Não definido'}
+Obra: ${rdo.obra?.nome || 'N/A'}
+Data: ${format(new Date(rdo.data), 'dd/MM/yyyy', { locale: ptBR })}
 Responsável: ${rdo.responsavel}
+Clima: ${rdo.clima}
+Localização: ${rdo.localizacao || 'Não informada'}
 
-Atividades Executadas:
+ATIVIDADES EXECUTADAS:
 ${rdo.atividades_executadas}
 
-Atividades Planejadas:
+ATIVIDADES PLANEJADAS:
 ${rdo.atividades_planejadas}
 
-Materiais Utilizados:
+MATERIAIS UTILIZADOS:
 ${rdo.materiais_utilizados}
 
-Clima: ${rdo.clima}
-Localização: ${rdo.localizacao}
+HORAS TRABALHADAS: ${rdo.horas_trabalhadas || 8}h
+HORAS OCIOSAS: ${rdo.horas_ociosas || 0}h
+${rdo.motivo_ociosidade ? `MOTIVO OCIOSIDADE: ${rdo.motivo_ociosidade}` : ''}
 
-Horas Ociosas: ${rdo.horas_ociosas}h
-${rdo.motivo_ociosidade ? `Motivo: ${rdo.motivo_ociosidade}` : ''}
+${rdo.ocorrencias ? `OCORRÊNCIAS:\n${rdo.ocorrencias}` : ''}
+${rdo.acidentes ? `ACIDENTES:\n${rdo.acidentes}` : ''}
 
-${rdo.acidentes ? `Acidentes/Ocorrências: ${rdo.acidentes}` : ''}
+OBSERVAÇÕES:
+${rdo.observacoes || 'Nenhuma observação'}
 
-Status: ${rdo.status === 'enviado' ? 'Enviado' : 
-         rdo.status === 'aprovado' ? 'Aprovado' :
-         rdo.status === 'rejeitado' ? 'Rejeitado' : 'Rascunho'}
-
-${rdo.observacoes ? `Observações: ${rdo.observacoes}` : ''}
+Status: ${rdo.status}
+Data de Criação: ${format(new Date(rdo.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
 
 -----------------------------------------
 Este documento foi gerado automaticamente pelo sistema MetaConstrutor
     `.trim();
 
-    const blob = new Blob([conteudoPDF], { type: 'text/plain' });
+    const blob = new Blob([conteudo], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -510,847 +132,408 @@ Este documento foi gerado automaticamente pelo sistema MetaConstrutor
 
     toast({
       title: "RDO exportado!",
-      description: "O arquivo foi baixado com sucesso."
+      description: "O arquivo PDF foi baixado com sucesso."
     });
   };
 
+  const baixarRelatorio = (rdo: RDO) => {
+    const conteudo = `
+RELATÓRIO COMPLETO - RDO ${obterNumeroRDO(rdos.indexOf(rdo))}
+
+==================================================
+METACONSTRUTOR - RELATÓRIO DIÁRIO DE OBRA
+==================================================
+
+INFORMAÇÕES BÁSICAS:
+- Obra: ${rdo.obra?.nome || 'N/A'}
+- Data: ${format(new Date(rdo.data), 'dd/MM/yyyy', { locale: ptBR })}
+- Responsável: ${rdo.responsavel}
+- Turno: ${rdo.turno || 'Não informado'}
+- Clima: ${rdo.clima}
+- Localização: ${rdo.localizacao || 'Não informada'}
+- Status: ${rdo.status}
+
+RECURSOS HUMANOS:
+- Número de colaboradores: ${rdo.numero_colaboradores || 'Não informado'}
+- Horas trabalhadas: ${rdo.horas_trabalhadas || 8}h
+- Horas ociosas: ${rdo.horas_ociosas || 0}h
+${rdo.motivo_ociosidade ? `- Motivo da ociosidade: ${rdo.motivo_ociosidade}` : ''}
+
+ATIVIDADES:
+Executadas:
+${rdo.atividades_executadas}
+
+Planejadas:
+${rdo.atividades_planejadas}
+
+MATERIAIS E RECURSOS:
+${rdo.materiais_utilizados}
+
+${rdo.ocorrencias ? `OCORRÊNCIAS:\n${rdo.ocorrencias}\n` : ''}
+${rdo.acidentes ? `ACIDENTES:\n${rdo.acidentes}\n` : ''}
+
+OBSERVAÇÕES GERAIS:
+${rdo.observacoes || 'Nenhuma observação'}
+
+==================================================
+Relatório gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+Sistema MetaConstrutor
+==================================================
+    `.trim();
+
+    const blob = new Blob([conteudo], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Relatorio_RDO_${rdo.obra?.nome || 'Obra'}_${rdo.data}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "Relatório baixado!",
+      description: "O relatório completo foi gerado com sucesso."
+    });
+  };
+
+  const compartilharRDO = (rdo: RDO) => {
+    if (navigator.share) {
+      navigator.share({
+        title: `RDO - ${rdo.obra?.nome}`,
+        text: `RDO da obra ${rdo.obra?.nome} do dia ${format(new Date(rdo.data), 'dd/MM/yyyy', { locale: ptBR })}`,
+        url: window.location.href
+      });
+    } else {
+      // Fallback para navegadores que não suportam Web Share API
+      navigator.clipboard.writeText(window.location.href);
+      toast({
+        title: "Link copiado!",
+        description: "O link do RDO foi copiado para a área de transferência."
+      });
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-[#FF5722]" />
+            <p className="text-foreground">Carregando RDOs...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
-      <div className="section-container animate-fade-in">
+      <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
         {/* Header */}
-        <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-start section-spacing">
-          <div className="space-y-2">
-            <h1 className="page-title">RDO - Relatório Diário de Obra</h1>
-            <p className="text-sm sm:text-base text-muted-foreground">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">RDO - Relatório Diário de Obra</h1>
+            <p className="text-muted-foreground mt-1">
               Registre e acompanhe as atividades diárias das obras
             </p>
           </div>
           
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={recarregarRDOs} disabled={carregandoDados}>
-              <Loader2 className={`h-4 w-4 ${carregandoDados ? 'animate-spin' : ''}`} />
-              Recarregar
-            </Button>
-            <Dialog open={modalAberto} onOpenChange={setModalAberto}>
-              <DialogTrigger asChild>
-                <Button className="btn-standard">
-                  <Plus className="h-4 w-4" />
-                  Novo RDO
-                </Button>
-              </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Novo RDO
-                </DialogTitle>
-                <DialogDescription>
-                  Preencha as informações do relatório diário de obra
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="grid gap-6 py-4">
-                {/* Informações Básicas */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Informações Básicas</h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="project">Obra *</Label>
-                      <Select value={formData.project} onValueChange={(value) => setFormData({...formData, project: value})}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione a obra" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {obras.map(obra => (
-                            <SelectItem key={obra.id} value={obra.nome}>{obra.nome}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="team">Equipe *</Label>
-                      <Select value={formData.team} onValueChange={(value) => setFormData({...formData, team: value})}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione a equipe" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {equipes.map(equipe => (
-                            <SelectItem key={equipe.id} value={equipe.nome}>{equipe.nome}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="responsible">Responsável *</Label>
-                      <Input
-                        id="responsible"
-                        value={formData.responsible}
-                        onChange={(e) => setFormData({...formData, responsible: e.target.value})}
-                        placeholder="Nome do responsável"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="weather">Clima</Label>
-                      <Select value={formData.weather} onValueChange={(value) => setFormData({...formData, weather: value})}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="ensolarado">Ensolarado</SelectItem>
-                          <SelectItem value="nublado">Nublado</SelectItem>
-                          <SelectItem value="chuvoso">Chuvoso</SelectItem>
-                          <SelectItem value="parcialmente-nublado">Parcialmente Nublado</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="location">Localização</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="location"
-                        value={formData.location}
-                        onChange={(e) => setFormData({...formData, location: e.target.value})}
-                        placeholder="Endereço ou coordenadas"
-                        className="flex-1"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={obterLocalizacao}
-                        disabled={localizacaoCarregando}
-                      >
-                        <MapPin className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Atividades com Progresso */}
-                {formData.atividadesProgresso.length > 0 && (
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Progresso das Atividades</h3>
-                    
-                    {formData.atividadesProgresso.map((atividade, index) => (
-                      <div key={index} className="space-y-3 p-4 border rounded-lg">
-                        <div className="flex items-center justify-between">
-                          <h4 className="font-medium">{atividade.nome}</h4>
-                          <Badge variant="outline">{atividade.progresso}%</Badge>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label>Progresso (%)</Label>
-                          <div className="flex items-center gap-3">
-                            <Progress value={atividade.progresso} className="flex-1" />
-                            <Input
-                              type="number"
-                              min="0"
-                              max="100"
-                              value={atividade.progresso}
-                              onChange={(e) => atualizarAtividade(index, 'progresso', Number(e.target.value))}
-                              className="w-20"
-                            />
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label>Observações</Label>
-                          <Textarea
-                            value={atividade.observacoes}
-                            onChange={(e) => atualizarAtividade(index, 'observacoes', e.target.value)}
-                            placeholder="Observações sobre a atividade"
-                            rows={2}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <Separator />
-
-                {/* Equipamentos */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-medium">Equipamentos Utilizados</h3>
-                    <Button type="button" variant="outline" size="sm" onClick={adicionarEquipamento}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Adicionar
-                    </Button>
-                  </div>
-
-                  {formData.equipamentos.map((equipamento, index) => (
-                    <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-3 p-3 border rounded-lg">
-                      <Select value={equipamento.nome} onValueChange={(value) => atualizarEquipamento(index, 'nome', value)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Equipamento" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {equipamentosDisponiveis.map(equip => (
-                            <SelectItem key={equip.id} value={equip.nome}>{equip.nome}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      
-                      <Select value={equipamento.status} onValueChange={(value) => atualizarEquipamento(index, 'status', value)}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="funcionando">Funcionando</SelectItem>
-                          <SelectItem value="quebrado">Quebrado</SelectItem>
-                          <SelectItem value="manutencao">Manutenção</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      
-                      <Input
-                        placeholder="Observações"
-                        value={equipamento.observacoes || ''}
-                        onChange={(e) => atualizarEquipamento(index, 'observacoes', e.target.value)}
-                      />
-                      
-                      <Button type="button" variant="outline" size="sm" onClick={() => removerEquipamento(index)}>
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-
-                <Separator />
-
-                {/* Horas Ociosas e Materiais */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Horas Ociosas</h3>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="horasOciosas">Quantidade de Horas</Label>
-                      <Input
-                        id="horasOciosas"
-                        type="number"
-                        min="0"
-                        max="24"
-                        value={formData.horasOciosas}
-                        onChange={(e) => setFormData({...formData, horasOciosas: Number(e.target.value)})}
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="motivoOciosidade">Motivo da Ociosidade</Label>
-                      <Textarea
-                        id="motivoOciosidade"
-                        value={formData.motivoOciosidade}
-                        onChange={(e) => setFormData({...formData, motivoOciosidade: e.target.value})}
-                        placeholder="Descreva o motivo da ociosidade"
-                        rows={3}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Materiais Utilizados</h3>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="materiaisUtilizados">Lista de Materiais</Label>
-                      <Textarea
-                        id="materiaisUtilizados"
-                        value={formData.materiaisUtilizados}
-                        onChange={(e) => setFormData({...formData, materiaisUtilizados: e.target.value})}
-                        placeholder="Ex: Concreto - 5m³, Aço CA-50 - 200kg"
-                        rows={5}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Ocorrências/Acidentes */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Ocorrências e Acidentes</h3>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="acidentes">Relato de Ocorrências</Label>
-                    <Textarea
-                      id="acidentes"
-                      value={formData.acidentes}
-                      onChange={(e) => setFormData({...formData, acidentes: e.target.value})}
-                      placeholder="Descreva qualquer acidente, incidente ou ocorrência relevante"
-                      rows={4}
-                    />
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Atividades Gerais */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Atividades Executadas</h3>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="activities">Descrição das Atividades</Label>
-                    <Textarea
-                      id="activities"
-                      value={formData.activities}
-                      onChange={(e) => setFormData({...formData, activities: e.target.value})}
-                      placeholder="Descreva as atividades executadas no dia"
-                      rows={4}
-                    />
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Fotos */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Evidências Fotográficas</h3>
-                  
-                  <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
-                    <Camera className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Adicione fotos das atividades executadas
-                    </p>
-                    <Button type="button" variant="outline" onClick={() => document.getElementById('photo-upload')?.click()}>
-                      <Upload className="mr-2 h-4 w-4" />
-                      Selecionar Fotos
-                    </Button>
-                    <input
-                      id="photo-upload"
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={handleUploadFoto}
-                      className="hidden"
-                    />
-                  </div>
-                  
-                  {formData.photos.length > 0 && (
-                    <div className="space-y-3">
-                      <p className="text-sm font-medium">
-                        {formData.photos.length} foto(s) adicionada(s)
-                      </p>
-                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                        {formData.photos.map((photo) => (
-                          <div key={photo.id} className="relative group">
-                            <img
-                              src={photo.url}
-                              alt="Foto do RDO"
-                              className="w-full h-24 object-cover rounded-lg border"
-                            />
-                            <Button
-                              type="button"
-                              variant="destructive"
-                              size="sm"
-                              className="absolute top-1 right-1 h-6 w-6 rounded-full p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={() => removerFoto(photo.id)}
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <Separator />
-
-              <div className="flex flex-col sm:flex-row gap-3 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleFecharModal}
-                  className="flex-1"
-                  disabled={carregando}
-                >
-                  <X className="mr-2 h-4 w-4" />
-                  Cancelar
-                </Button>
-                <Button
-                  onClick={() => handleSalvarRDO('rascunho')}
-                  disabled={carregando}
-                  className="flex-1"
-                >
-                  <Save className="mr-2 h-4 w-4" />
-                  Salvar Rascunho
-                </Button>
-                <Button
-                  onClick={() => handleSalvarRDO('enviado')}
-                  disabled={carregando}
-                  className="flex-1 btn-standard"
-                >
-                  <FileText className="mr-2 h-4 w-4" />
-                  Enviar RDO
-                </Button>
-              </div>
-            </DialogContent>
-            </Dialog>
-          </div>
+          <Button 
+            onClick={() => navigate('/rdo/novo')}
+            className="w-full sm:w-auto bg-[#FF5722] hover:bg-[#E64A19] text-white"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Novo RDO
+          </Button>
         </div>
 
-        {/* Filtros */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="text-lg">Filtros</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="busca">Buscar</Label>
-                <Input
-                  id="busca"
-                  placeholder="Buscar por responsável ou atividade..."
-                  value={busca}
-                  onChange={(e) => setBusca(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="filtroObra">Obra</Label>
-                <Select value={filtroObra} onValueChange={setFiltroObra}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todas as obras" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">Todas as obras</SelectItem>
-                    {obras.map(obra => (
-                      <SelectItem key={obra.id} value={obra.id}>{obra.nome}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="filtroStatus">Status</Label>
-                <Select value={filtroStatus} onValueChange={setFiltroStatus}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todos os status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">Todos os status</SelectItem>
-                    <SelectItem value="rascunho">Rascunho</SelectItem>
-                    <SelectItem value="enviado">Enviado</SelectItem>
-                    <SelectItem value="aprovado">Aprovado</SelectItem>
-                    <SelectItem value="rejeitado">Rejeitado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Lista de RDOs */}
-        {!carregandoDados && rdos.length > 0 && (
-          <div className="mb-4">
-            <p className="text-sm text-muted-foreground">
-              Mostrando {rdosFiltrados.length} de {rdos.length} RDOs
-            </p>
-          </div>
-        )}
-        
-        {carregandoDados ? (
-          <div className="flex justify-center items-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            <span className="ml-2 text-muted-foreground">Carregando RDOs...</span>
+        {rdos.length === 0 ? (
+          <div className="content-center min-h-[400px]">
+            <div className="text-center max-w-md mx-auto">
+              <div className="mx-auto w-24 h-24 bg-muted rounded-full content-center mb-6">
+                <FileText className="h-12 w-12 text-muted-foreground" />
+              </div>
+              <h3 className="text-xl font-semibold text-foreground mb-3">Nenhum RDO encontrado</h3>
+              <p className="text-muted-foreground mb-6 text-balance">
+                Comece criando seu primeiro RDO para registrar as atividades diárias das obras
+              </p>
+              <Button 
+                onClick={() => navigate('/rdo/novo')} 
+                className="bg-[#FF5722] hover:bg-[#E64A19] text-white"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Novo RDO
+              </Button>
+            </div>
           </div>
         ) : (
-          <div className="grid-responsive">
-            {rdosFiltrados.map((rdo) => (
-              <Card key={rdo.id} className="card-standard">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1 flex-1">
-                      <CardTitle className="text-lg">{rdo.obra?.nome}</CardTitle>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Calendar className="h-4 w-4" />
-                        <span>{new Date(rdo.data).toLocaleDateString('pt-BR')}</span>
-                      </div>
-                    </div>
-                    <Badge variant={
-                      rdo.status === 'enviado' ? 'default' : 
-                      rdo.status === 'aprovado' ? 'success' :
-                      rdo.status === 'rejeitado' ? 'destructive' : 'secondary'
-                    }>
-                      {rdo.status === 'enviado' ? 'Enviado' : 
-                       rdo.status === 'aprovado' ? 'Aprovado' :
-                       rdo.status === 'rejeitado' ? 'Rejeitado' : 'Rascunho'}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">Equipe:</span>
-                      <span className="truncate">{rdo.equipe?.nome}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">Responsável:</span>
-                      <span className="truncate">{rdo.responsavel}</span>
-                    </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+            {rdos.map((rdo, index) => (
+              <Card key={rdo.id} className="centered-card interactive-hover border-l-4 border-l-[#FF5722]">
+                {/* Número do RDO */}
+                <div className="card-status-badge">
+                  <Badge variant="outline" className="bg-[#FF5722] text-white border-[#FF5722]">
+                    <Hash className="h-3 w-3 mr-1" />
+                    RDO {obterNumeroRDO(index)}
+                  </Badge>
+                </div>
+
+                {/* Header Centralizado */}
+                <div className="centered-card-header">
+                  <div className="content-center mb-2">
+                    <Building className="h-5 w-5 text-[#FF5722] mr-2" />
+                    <CardTitle className="card-title-centered">
+                      {rdo.obra?.nome || 'Obra não definida'}
+                    </CardTitle>
                   </div>
                   
-                  <p className="text-sm text-muted-foreground line-clamp-2">
-                    {rdo.atividades_executadas}
-                  </p>
+                  <div className="card-subtitle-centered">
+                    <div className="card-info-item">
+                      <Calendar className="h-4 w-4" />
+                      <span>{format(new Date(rdo.data), 'dd/MM/yyyy', { locale: ptBR })}</span>
+                    </div>
+                  </div>
 
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => visualizarRDO(rdo)}>
-                      Visualizar
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => editarRDO(rdo)}>
-                      Editar
-                    </Button>
+                  <Badge 
+                    variant={rdo.status === 'aprovado' ? 'default' : 'secondary'}
+                    className={rdo.status === 'aprovado' ? 'bg-green-100 text-green-800' : ''}
+                  >
+                    {rdo.status === 'enviado' ? 'Enviado' : 
+                     rdo.status === 'aprovado' ? 'Aprovado' :
+                     rdo.status === 'rejeitado' ? 'Rejeitado' : 'Rascunho'}
+                  </Badge>
+                </div>
+                
+                {/* Conteúdo Organizado */}
+                <div className="centered-card-content">
+                  <div className="centered-card-info">
+                    {/* Informações Principais */}
+                    <div className="space-y-3">
+                      <div className="card-info-item">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <span className="card-info-label">Responsável:</span>
+                        <span className="card-info-value truncate">{rdo.responsavel}</span>
+                      </div>
+                      
+                      <div className="card-info-item">
+                        <Cloud className="h-4 w-4 text-muted-foreground" />
+                        <span className="card-info-label">Clima:</span>
+                        <span className="card-info-value capitalize">{rdo.clima}</span>
+                      </div>
+                      
+                      {rdo.localizacao && (
+                        <div className="card-info-item">
+                          <MapPin className="h-4 w-4 text-muted-foreground" />
+                          <span className="card-info-label">Local:</span>
+                          <span className="card-info-value truncate">{rdo.localizacao}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Progresso da Obra */}
+                    <div className="text-center">
+                      <div className="content-between mb-2">
+                        <span className="card-info-label">Progresso da Obra</span>
+                        <span className="card-info-value">
+                          {calcularProgressoObra(rdo.obra_id)}%
+                        </span>
+                      </div>
+                      <div className="card-progress">
+                        <div 
+                          className="card-progress-bar" 
+                          style={{ width: `${calcularProgressoObra(rdo.obra_id)}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Ações Centralizadas */}
+                  <div className="centered-card-actions">
+                    {/* Ações Principais */}
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => visualizarRDO(rdo)}
+                        className="flex-1"
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        Visualizar
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => editarRDO(rdo)}
+                        className="flex-1"
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        Editar
+                      </Button>
+                    </div>
+
+                    {/* Ações Secundárias */}
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => exportarRDOPDF(rdo)}
+                        className="flex-1"
+                      >
+                        <Printer className="h-4 w-4 mr-1" />
+                        PDF
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => baixarRelatorio(rdo)}
+                        className="flex-1"
+                      >
+                        <FileDown className="h-4 w-4 mr-1" />
+                        Baixar
+                      </Button>
+                    </div>
+
+                    {/* Compartilhar */}
                     <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => exportarRDO(rdo)}
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => compartilharRDO(rdo)}
+                      className="w-full"
                     >
-                      <Download className="h-4 w-4 mr-1" />
-                      PDF
+                      <Share2 className="h-4 w-4 mr-2" />
+                      Compartilhar
                     </Button>
                   </div>
-                </CardContent>
+                </div>
               </Card>
             ))}
           </div>
         )}
 
-        {rdosFiltrados.length === 0 && !carregandoDados && (
-          <div className="text-center py-12">
-            <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium mb-2">
-              {rdos.length === 0 ? 'Nenhum RDO encontrado' : 'Nenhum RDO corresponde aos filtros'}
-            </h3>
-            <p className="text-muted-foreground mb-4">
-              {rdos.length === 0 ? 'Comece criando seu primeiro RDO' : 'Tente ajustar os filtros ou limpar a busca'}
-            </p>
-            <Button onClick={() => setModalAberto(true)} className="btn-standard">
-              <Plus className="mr-2 h-4 w-4" />
-              Novo RDO
-            </Button>
-          </div>
-        )}
-      </div>
-
-      {/* Modal de Visualização Detalhada do RDO */}
-      <Dialog open={modalVisualizacao} onOpenChange={setModalVisualizacao}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-primary" />
-              Visualização Detalhada do RDO
-            </DialogTitle>
-            <DialogDescription>
-              {rdoSelecionado && `RDO da obra ${rdoSelecionado.obra?.nome} - ${new Date(rdoSelecionado.data).toLocaleDateString('pt-BR')}`}
-            </DialogDescription>
-          </DialogHeader>
-
-          {rdoSelecionado && (
-            <div className="space-y-6">
-              {/* Informações Gerais */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Informações Gerais</CardTitle>
-                </CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Modal de Visualização */}
+        <Dialog open={modalVisualizacao} onOpenChange={setModalVisualizacao}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-foreground">
+                RDO {rdoSelecionado ? obterNumeroRDO(rdos.indexOf(rdoSelecionado)) : ''} - {rdoSelecionado?.obra?.nome}
+              </DialogTitle>
+            </DialogHeader>
+            
+            {rdoSelecionado && (
+              <div className="space-y-6">
+                {/* Informações Básicas */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-sm font-medium text-muted-foreground">Obra</Label>
-                    <p className="text-sm">{rdoSelecionado.obra?.nome}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-muted-foreground">Equipe</Label>
-                    <p className="text-sm">{rdoSelecionado.equipe?.nome}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-muted-foreground">Data</Label>
-                    <p className="text-sm">{new Date(rdoSelecionado.data).toLocaleDateString('pt-BR')}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-muted-foreground">Responsável</Label>
-                    <p className="text-sm">{rdoSelecionado.responsavel}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-muted-foreground">Clima</Label>
-                    <p className="text-sm capitalize">{rdoSelecionado.clima}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-muted-foreground">Status</Label>
-                    <Badge variant={
-                      rdoSelecionado.status === 'aprovado' ? 'default' :
-                      rdoSelecionado.status === 'enviado' ? 'secondary' :
-                      rdoSelecionado.status === 'rejeitado' ? 'destructive' : 'outline'
-                    }>
-                      {rdoSelecionado.status === 'aprovado' ? 'Aprovado' :
-                       rdoSelecionado.status === 'enviado' ? 'Enviado' :
-                       rdoSelecionado.status === 'rejeitado' ? 'Rejeitado' : 'Rascunho'}
-                    </Badge>
-                  </div>
-                  <div className="col-span-2">
-                    <Label className="text-sm font-medium text-muted-foreground">Localização</Label>
-                    <p className="text-sm">{rdoSelecionado.localizacao}</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Atividades */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Atividades Executadas</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm whitespace-pre-wrap">{rdoSelecionado.atividades_executadas}</p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Atividades Planejadas</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm whitespace-pre-wrap">{rdoSelecionado.atividades_planejadas}</p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Progresso das Atividades */}
-              {rdoSelecionado.progresso_atividades && Array.isArray(rdoSelecionado.progresso_atividades) && rdoSelecionado.progresso_atividades.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Progresso das Atividades</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {rdoSelecionado.progresso_atividades.map((atividade: any, index: number) => (
-                      <div key={index} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-sm font-medium">{atividade.nome}</Label>
-                          <span className="text-sm text-muted-foreground">{atividade.progresso}%</span>
-                        </div>
-                        <Progress value={atividade.progresso} className="h-2" />
-                        {atividade.observacoes && (
-                          <p className="text-xs text-muted-foreground">{atividade.observacoes}</p>
-                        )}
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Equipamentos */}
-              {rdoSelecionado.equipamentos_utilizados && Array.isArray(rdoSelecionado.equipamentos_utilizados) && rdoSelecionado.equipamentos_utilizados.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Equipamentos Utilizados</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {rdoSelecionado.equipamentos_utilizados.map((equipamento: any, index: number) => (
-                        <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div>
-                            <p className="font-medium">{equipamento.nome}</p>
-                            {equipamento.observacoes && (
-                              <p className="text-xs text-muted-foreground">{equipamento.observacoes}</p>
-                            )}
-                          </div>
-                          <Badge variant={
-                            equipamento.status === 'funcionando' ? 'default' :
-                            equipamento.status === 'quebrado' ? 'destructive' : 'secondary'
-                          }>
-                            {equipamento.status === 'funcionando' ? 'Funcionando' :
-                             equipamento.status === 'quebrado' ? 'Quebrado' : 'Manutenção'}
-                          </Badge>
-                        </div>
-                      ))}
+                    <h3 className="font-semibold text-foreground mb-2">Informações Básicas</h3>
+                    <div className="space-y-1 text-sm">
+                      <p><span className="font-medium text-foreground">Data:</span> <span className="text-muted-foreground">{format(new Date(rdoSelecionado.data), 'dd/MM/yyyy', { locale: ptBR })}</span></p>
+                      <p><span className="font-medium text-foreground">Responsável:</span> <span className="text-muted-foreground">{rdoSelecionado.responsavel}</span></p>
+                      <p><span className="font-medium text-foreground">Clima:</span> <span className="text-muted-foreground capitalize">{rdoSelecionado.clima}</span></p>
+                      <p><span className="font-medium text-foreground">Status:</span> <span className="text-muted-foreground">{rdoSelecionado.status}</span></p>
                     </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Materiais e Outros */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Materiais Utilizados</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm whitespace-pre-wrap">{rdoSelecionado.materiais_utilizados || 'Nenhum material registrado'}</p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Horas Ociosas</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Total de horas:</span>
-                      <span className="text-lg font-bold text-orange-600">{rdoSelecionado.horas_ociosas}h</span>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground mb-2">Recursos</h3>
+                    <div className="space-y-1 text-sm">
+                      <p><span className="font-medium text-foreground">Horas trabalhadas:</span> <span className="text-muted-foreground">{rdoSelecionado.horas_trabalhadas || 8}h</span></p>
+                      <p><span className="font-medium text-foreground">Horas ociosas:</span> <span className="text-muted-foreground">{rdoSelecionado.horas_ociosas || 0}h</span></p>
+                      <p><span className="font-medium text-foreground">Colaboradores:</span> <span className="text-muted-foreground">{rdoSelecionado.numero_colaboradores || 'Não informado'}</span></p>
+                      {rdoSelecionado.localizacao && (
+                        <p><span className="font-medium text-foreground">Localização:</span> <span className="text-muted-foreground">{rdoSelecionado.localizacao}</span></p>
+                      )}
                     </div>
-                    {rdoSelecionado.motivo_ociosidade && (
-                      <div>
-                        <Label className="text-sm font-medium text-muted-foreground">Motivo:</Label>
-                        <p className="text-sm">{rdoSelecionado.motivo_ociosidade}</p>
+                  </div>
+                </div>
+
+                {/* Atividades */}
+                <div>
+                  <h3 className="font-semibold text-foreground mb-2">Atividades Executadas</h3>
+                  <p className="text-sm text-muted-foreground bg-muted p-3 rounded-lg">
+                    {rdoSelecionado.atividades_executadas}
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold text-foreground mb-2">Atividades Planejadas</h3>
+                  <p className="text-sm text-muted-foreground bg-muted p-3 rounded-lg">
+                    {rdoSelecionado.atividades_planejadas}
+                  </p>
+                </div>
+
+                {/* Materiais */}
+                {rdoSelecionado.materiais_utilizados && (
+                  <div>
+                    <h3 className="font-semibold text-foreground mb-2">Materiais Utilizados</h3>
+                    <p className="text-sm text-muted-foreground bg-muted p-3 rounded-lg">
+                      {rdoSelecionado.materiais_utilizados}
+                    </p>
+                  </div>
+                )}
+
+                {/* Ocorrências */}
+                {(rdoSelecionado.ocorrencias || rdoSelecionado.acidentes) && (
+                  <div>
+                    <h3 className="font-semibold text-foreground mb-2">Ocorrências e Acidentes</h3>
+                    {rdoSelecionado.ocorrencias && (
+                      <div className="mb-2">
+                        <p className="text-sm font-medium text-foreground">Ocorrências:</p>
+                        <p className="text-sm text-muted-foreground bg-muted p-3 rounded-lg">
+                          {rdoSelecionado.ocorrencias}
+                        </p>
                       </div>
                     )}
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Acidentes e Observações */}
-              {(rdoSelecionado.acidentes || rdoSelecionado.observacoes) && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {rdoSelecionado.acidentes && (
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-lg text-red-600">Acidentes/Ocorrências</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm whitespace-pre-wrap">{rdoSelecionado.acidentes}</p>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {rdoSelecionado.observacoes && (
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-lg">Observações</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm whitespace-pre-wrap">{rdoSelecionado.observacoes}</p>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
-              )}
-
-              {/* Imagens */}
-              {rdoSelecionado.imagens && rdoSelecionado.imagens.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Imagens Anexadas</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                      {rdoSelecionado.imagens.map((imagem: any, index: number) => (
-                        <div key={index} className="space-y-2">
-                          <div className="aspect-square border rounded-lg overflow-hidden bg-muted">
-                            <img
-                              src={imagem.url}
-                              alt={imagem.caption || `Imagem ${index + 1}`}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.src = '/placeholder.svg';
-                              }}
-                            />
-                          </div>
-                          {imagem.caption && (
-                            <p className="text-xs text-muted-foreground text-center">{imagem.caption}</p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Ações do RDO */}
-              <div className="flex flex-wrap gap-3 pt-4 border-t">
-                <Button
-                  variant="outline"
-                  onClick={() => editarRDO(rdoSelecionado)}
-                  className="flex-1 sm:flex-none"
-                >
-                  <Edit className="h-4 w-4 mr-2" />
-                  Editar
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => exportarRDO(rdoSelecionado)}
-                  className="flex-1 sm:flex-none"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Exportar
-                </Button>
-                {rdoSelecionado.status === 'enviado' && (
-                  <>
-                    <Button
-                      variant="default"
-                      onClick={() => {
-                        rdoService.aprovarRDO(rdoSelecionado.id).then(({ data, error }) => {
-                          if (error) {
-                            toast({
-                              title: "Erro ao aprovar",
-                              description: "Não foi possível aprovar o RDO.",
-                              variant: "destructive"
-                            });
-                          } else {
-                            toast({
-                              title: "RDO aprovado!",
-                              description: "O RDO foi aprovado com sucesso."
-                            });
-                            recarregarRDOs();
-                            setModalVisualizacao(false);
-                          }
-                        });
-                      }}
-                      className="flex-1 sm:flex-none"
-                    >
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Aprovar
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      onClick={() => {
-                        const motivo = prompt('Motivo da rejeição:');
-                        if (motivo) {
-                          rdoService.rejeitarRDO(rdoSelecionado.id, motivo).then(({ data, error }) => {
-                            if (error) {
-                              toast({
-                                title: "Erro ao rejeitar",
-                                description: "Não foi possível rejeitar o RDO.",
-                                variant: "destructive"
-                              });
-                            } else {
-                              toast({
-                                title: "RDO rejeitado!",
-                                description: "O RDO foi rejeitado com sucesso."
-                              });
-                              recarregarRDOs();
-                              setModalVisualizacao(false);
-                            }
-                          });
-                        }
-                      }}
-                      className="flex-1 sm:flex-none"
-                    >
-                      <X className="h-4 w-4 mr-2" />
-                      Rejeitar
-                    </Button>
-                  </>
+                    {rdoSelecionado.acidentes && (
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Acidentes:</p>
+                        <p className="text-sm text-muted-foreground bg-muted p-3 rounded-lg">
+                          {rdoSelecionado.acidentes}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 )}
-                <Button
-                  variant="outline"
-                  onClick={() => setModalVisualizacao(false)}
-                  className="flex-1 sm:flex-none"
-                >
-                  Fechar
-                </Button>
+
+                {/* Observações */}
+                {rdoSelecionado.observacoes && (
+                  <div>
+                    <h3 className="font-semibold text-foreground mb-2">Observações</h3>
+                    <p className="text-sm text-muted-foreground bg-muted p-3 rounded-lg">
+                      {rdoSelecionado.observacoes}
+                    </p>
+                  </div>
+                )}
+
+                {/* Botões de Ação do Modal */}
+                <div className="flex flex-wrap gap-2 pt-4 border-t border-border">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => exportarRDOPDF(rdoSelecionado)}
+                  >
+                    <Printer className="h-4 w-4 mr-2" />
+                    Exportar PDF
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => baixarRelatorio(rdoSelecionado)}
+                  >
+                    <FileDown className="h-4 w-4 mr-2" />
+                    Baixar Relatório
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => compartilharRDO(rdoSelecionado)}
+                  >
+                    <Share2 className="h-4 w-4 mr-2" />
+                    Compartilhar
+                  </Button>
+                </div>
               </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+            )}
+          </DialogContent>
+        </Dialog>
+      </div>
     </Layout>
   );
 }

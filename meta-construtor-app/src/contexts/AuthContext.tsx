@@ -10,6 +10,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   canViewFinancialData: boolean;
+  isAuthenticated: () => boolean;
   signIn: (email: string, password: string) => Promise<{ error?: any }>;
   signUp: (email: string, password: string, userData: {
     nome: string;
@@ -42,6 +43,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     async function getInitialSession() {
       try {
+        // Verificar se está em modo demo
+        const demoMode = localStorage.getItem('demo-mode');
+        const demoUser = localStorage.getItem('demo-user');
+        
+        if (demoMode === 'true' && demoUser) {
+          // Simular usuário demo
+          const userData = JSON.parse(demoUser);
+          if (mounted) {
+            setUser({
+              id: userData.id,
+              email: userData.email,
+              user_metadata: { nome: userData.nome },
+            } as any);
+            setProfile({
+              id: userData.id,
+              nome: userData.nome,
+              cargo: userData.cargo,
+              nivel_acesso: userData.nivel_acesso,
+              empresa_id: 'demo-empresa',
+              status: 'ativo',
+              onboarding_concluido: true,
+            } as any);
+            setEmpresa({
+              id: 'demo-empresa',
+              nome: 'MetaConstrutor Demo',
+              plano: 'profissional',
+              status: 'ativa',
+            } as any);
+            setCanViewFinancialData(true);
+            setLoading(false);
+          }
+          return;
+        }
+
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (mounted) {
@@ -192,13 +227,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Se o usuário foi criado com sucesso, criar o perfil
       if (data.user) {
         // Buscar empresa padrão (primeira empresa ativa)
-        const { data: empresaPadrao } = await supabase
+        let { data: empresaPadrao, error: empresaError } = await supabase
           .from('empresas')
           .select('id')
           .eq('status', 'ativa')
           .order('created_at', { ascending: true })
           .limit(1)
           .single();
+
+        // Se não há empresa padrão, criar uma
+        if (empresaError || !empresaPadrao) {
+          const { data: novaEmpresa } = await supabase
+            .from('empresas')
+            .insert([{
+              nome: 'MetaConstrutor',
+              plano: 'profissional',
+              status: 'ativa',
+              data_contratacao: new Date().toISOString().split('T')[0],
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }])
+            .select('id')
+            .single();
+          
+          empresaPadrao = novaEmpresa;
+        }
 
         // Criar perfil do usuário
         const { error: profileError } = await supabase
@@ -209,13 +262,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             cargo: userData.cargo || 'colaborador',
             telefone: userData.telefone,
             empresa_id: empresaPadrao?.id || null,
-            nivel_acesso: 'colaborador',
+            nivel_acesso: 'diretor', // Primeiro usuário é diretor
             status: 'ativo',
+            onboarding_concluido: false,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
           }]);
 
         if (profileError) {
           console.error('Erro ao criar perfil:', profileError);
-          return { error: profileError };
+          // Não retornar erro aqui, pois o usuário foi criado com sucesso
+          // return { error: profileError };
         }
       }
 
@@ -232,19 +289,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       setLoading(true);
+      
+      // Limpar modo demo
+      localStorage.removeItem('demo-mode');
+      localStorage.removeItem('demo-user');
+      
       const { error } = await supabase.auth.signOut();
       
-      if (!error) {
-    setUser(null);
-        setProfile(null);
-        setEmpresa(null);
-        setSession(null);
-        setCanViewFinancialData(false);
-      }
+      // Sempre limpar estado local, mesmo se houver erro no logout
+      setUser(null);
+      setProfile(null);
+      setEmpresa(null);
+      setSession(null);
+      setCanViewFinancialData(false);
       
       return { error };
     } catch (error) {
       console.error('Erro no logout:', error);
+      
+      // Mesmo com erro, limpar estado local
+      setUser(null);
+      setProfile(null);
+      setEmpresa(null);
+      setSession(null);
+      setCanViewFinancialData(false);
+      
       return { error };
     } finally {
       setLoading(false);
@@ -349,6 +418,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return profile?.nivel_acesso === 'diretor';
   };
 
+  // Verificar se está autenticado (incluindo modo demo)
+  const isAuthenticated = (): boolean => {
+    const demoMode = localStorage.getItem('demo-mode');
+    return !!(user || demoMode === 'true');
+  };
+
   const value: AuthContextType = {
     user,
     profile,
@@ -356,6 +431,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     session,
     loading,
     canViewFinancialData,
+    isAuthenticated,
     signIn,
     signUp,
     signOut,

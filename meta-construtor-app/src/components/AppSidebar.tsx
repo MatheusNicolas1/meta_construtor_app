@@ -12,7 +12,9 @@ import {
   BarChart3,
   FolderOpen,
   Truck,
-  Zap
+  Zap,
+  ClipboardCheck,
+  Shield
 } from 'lucide-react';
 import {
   Sidebar,
@@ -26,11 +28,13 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { Logo } from './Logo';
+import { useAuth } from '@/contexts/AuthContext';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: Calendar },
   { name: 'RDO', href: '/rdo', icon: FileText },
   { name: 'Obras', href: '/obras', icon: Building },
+  { name: 'Checklist', href: '/checklist', icon: ClipboardCheck },
   { name: 'Atividades', href: '/atividades', icon: CheckSquare },
   { name: 'Equipes', href: '/equipes', icon: Users },
   { name: 'Equipamentos', href: '/equipamentos', icon: Wrench },
@@ -45,6 +49,16 @@ export function AppSidebar() {
   const location = useLocation();
   const { state } = useSidebar();
   const isCollapsed = state === 'collapsed';
+  const { profile } = useAuth();
+
+  // Itens de navegação condicionais baseados no nível de acesso
+  const navigationItems = [
+    ...navigation,
+    // Adicionar Auditoria apenas para Gerentes e Diretores
+    ...(profile && ['gerente', 'diretor'].includes(profile.nivel_acesso) 
+      ? [{ name: 'Auditoria', href: '/auditoria', icon: Shield }] 
+      : [])
+  ];
 
   return (
     <Sidebar collapsible="icon" className="border-r bg-background transition-all duration-200">
@@ -61,7 +75,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1 px-2">
-              {navigation.map((item) => (
+              {navigationItems.map((item) => (
                 <SidebarMenuItem key={item.name}>
                   <SidebarMenuButton 
                     asChild 

@@ -42,8 +42,101 @@ export const obraService = {
     status?: string;
     responsavel?: string;
     empresa_id?: string;
-  }): Promise<{ data: ObraResumo[] | null; error: any }> {
+  }): Promise<{ data: any[] | null; error: any }> {
     try {
+      // Verificar se está em modo demo
+      const demoMode = localStorage.getItem('demo-mode');
+      if (demoMode === 'true') {
+        // Obras padrão do demo
+        const obrasPadrao = [
+          {
+            id: '1',
+            nome: 'Torre Empresarial Centro',
+            endereco: 'Av. Paulista, 1000 - São Paulo/SP',
+            orcamento: 2500000,
+            data_inicio: '2024-01-15',
+            data_previsao: '2024-12-15',
+            status: 'ativa',
+            responsavel: 'João Silva',
+            empresa_id: 'demo-empresa',
+            total_equipes: 3,
+            total_equipamentos: 8,
+            total_rdos: 25,
+            orcamento_analitico_total: 2500000,
+            valor_medio_atividade: 125000,
+            created_at: '2024-01-15T00:00:00Z',
+            updated_at: '2024-01-15T00:00:00Z'
+          },
+          {
+            id: '2',
+            nome: 'Residencial Vila Verde',
+            endereco: 'Rua das Flores, 500 - Santos/SP',
+            orcamento: 1200000,
+            data_inicio: '2024-02-01',
+            data_previsao: '2024-08-30',
+            status: 'ativa',
+            responsavel: 'Maria Santos',
+            empresa_id: 'demo-empresa',
+            total_equipes: 2,
+            total_equipamentos: 5,
+            total_rdos: 18,
+            orcamento_analitico_total: 1200000,
+            valor_medio_atividade: 85000,
+            created_at: '2024-02-01T00:00:00Z',
+            updated_at: '2024-02-01T00:00:00Z'
+          },
+          {
+            id: '3',
+            nome: 'Shopping Mall Plaza',
+            endereco: 'Rod. Anhanguera, Km 25 - Campinas/SP',
+            orcamento: 5000000,
+            data_inicio: '2024-03-01',
+            data_previsao: '2025-02-28',
+            status: 'pausada',
+            responsavel: 'Pedro Costa',
+            empresa_id: 'demo-empresa',
+            total_equipes: 5,
+            total_equipamentos: 12,
+            total_rdos: 8,
+            orcamento_analitico_total: 5000000,
+            valor_medio_atividade: 250000,
+            created_at: '2024-03-01T00:00:00Z',
+            updated_at: '2024-03-01T00:00:00Z'
+          }
+        ];
+
+        // Recuperar obras criadas pelo usuário no modo demo
+        const obrasCriadas = JSON.parse(localStorage.getItem('demo-obras-criadas') || '[]');
+        
+        // Combinar obras padrão com obras criadas pelo usuário
+        const todasObras = [...obrasPadrao, ...obrasCriadas];
+        
+        // Aplicar filtros se necessário
+        let obrasFiltradas = todasObras;
+        
+        if (filtros?.status) {
+          obrasFiltradas = obrasFiltradas.filter(obra => obra.status === filtros.status);
+        }
+        if (filtros?.responsavel) {
+          obrasFiltradas = obrasFiltradas.filter(obra => obra.responsavel === filtros.responsavel);
+        }
+        if (filtros?.empresa_id) {
+          obrasFiltradas = obrasFiltradas.filter(obra => obra.empresa_id === filtros.empresa_id);
+        }
+        
+        // Ordenar por data de criação (mais recente primeiro)
+        obrasFiltradas.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        
+        return { data: obrasFiltradas, error: null };
+      }
+
+      // Verificar se usuário está autenticado
+      const user = await supabaseUtils.getCurrentUser();
+      if (!user) {
+        return { data: null, error: 'Usuário não autenticado' };
+      }
+
+      // Tentar usar a view obra_resumo primeiro
       let query = supabase.from('obra_resumo').select('*');
       
       if (filtros?.status) {
@@ -56,11 +149,163 @@ export const obraService = {
         query = query.eq('empresa_id', filtros.empresa_id);
       }
       
-      const { data, error } = await query.order('data_inicio', { ascending: false });
+      let { data, error } = await query.order('data_inicio', { ascending: false });
+      
+      // Se a view não existir, usar tabela obras básica
+      if (error && error.message?.includes('does not exist')) {
+        console.log('View obra_resumo não existe, usando tabela obras');
+        
+        let basicQuery = supabase.from('obras').select('*');
+        
+        if (filtros?.status) {
+          basicQuery = basicQuery.eq('status', filtros.status);
+        }
+        if (filtros?.responsavel) {
+          basicQuery = basicQuery.eq('responsavel', filtros.responsavel);
+        }
+        if (filtros?.empresa_id) {
+          basicQuery = basicQuery.eq('empresa_id', filtros.empresa_id);
+        }
+        
+        const basicResult = await basicQuery.order('data_inicio', { ascending: false });
+        data = basicResult.data;
+        error = basicResult.error;
+        
+        // Converter para formato de resumo adicionando campos faltantes
+        if (data) {
+          data = data.map(obra => ({
+            ...obra,
+            total_equipes: 0,
+            total_equipamentos: 0,
+            total_rdos: 0,
+            orcamento_analitico_total: obra.orcamento || 0,
+            valor_medio_atividade: 0
+          }));
+        }
+      }
       
       return { data, error };
     } catch (error) {
       console.error('Erro ao listar obras:', error);
+      return { data: null, error };
+    }
+  },
+
+  // Criar obra simples (somente dados básicos)
+  async criarObra(dadosObra: any): Promise<{ data: Obra | null; error: any }> {
+    try {
+      // Verificar se está em modo demo
+      const demoMode = localStorage.getItem('demo-mode');
+      
+      if (demoMode === 'true') {
+        // Em modo demo, simular criação de obra
+        const obraDemo = {
+          id: `demo-${Date.now()}`,
+          nome: dadosObra.nome,
+          endereco: dadosObra.endereco,
+          orcamento: dadosObra.orcamento,
+          data_inicio: dadosObra.data_inicio,
+          data_previsao: dadosObra.data_previsao,
+          status: dadosObra.status,
+          responsavel: dadosObra.responsavel,
+          tipo: dadosObra.tipo,
+          cliente: dadosObra.cliente,
+          observacoes: dadosObra.observacoes,
+          empresa_id: 'demo-empresa',
+          // Adicionar campos necessários para listagem
+          total_equipes: dadosObra.equipamentos_selecionados?.length || 0,
+          total_equipamentos: dadosObra.equipamentos_selecionados?.length || 0,
+          total_rdos: 0,
+          orcamento_analitico_total: dadosObra.orcamento || 0,
+          valor_medio_atividade: dadosObra.tipo_orcamento === 'analitico' && dadosObra.atividades_orcamento?.length 
+            ? dadosObra.orcamento / dadosObra.atividades_orcamento.length 
+            : 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+
+        // Salvar no localStorage
+        const obrasCriadas = JSON.parse(localStorage.getItem('demo-obras-criadas') || '[]');
+        obrasCriadas.push(obraDemo);
+        localStorage.setItem('demo-obras-criadas', JSON.stringify(obrasCriadas));
+
+        // Simular delay de criação
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        return { data: obraDemo, error: null };
+      }
+
+      // Verificar se usuário pode criar obras
+      const user = await supabaseUtils.getCurrentUser();
+      if (!user) {
+        return { data: null, error: 'Usuário não autenticado' };
+      }
+
+      // Se for uma obra simples (dados básicos), usar método original
+      if (!dadosObra.atividades_orcamento && !dadosObra.equipamentos_selecionados && !dadosObra.arquivos) {
+        const { data, error } = await supabase
+          .from('obras')
+          .insert([{
+            nome: dadosObra.nome,
+            endereco: dadosObra.endereco,
+            orcamento: dadosObra.orcamento,
+            data_inicio: dadosObra.data_inicio,
+            data_previsao: dadosObra.data_previsao,
+            status: dadosObra.status,
+            responsavel: dadosObra.responsavel,
+            tipo: dadosObra.tipo,
+            cliente: dadosObra.cliente,
+            observacoes: dadosObra.observacoes,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }])
+          .select()
+          .single();
+        
+        return { data, error };
+      }
+
+      // Se for uma obra completa, usar método avançado
+      const obraCompleta: CriarObraCompleta = {
+        obra: {
+          nome: dadosObra.nome,
+          endereco: dadosObra.endereco,
+          orcamento: dadosObra.orcamento,
+          data_inicio: dadosObra.data_inicio,
+          data_previsao: dadosObra.data_previsao,
+          status: dadosObra.status,
+          responsavel: dadosObra.responsavel,
+          tipo: dadosObra.tipo,
+          cliente: dadosObra.cliente,
+          observacoes: dadosObra.observacoes,
+        },
+        orcamentoAnalitico: dadosObra.tipo_orcamento === 'analitico' && dadosObra.atividades_orcamento 
+          ? dadosObra.atividades_orcamento.map((ativ: any) => ({
+              nome_atividade: ativ.atividade,
+              categoria: 'construcao',
+              unidade: ativ.unidade,
+              quantitativo: Number(ativ.quantidade),
+              valor_unitario: Number(ativ.valorUnitario),
+              valor_total: ativ.valorTotal,
+              status: 'planejada',
+              responsavel: dadosObra.responsavel
+            }))
+          : undefined,
+        equipamentos: dadosObra.equipamentos_selecionados?.length > 0 
+          ? dadosObra.equipamentos_selecionados.map((eqId: string) => ({
+              equipamento_id: eqId,
+              quantidade: 1,
+              observacoes: 'Equipamento alocado durante criação da obra'
+            }))
+          : undefined,
+        documentos: dadosObra.arquivos?.length > 0 
+          ? dadosObra.arquivos.map((arquivo: any) => arquivo.arquivo)
+          : undefined
+      };
+
+      return await this.criarObraCompleta(obraCompleta);
+    } catch (error) {
+      console.error('Erro ao criar obra:', error);
       return { data: null, error };
     }
   },
@@ -140,6 +385,38 @@ export const obraService = {
   // Criar obra completa com todas as vinculações
   async criarObraCompleta(dadosObra: CriarObraCompleta): Promise<{ data: Obra | null; error: any }> {
     try {
+      // Verificar se está em modo demo
+      const demoMode = localStorage.getItem('demo-mode');
+      
+      if (demoMode === 'true') {
+        // Em modo demo, simular criação de obra completa
+        const obraDemo = {
+          id: `demo-${Date.now()}`,
+          ...dadosObra.obra,
+          empresa_id: 'demo-empresa',
+          // Adicionar campos necessários para listagem
+          total_equipes: dadosObra.equipes?.length || 0,
+          total_equipamentos: dadosObra.equipamentos?.length || 0,
+          total_rdos: 0,
+          orcamento_analitico_total: dadosObra.obra.orcamento || 0,
+          valor_medio_atividade: dadosObra.orcamentoAnalitico?.length 
+            ? dadosObra.obra.orcamento / dadosObra.orcamentoAnalitico.length 
+            : 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+
+        // Salvar no localStorage
+        const obrasCriadas = JSON.parse(localStorage.getItem('demo-obras-criadas') || '[]');
+        obrasCriadas.push(obraDemo);
+        localStorage.setItem('demo-obras-criadas', JSON.stringify(obrasCriadas));
+
+        // Simular delay de criação
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        return { data: obraDemo, error: null };
+      }
+
       // Verificar se usuário pode criar obras
       const user = await supabaseUtils.getCurrentUser();
       if (!user) {
@@ -276,6 +553,115 @@ export const obraService = {
     }
   },
 
+  // Duplicar obra existente (sem RDOs nem arquivos)
+  async duplicarObra(obraId: string, novoNome: string): Promise<{ data: Obra | null; error: any }> {
+    try {
+      // Verificar se usuário pode criar obras
+      const user = await supabaseUtils.getCurrentUser();
+      if (!user) {
+        return { data: null, error: 'Usuário não autenticado' };
+      }
+
+      // Buscar obra original
+      const { data: obraOriginal, error: obraError } = await supabase
+        .from('obras')
+        .select('*')
+        .eq('id', obraId)
+        .single();
+
+      if (obraError || !obraOriginal) {
+        return { data: null, error: 'Obra não encontrada' };
+      }
+
+      // Criar nova obra baseada na original
+      const novaObra = {
+        nome: novoNome,
+        endereco: obraOriginal.endereco,
+        orcamento: obraOriginal.orcamento,
+        data_inicio: new Date().toISOString().split('T')[0], // Data atual
+        data_previsao: obraOriginal.data_previsao,
+        status: 'ativa' as const,
+        responsavel: obraOriginal.responsavel,
+        empresa_id: obraOriginal.empresa_id,
+      };
+
+      const { data: obraDuplicada, error: duplicarError } = await supabase
+        .from('obras')
+        .insert([novaObra])
+        .select()
+        .single();
+
+      if (duplicarError || !obraDuplicada) {
+        return { data: null, error: duplicarError };
+      }
+
+      const novaObraId = obraDuplicada.id;
+
+      // Duplicar orçamento analítico
+      const { data: orcamentoOriginal } = await supabase
+        .from('orcamento_analitico')
+        .select('*')
+        .eq('obra_id', obraId);
+
+      if (orcamentoOriginal && orcamentoOriginal.length > 0) {
+        const novoOrcamento = orcamentoOriginal.map(item => ({
+          obra_id: novaObraId,
+          nome_atividade: item.nome_atividade,
+          categoria: item.categoria,
+          unidade: item.unidade,
+          quantitativo: item.quantitativo,
+          valor_unitario: item.valor_unitario,
+          valor_total: item.valor_total,
+          status: 'planejada' as const,
+          data_inicio: null,
+          data_conclusao: null,
+          responsavel: item.responsavel,
+          observacoes: item.observacoes,
+        }));
+
+        const { error: orcamentoError } = await supabase
+          .from('orcamento_analitico')
+          .insert(novoOrcamento);
+
+        if (orcamentoError) {
+          console.error('Erro ao duplicar orçamento analítico:', orcamentoError);
+        }
+      }
+
+      // Duplicar equipes alocadas (como disponíveis)
+      const { data: equipesOriginais } = await supabase
+        .from('obras_equipes')
+        .select('*')
+        .eq('obra_id', obraId)
+        .eq('status', 'ativa');
+
+      if (equipesOriginais && equipesOriginais.length > 0) {
+        const novasEquipes = equipesOriginais.map(equipe => ({
+          obra_id: novaObraId,
+          equipe_id: equipe.equipe_id,
+          data_alocacao: new Date().toISOString().split('T')[0],
+          data_liberacao: null,
+          status: 'ativa' as const,
+          funcao_na_obra: equipe.funcao_na_obra,
+          observacoes: `Equipe duplicada da obra: ${obraOriginal.nome}`,
+        }));
+
+        const { error: equipesError } = await supabase
+          .from('obras_equipes')
+          .insert(novasEquipes);
+
+        if (equipesError) {
+          console.error('Erro ao duplicar equipes:', equipesError);
+        }
+      }
+
+      return { data: obraDuplicada, error: null };
+    } catch (error) {
+      console.error('Erro ao duplicar obra:', error);
+      return { data: null, error };
+    }
+  },
+
   // Atualizar obra
   async atualizarObra(id: string, updates: AtualizarObra): Promise<{ data: Obra | null; error: any }> {
     try {
@@ -299,6 +685,27 @@ export const obraService = {
   // Deletar obra
   async deletarObra(id: string): Promise<{ error: any }> {
     try {
+      // Verificar se está em modo demo
+      const demoMode = localStorage.getItem('demo-mode');
+      
+      if (demoMode === 'true') {
+        // Em modo demo, remover da lista persistida
+        const obrasCriadas = JSON.parse(localStorage.getItem('demo-obras-criadas') || '[]');
+        const obrasAtualizadas = obrasCriadas.filter((obra: any) => obra.id !== id);
+        localStorage.setItem('demo-obras-criadas', JSON.stringify(obrasAtualizadas));
+        
+        // Simular delay
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        return { error: null };
+      }
+
+      // Verificar se usuário está autenticado
+      const user = await supabaseUtils.getCurrentUser();
+      if (!user) {
+        return { error: 'Usuário não autenticado' };
+      }
+
       // Liberar equipamentos vinculados
       const { data: equipamentosVinculados } = await supabase
         .from('obras_equipamentos')
@@ -722,6 +1129,19 @@ export const obraService = {
     } catch (error) {
       console.error('Erro ao gerar relatório financeiro:', error);
       return { data: null, error };
+    }
+  },
+
+  // ========== UTILITÁRIOS PARA MODO DEMO ==========
+
+  // Limpar dados do modo demo
+  async limparDadosDemo(): Promise<{ error: any }> {
+    try {
+      localStorage.removeItem('demo-obras-criadas');
+      return { error: null };
+    } catch (error) {
+      console.error('Erro ao limpar dados demo:', error);
+      return { error };
     }
   }
 }; 

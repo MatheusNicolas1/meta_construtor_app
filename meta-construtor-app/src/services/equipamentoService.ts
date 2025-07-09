@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabase, supabaseUtils } from '@/lib/supabase';
 import type { Database } from '@/lib/supabase';
 
 type Equipamento = Database['public']['Tables']['equipamentos']['Row'];
@@ -25,6 +25,97 @@ export const equipamentoService = {
     disponivel?: boolean;
   }): Promise<{ data: EquipamentoCompleto[] | null; error: any }> {
     try {
+      // Verificar se está em modo demo
+      const demoMode = localStorage.getItem('demo-mode');
+      if (demoMode === 'true') {
+        // Retornar dados demo de equipamentos
+        const equipamentosDemoData = [
+          {
+            id: 'eq1',
+            nome: 'Escavadeira CAT 320',
+            categoria: 'Pesado',
+            tipo: 'proprio' as const,
+            valor_diario: 800,
+            status: 'disponivel' as const,
+            obra_atual: null,
+            data_aquisicao: '2024-01-01',
+            proxima_manutencao: null,
+            observacoes: null,
+            empresa_id: 'demo-empresa',
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z'
+          },
+          {
+            id: 'eq2',
+            nome: 'Betoneira 400L',
+            categoria: 'Concreto',
+            tipo: 'proprio' as const,
+            valor_diario: 150,
+            status: 'disponivel' as const,
+            obra_atual: null,
+            data_aquisicao: '2024-01-01',
+            proxima_manutencao: null,
+            observacoes: null,
+            empresa_id: 'demo-empresa',
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z'
+          },
+          {
+            id: 'eq3',
+            nome: 'Guindaste 15t',
+            categoria: 'Içamento',
+            tipo: 'alugado' as const,
+            valor_diario: 1200,
+            status: 'disponivel' as const,
+            obra_atual: null,
+            data_aquisicao: '2024-01-01',
+            proxima_manutencao: null,
+            observacoes: null,
+            empresa_id: 'demo-empresa',
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z'
+          },
+          {
+            id: 'eq4',
+            nome: 'Retroescavadeira JCB',
+            categoria: 'Pesado',
+            tipo: 'proprio' as const,
+            valor_diario: 650,
+            status: 'disponivel' as const,
+            obra_atual: null,
+            data_aquisicao: '2024-01-01',
+            proxima_manutencao: null,
+            observacoes: null,
+            empresa_id: 'demo-empresa',
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z'
+          },
+          {
+            id: 'eq5',
+            nome: 'Compactador de Solo',
+            categoria: 'Compactação',
+            tipo: 'proprio' as const,
+            valor_diario: 250,
+            status: 'disponivel' as const,
+            obra_atual: null,
+            data_aquisicao: '2024-01-01',
+            proxima_manutencao: null,
+            observacoes: null,
+            empresa_id: 'demo-empresa',
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z'
+          }
+        ];
+        
+        return { data: equipamentosDemoData, error: null };
+      }
+
+      // Verificar se usuário está autenticado para uso real
+      const user = await supabaseUtils.getCurrentUser();
+      if (!user) {
+        return { data: null, error: 'Usuário não autenticado' };
+      }
+
       let query = supabase
         .from('equipamentos')
         .select(`
@@ -96,6 +187,25 @@ export const equipamentoService = {
   // Criar novo equipamento
   async criarEquipamento(equipamento: NovoEquipamento): Promise<{ data: Equipamento | null; error: any }> {
     try {
+      // Verificar se está em modo demo
+      const demoMode = localStorage.getItem('demo-mode');
+      
+      if (demoMode === 'true') {
+        // Em modo demo, simular criação de equipamento
+        const equipamentoDemo = {
+          id: `demo-eq-${Date.now()}`,
+          ...equipamento,
+          empresa_id: 'demo-empresa',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+
+        // Simular delay de criação
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
+        return { data: equipamentoDemo, error: null };
+      }
+
       const { data, error } = await supabase
         .from('equipamentos')
         .insert([{
@@ -237,6 +347,97 @@ export const equipamentoService = {
   // Listar equipamentos disponíveis
   async listarEquipamentosDisponiveis(categoria?: string, empresaId?: string): Promise<{ data: Equipamento[] | null; error: any }> {
     try {
+      // Verificar se está em modo demo
+      const demoMode = localStorage.getItem('demo-mode');
+      
+      if (demoMode === 'true') {
+        // Retornar equipamentos demo disponíveis
+        let equipamentosDemo = [
+          {
+            id: 'eq1',
+            nome: 'Escavadeira CAT 320',
+            categoria: 'Pesado',
+            tipo: 'proprio' as const,
+            valor_diario: 800,
+            status: 'disponivel' as const,
+            obra_atual: null,
+            data_aquisicao: '2024-01-01',
+            proxima_manutencao: null,
+            observacoes: null,
+            empresa_id: 'demo-empresa',
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z'
+          },
+          {
+            id: 'eq2',
+            nome: 'Betoneira 400L',
+            categoria: 'Concreto',
+            tipo: 'proprio' as const,
+            valor_diario: 150,
+            status: 'disponivel' as const,
+            obra_atual: null,
+            data_aquisicao: '2024-01-01',
+            proxima_manutencao: null,
+            observacoes: null,
+            empresa_id: 'demo-empresa',
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z'
+          },
+          {
+            id: 'eq3',
+            nome: 'Guindaste 15t',
+            categoria: 'Içamento',
+            tipo: 'alugado' as const,
+            valor_diario: 1200,
+            status: 'disponivel' as const,
+            obra_atual: null,
+            data_aquisicao: '2024-01-01',
+            proxima_manutencao: null,
+            observacoes: null,
+            empresa_id: 'demo-empresa',
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z'
+          },
+          {
+            id: 'eq4',
+            nome: 'Retroescavadeira JCB',
+            categoria: 'Pesado',
+            tipo: 'proprio' as const,
+            valor_diario: 650,
+            status: 'disponivel' as const,
+            obra_atual: null,
+            data_aquisicao: '2024-01-01',
+            proxima_manutencao: null,
+            observacoes: null,
+            empresa_id: 'demo-empresa',
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z'
+          },
+          {
+            id: 'eq5',
+            nome: 'Compactador de Solo',
+            categoria: 'Compactação',
+            tipo: 'proprio' as const,
+            valor_diario: 250,
+            status: 'disponivel' as const,
+            obra_atual: null,
+            data_aquisicao: '2024-01-01',
+            proxima_manutencao: null,
+            observacoes: null,
+            empresa_id: 'demo-empresa',
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z'
+          }
+        ];
+
+        // Filtrar por categoria se especificada
+        if (categoria) {
+          equipamentosDemo = equipamentosDemo.filter(eq => eq.categoria === categoria);
+        }
+
+        return { data: equipamentosDemo, error: null };
+      }
+
       let query = supabase
         .from('equipamentos')
         .select('*')

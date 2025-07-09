@@ -143,6 +143,11 @@ export default function Configuracoes() {
       setProfileImage(result);
       localStorage.setItem('profile_image', result);
       
+      // Disparar evento customizado para atualizar o avatar em tempo real
+      window.dispatchEvent(new CustomEvent('avatar-updated', {
+        detail: { imageUrl: result }
+      }));
+      
       toast({
         title: "Foto atualizada!",
         description: "Sua foto de perfil foi alterada com sucesso.",

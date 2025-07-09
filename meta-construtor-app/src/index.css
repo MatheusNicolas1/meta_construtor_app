@@ -125,6 +125,36 @@
     @apply space-y-6 sm:space-y-8 px-4 sm:px-6 lg:px-8 max-w-full;
   }
 
+  .section-spacing {
+    @apply space-y-4 sm:space-y-6;
+  }
+
+  /* Interactive elements */
+  .interactive-hover {
+    @apply transition-all duration-200 hover:scale-[1.02] hover:shadow-lg;
+  }
+
+  .mobile-button {
+    @apply h-10 px-4 text-sm;
+  }
+
+  .mobile-button-icon {
+    @apply h-4 w-4 mr-2 sm:mr-1;
+  }
+
+  /* Layout utilities */
+  .content-center {
+    @apply flex items-center justify-center;
+  }
+
+  .content-between {
+    @apply flex items-center justify-between;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
   /* Standardized Button System */
   .btn-standard {
     @apply inline-flex items-center justify-center gap-2 h-11 px-6 text-sm font-medium bg-[#ff5722] text-white hover:bg-[#e64a19] active:bg-[#d84315] rounded-lg shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#ff5722] focus:ring-offset-2 min-w-fit whitespace-nowrap;
@@ -180,6 +210,134 @@
     @apply p-4 sm:p-6;
   }
 
+  /* Responsive card grid */
+  .grid-responsive {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6;
+  }
+
+  .responsive-card {
+    @apply bg-card border border-border rounded-lg shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden h-fit;
+  }
+
+  .dark .responsive-card {
+    @apply bg-[#1a2332] border-[#2d3748] text-white;
+  }
+
+  /* Centralized card structure */
+  .centered-card {
+    @apply relative bg-card border border-border rounded-lg shadow-sm hover:shadow-lg transition-all duration-200 overflow-hidden h-full flex flex-col;
+  }
+
+  .dark .centered-card {
+    @apply bg-[#1a2332] border-[#2d3748] text-white;
+  }
+
+  .centered-card-header {
+    @apply p-4 sm:p-6 flex flex-col items-center text-center border-b border-border flex-shrink-0;
+  }
+
+  .dark .centered-card-header {
+    @apply border-[#2d3748];
+  }
+
+  .centered-card-content {
+    @apply p-4 sm:p-6 flex-1 flex flex-col justify-between;
+  }
+
+  .centered-card-info {
+    @apply space-y-3 mb-4;
+  }
+
+  .centered-card-actions {
+    @apply flex flex-col sm:flex-row gap-2 justify-center;
+  }
+
+  /* Card status positioning */
+  .card-status-badge {
+    @apply absolute top-3 right-3 z-10;
+  }
+
+  /* Card title styling */
+  .card-title-centered {
+    @apply text-lg sm:text-xl font-semibold text-foreground text-center mb-2 line-clamp-2;
+  }
+
+  .dark .card-title-centered {
+    @apply text-white;
+  }
+
+  /* Card subtitle styling */
+  .card-subtitle-centered {
+    @apply text-sm text-muted-foreground text-center mb-3;
+  }
+
+  .dark .card-subtitle-centered {
+    @apply text-gray-300;
+  }
+
+  /* Card information items */
+  .card-info-item {
+    @apply flex items-center justify-center gap-2 text-sm;
+  }
+
+  .card-info-label {
+    @apply text-muted-foreground font-medium;
+  }
+
+  .dark .card-info-label {
+    @apply text-gray-300;
+  }
+
+  .card-info-value {
+    @apply text-foreground font-semibold;
+  }
+
+  .dark .card-info-value {
+    @apply text-white;
+  }
+
+  /* Card metrics display */
+  .card-metrics {
+    @apply grid grid-cols-2 gap-3 mb-4;
+  }
+
+  .card-metric-item {
+    @apply text-center p-2 bg-muted/30 rounded-lg;
+  }
+
+  .dark .card-metric-item {
+    @apply bg-[#0f1419];
+  }
+
+  .card-metric-value {
+    @apply text-lg font-bold text-foreground block;
+  }
+
+  .dark .card-metric-value {
+    @apply text-white;
+  }
+
+  .card-metric-label {
+    @apply text-xs text-muted-foreground;
+  }
+
+  .dark .card-metric-label {
+    @apply text-gray-400;
+  }
+
+  /* Progress bar in cards */
+  .card-progress {
+    @apply w-full bg-muted rounded-full h-2 mb-3;
+  }
+
+  .dark .card-progress {
+    @apply bg-[#374151];
+  }
+
+  .card-progress-bar {
+    @apply bg-[#ff5722] h-2 rounded-full transition-all duration-300;
+  }
+
   /* Form components */
   .form-input {
     @apply w-full px-3 py-2.5 text-sm border border-input rounded-lg bg-background text-foreground focus:ring-2 focus:ring-[#ff5722] focus:border-[#ff5722] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
@@ -203,7 +361,7 @@
 
   /* Work card improvements */
   .work-card {
-    @apply bg-card border border-border rounded-lg shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden;
+    @apply relative bg-card border border-border rounded-lg shadow-sm hover:shadow-lg transition-all duration-200 overflow-hidden h-full flex flex-col;
   }
 
   .dark .work-card {
@@ -211,15 +369,95 @@
   }
 
   .work-card-header {
-    @apply p-4 sm:p-6 flex flex-col sm:flex-row justify-between items-start gap-4;
+    @apply p-4 sm:p-6 text-center border-b border-border flex-shrink-0;
+  }
+
+  .dark .work-card-header {
+    @apply border-[#2d3748];
+  }
+
+  .work-card-title {
+    @apply text-lg sm:text-xl font-semibold text-foreground mb-3 line-clamp-2 px-12;
+  }
+
+  .dark .work-card-title {
+    @apply text-white;
+  }
+
+  .work-card-subtitle {
+    @apply space-y-2 text-sm text-muted-foreground text-center;
+  }
+
+  .dark .work-card-subtitle {
+    @apply text-gray-300;
   }
 
   .work-card-content {
-    @apply px-4 sm:px-6 pb-4 space-y-3;
+    @apply p-4 sm:p-6 flex-1 flex flex-col justify-between;
+  }
+
+  .work-card-info {
+    @apply space-y-4 mb-4;
+  }
+
+  .work-card-metrics {
+    @apply grid grid-cols-2 gap-3 mb-4;
+  }
+
+  .work-card-metric {
+    @apply text-center p-3 bg-muted/30 rounded-lg;
+  }
+
+  .dark .work-card-metric {
+    @apply bg-[#0f1419];
+  }
+
+  .work-card-metric-value {
+    @apply text-lg font-bold text-foreground block mb-1;
+  }
+
+  .dark .work-card-metric-value {
+    @apply text-white;
+  }
+
+  .work-card-metric-label {
+    @apply text-xs text-muted-foreground;
+  }
+
+  .dark .work-card-metric-label {
+    @apply text-gray-400;
+  }
+
+  .work-card-progress {
+    @apply space-y-2 mb-4;
+  }
+
+  .work-card-progress-info {
+    @apply flex justify-between items-center text-sm;
+  }
+
+  .work-card-progress-bar {
+    @apply w-full bg-muted rounded-full h-2;
+  }
+
+  .dark .work-card-progress-bar {
+    @apply bg-[#374151];
+  }
+
+  .work-card-dates {
+    @apply grid grid-cols-2 gap-3 text-sm text-center mb-4;
+  }
+
+  .work-card-date-item {
+    @apply p-2 bg-muted/30 rounded-lg;
+  }
+
+  .dark .work-card-date-item {
+    @apply bg-[#0f1419];
   }
 
   .work-card-actions {
-    @apply px-4 sm:px-6 py-4 border-t border-border flex items-center justify-end gap-3 bg-muted/30;
+    @apply flex flex-wrap gap-2 justify-center pt-4 border-t border-border bg-muted/10;
   }
 
   .dark .work-card-actions {
@@ -227,7 +465,7 @@
   }
 
   .work-card-status {
-    @apply absolute top-4 right-4 z-10;
+    @apply absolute top-3 right-3 z-10;
   }
 
   /* Badge improvements */
@@ -329,6 +567,165 @@
 
   .dark .border-popover {
     @apply border-[#2d3748];
+  }
+
+  /* Calendar dark mode fixes */
+  .dark .rdp {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+
+  .dark .rdp-month {
+    color: hsl(var(--foreground));
+  }
+
+  .dark .rdp-caption {
+    color: hsl(var(--foreground));
+  }
+
+  .dark .rdp-caption_label {
+    color: hsl(var(--foreground));
+  }
+
+  .dark .rdp-nav {
+    color: hsl(var(--foreground));
+  }
+
+  .dark .rdp-nav_button {
+    color: hsl(var(--foreground));
+  }
+
+  .dark .rdp-nav_button:hover {
+    background-color: hsl(var(--muted));
+  }
+
+  .dark .rdp-table {
+    color: hsl(var(--foreground));
+  }
+
+  .dark .rdp-head_cell {
+    color: hsl(var(--muted-foreground));
+  }
+
+  .dark .rdp-cell {
+    color: hsl(var(--foreground));
+  }
+
+  .dark .rdp-day {
+    color: hsl(var(--foreground));
+  }
+
+  .dark .rdp-day:hover {
+    background-color: hsl(var(--muted));
+  }
+
+  .dark .rdp-day_selected {
+    background-color: #FF5722;
+    color: white;
+  }
+
+  .dark .rdp-day_selected:hover {
+    background-color: #E64A19;
+  }
+
+  .dark .rdp-day_today {
+    background-color: hsl(var(--muted));
+    color: hsl(var(--foreground));
+  }
+
+  .dark .rdp-day_outside {
+    color: hsl(var(--muted-foreground));
+    opacity: 0.5;
+  }
+
+  .dark .rdp-day_disabled {
+    color: hsl(var(--muted-foreground));
+    opacity: 0.5;
+  }
+
+  /* Form improvements for dark mode */
+  .dark .form-section {
+    background-color: #1a2332;
+    border-color: #2d3748;
+  }
+
+  .dark .form-section-header {
+    color: white;
+    border-color: #2d3748;
+  }
+
+  .dark .form-section-content {
+    color: #e5e7eb;
+  }
+
+  /* Table improvements for budget */
+  .dark .budget-table {
+    background-color: #1a2332;
+    border-color: #2d3748;
+  }
+
+  .dark .budget-table th {
+    background-color: #0f1419;
+    color: white;
+    border-color: #2d3748;
+  }
+
+  .dark .budget-table td {
+    border-color: #2d3748;
+    color: #e5e7eb;
+  }
+
+  .dark .budget-table tbody tr:hover {
+    background-color: #0f1419;
+  }
+
+  /* File upload area dark mode */
+  .dark .upload-area {
+    border-color: #2d3748;
+    background-color: #1a2332;
+  }
+
+  .dark .upload-area:hover {
+    border-color: #FF5722;
+    background-color: #0f1419;
+  }
+
+  /* Equipment selection dark mode */
+  .dark .equipment-item {
+    border-color: #2d3748;
+    background-color: #1a2332;
+  }
+
+  .dark .equipment-item:hover {
+    background-color: #0f1419;
+  }
+
+  .dark .equipment-item label {
+    color: #e5e7eb;
+  }
+
+  /* Select component dark mode fixes */
+  .dark [data-radix-select-content] {
+    background-color: #1a2332;
+    border-color: #2d3748;
+    color: white;
+  }
+
+  .dark [data-radix-select-item] {
+    color: white;
+  }
+
+  .dark [data-radix-select-item]:hover {
+    background-color: #0f1419;
+  }
+
+  .dark [data-radix-select-item]:focus {
+    background-color: #0f1419;
+  }
+
+  .dark [data-radix-select-item][data-highlighted] {
+    background-color: #0f1419;
+    color: white;
   }
 }
 

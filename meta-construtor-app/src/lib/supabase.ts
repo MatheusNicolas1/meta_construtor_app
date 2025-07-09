@@ -335,6 +335,7 @@ export type Database = {
           empresa_id: string | null;
           permissoes: any | null;
           status: 'ativo' | 'inativo' | 'suspenso';
+          onboarding_concluido: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -349,6 +350,7 @@ export type Database = {
           empresa_id?: string | null;
           permissoes?: any | null;
           status?: 'ativo' | 'inativo' | 'suspenso';
+          onboarding_concluido?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -363,6 +365,133 @@ export type Database = {
           empresa_id?: string | null;
           permissoes?: any | null;
           status?: 'ativo' | 'inativo' | 'suspenso';
+          onboarding_concluido?: boolean;
+          updated_at?: string;
+        };
+      };
+
+      // Tabelas de checklist
+      checklist_obra: {
+        Row: {
+          id: string;
+          obra_id: string;
+          data_checklist: string;
+          responsavel: string;
+          turno: 'matutino' | 'vespertino' | 'noturno';
+          seguranca_trabalho: any;
+          equipamentos_ferramentas: any;
+          materiais_suprimentos: any;
+          qualidade_servicos: any;
+          meio_ambiente: any;
+          organizacao_limpeza: any;
+          observacoes: string | null;
+          pontos_atencao: string | null;
+          acao_corretiva: string | null;
+          status: 'pendente' | 'em_andamento' | 'concluido';
+          percentual_conclusao: number;
+          aprovado_por: string | null;
+          data_aprovacao: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+          empresa_id: string | null;
+        };
+        Insert: {
+          id?: string;
+          obra_id: string;
+          data_checklist: string;
+          responsavel: string;
+          turno?: 'matutino' | 'vespertino' | 'noturno';
+          seguranca_trabalho?: any;
+          equipamentos_ferramentas?: any;
+          materiais_suprimentos?: any;
+          qualidade_servicos?: any;
+          meio_ambiente?: any;
+          organizacao_limpeza?: any;
+          observacoes?: string | null;
+          pontos_atencao?: string | null;
+          acao_corretiva?: string | null;
+          status?: 'pendente' | 'em_andamento' | 'concluido';
+          percentual_conclusao?: number;
+          aprovado_por?: string | null;
+          data_aprovacao?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          empresa_id?: string | null;
+        };
+        Update: {
+          id?: string;
+          obra_id?: string;
+          data_checklist?: string;
+          responsavel?: string;
+          turno?: 'matutino' | 'vespertino' | 'noturno';
+          seguranca_trabalho?: any;
+          equipamentos_ferramentas?: any;
+          materiais_suprimentos?: any;
+          qualidade_servicos?: any;
+          meio_ambiente?: any;
+          organizacao_limpeza?: any;
+          observacoes?: string | null;
+          pontos_atencao?: string | null;
+          acao_corretiva?: string | null;
+          status?: 'pendente' | 'em_andamento' | 'concluido';
+          percentual_conclusao?: number;
+          aprovado_por?: string | null;
+          data_aprovacao?: string | null;
+          updated_at?: string;
+          empresa_id?: string | null;
+        };
+      };
+
+      checklist_template: {
+        Row: {
+          id: string;
+          nome: string;
+          descricao: string | null;
+          categoria: string;
+          seguranca_trabalho: any;
+          equipamentos_ferramentas: any;
+          materiais_suprimentos: any;
+          qualidade_servicos: any;
+          meio_ambiente: any;
+          organizacao_limpeza: any;
+          ativo: boolean;
+          empresa_id: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          nome: string;
+          descricao?: string | null;
+          categoria?: string;
+          seguranca_trabalho?: any;
+          equipamentos_ferramentas?: any;
+          materiais_suprimentos?: any;
+          qualidade_servicos?: any;
+          meio_ambiente?: any;
+          organizacao_limpeza?: any;
+          ativo?: boolean;
+          empresa_id?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          nome?: string;
+          descricao?: string | null;
+          categoria?: string;
+          seguranca_trabalho?: any;
+          equipamentos_ferramentas?: any;
+          materiais_suprimentos?: any;
+          qualidade_servicos?: any;
+          meio_ambiente?: any;
+          organizacao_limpeza?: any;
+          ativo?: boolean;
+          empresa_id?: string | null;
           updated_at?: string;
         };
       };
@@ -762,6 +891,19 @@ export const supabaseUtils = {
 
   // Obter usuário atual
   getCurrentUser: async () => {
+    // Verificar se está em modo demo
+    const demoMode = localStorage.getItem('demo-mode');
+    const demoUser = localStorage.getItem('demo-user');
+    
+    if (demoMode === 'true' && demoUser) {
+      const userData = JSON.parse(demoUser);
+      return {
+        id: userData.id,
+        email: userData.email,
+        user_metadata: { nome: userData.nome }
+      };
+    }
+    
     const { data: { user } } = await supabase.auth.getUser();
     return user;
   },

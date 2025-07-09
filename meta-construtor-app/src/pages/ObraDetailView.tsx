@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { MultiRdoExport } from '@/components/MultiRdoExport';
 import { 
   ArrowLeft, 
   MapPin, 
@@ -309,34 +310,7 @@ Este documento foi gerado automaticamente pelo sistema MetaConstrutor
                 </CardTitle>
               </CardHeader>
               <CardContent className="card-content">
-                <div className="space-y-6">
-                  {obra.rdos.map((rdo) => (
-                    <div key={rdo.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors mb-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-[#ff5722]" />
-                          <span className="font-medium">{format(new Date(rdo.data), 'dd/MM/yyyy', { locale: ptBR })}</span>
-                        </div>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Users className="h-4 w-4" />
-                            {rdo.equipe} pessoas
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Camera className="h-4 w-4" />
-                            {rdo.imagens} fotos
-                          </span>
-                        </div>
-                      </div>
-                      <p className="text-sm mb-2">{rdo.atividades}</p>
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className="px-2 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 rounded">
-                          {rdo.clima}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <MultiRdoExport rdos={obra.rdos} obra={obra} />
               </CardContent>
             </Card>
           </TabsContent>

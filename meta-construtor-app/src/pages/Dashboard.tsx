@@ -250,30 +250,29 @@ export default function Dashboard() {
               {stats.map((stat, index) => (
                 <Card 
                   key={index} 
-                  className="responsive-card interactive-hover cursor-pointer"
+                  className="centered-card interactive-hover cursor-pointer"
                   onClick={() => handleKPIClick(stat)}
                 >
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                  <div className="centered-card-header border-0 pb-2">
+                    <stat.icon className={`h-8 w-8 ${stat.color} mb-3`} />
+                    <CardTitle className="card-subtitle-centered">
                       {stat.title}
                     </CardTitle>
-                    <stat.icon className={`mobile-button-icon ${stat.color}`} />
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="flex items-end justify-between">
-                      <div className="space-y-1">
-                        <div className="text-xl sm:text-2xl font-bold">{stat.value}</div>
-                        <p className="text-xs text-muted-foreground">
-                          <span className={stat.change.startsWith('+') ? 'text-green-600' : 'text-red-600'}>
-                            {stat.change}
-                          </span> desde ontem
-                        </p>
+                  </div>
+                  <div className="centered-card-content">
+                    <div className="text-center">
+                      <div className="card-metric-value text-2xl sm:text-3xl mb-2">{stat.value}</div>
+                      <div className="card-info-item justify-center">
+                        <span className={`text-xs font-medium ${stat.change.startsWith('+') ? 'text-green-600' : 'text-red-600'}`}>
+                          {stat.change}
+                        </span>
+                        <span className="card-metric-label">desde ontem</span>
                       </div>
-                      <div className="hidden sm:block">
+                      <div className="mt-4 hidden sm:block">
                         <MiniChart data={stat.trend} color={stat.color.replace('text-', '').replace('-600', '')} />
                       </div>
                     </div>
-                  </CardContent>
+                  </div>
                 </Card>
               ))}
             </div>
@@ -324,10 +323,14 @@ export default function Dashboard() {
                   </div>
                 ))
               ) : projects.length === 0 ? (
-                <div className="text-center py-8">
-                  <Building className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-medium mb-2">Nenhuma obra ativa</h3>
-                  <p className="text-muted-foreground">Cadastre uma nova obra para começar</p>
+                <div className="content-center py-12">
+                  <div className="text-center max-w-md mx-auto">
+                    <div className="mx-auto w-16 h-16 bg-muted rounded-full content-center mb-4">
+                      <Building className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">Nenhuma obra ativa</h3>
+                    <p className="text-muted-foreground text-balance">Cadastre uma nova obra para começar a acompanhar o progresso</p>
+                  </div>
                 </div>
               ) : (
                 projects.map((project, index) => (
@@ -399,10 +402,14 @@ export default function Dashboard() {
                   </div>
                 ))
               ) : recentActivities.length === 0 ? (
-                <div className="text-center py-8">
-                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-medium mb-2">Nenhuma atividade recente</h3>
-                  <p className="text-muted-foreground">As atividades aparecerão aqui conforme forem executadas</p>
+                <div className="content-center py-12">
+                  <div className="text-center max-w-md mx-auto">
+                    <div className="mx-auto w-16 h-16 bg-muted rounded-full content-center mb-4">
+                      <FileText className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">Nenhuma atividade recente</h3>
+                    <p className="text-muted-foreground text-balance">As atividades aparecerão aqui conforme forem executadas</p>
+                  </div>
                 </div>
               ) : (
                 recentActivities.map((activity) => (

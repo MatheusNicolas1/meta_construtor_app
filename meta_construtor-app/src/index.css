@@ -1,0 +1,611 @@
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+/* Home spacing overrides */
+@import "./styles/overrides/home-spacing.css";
+
+/* Custom scrollbar styles */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.scrollbar-thumb-white\/20::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.scrollbar-track-transparent::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Animações avançadas para os novos componentes */
+@keyframes fadeSlideIn {
+  to {
+    opacity: 1;
+    filter: blur(0px);
+    transform: translateY(0px);
+  }
+}
+
+@keyframes slideRightIn {
+  to {
+    opacity: 1;
+    filter: blur(0px);
+    transform: translateX(0px);
+  }
+}
+
+@keyframes testimonialIn {
+  to {
+    opacity: 1;
+    filter: blur(0px);
+    transform: translateY(0px) scale(1);
+  }
+}
+
+/* Enhanced animation utilities for login components */
+.animate-element {
+  opacity: 0;
+  filter: blur(1px);
+  transform: translateY(20px);
+  animation: fadeSlideIn 0.6s ease-out forwards;
+}
+
+.animate-slide-right {
+  opacity: 0;
+  filter: blur(1px);
+  transform: translateX(100px);
+  animation: slideRightIn 0.8s ease-out forwards;
+}
+
+.animate-testimonial {
+  opacity: 0;
+  filter: blur(1px);
+  transform: translateY(20px) scale(0.95);
+  animation: testimonialIn 0.6s ease-out forwards;
+}
+
+/* Animation delays */
+.animate-delay-100 { animation-delay: 0.1s; }
+.animate-delay-200 { animation-delay: 0.2s; }
+.animate-delay-300 { animation-delay: 0.3s; }
+.animate-delay-400 { animation-delay: 0.4s; }
+.animate-delay-500 { animation-delay: 0.5s; }
+.animate-delay-600 { animation-delay: 0.6s; }
+.animate-delay-700 { animation-delay: 0.7s; }
+.animate-delay-800 { animation-delay: 0.8s; }
+.animate-delay-900 { animation-delay: 0.9s; }
+.animate-delay-1000 { animation-delay: 1s; }
+.animate-delay-1200 { animation-delay: 1.2s; }
+.animate-delay-1400 { animation-delay: 1.4s; }
+
+/* Custom checkbox styling */
+.custom-checkbox {
+  appearance: none;
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.25rem;
+  background-color: transparent;
+  cursor: pointer;
+  position: relative;
+}
+
+.custom-checkbox:checked {
+  background-color: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+}
+
+.custom-checkbox:checked::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: bold;
+}
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* MetaConstrutor Design System - Light Mode */
+    --background: 0 0% 100%;
+    --foreground: 210 63% 11%;
+    
+    --card: 0 0% 98%;
+    --card-foreground: 210 63% 11%;
+    
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 63% 11%;
+    
+    --primary: 14 100% 57%;
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 202 76% 44%;
+    --secondary-foreground: 0 0% 100%;
+    
+    --muted: 158 13% 92%;
+    --muted-foreground: 210 63% 11%;
+    
+    --accent: 202 76% 44%;
+    --accent-foreground: 0 0% 100%;
+    
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --border: 158 13% 85%;
+    --input: 158 13% 90%;
+    --ring: 14 100% 57%;
+    
+    --radius: 0.75rem;
+    
+    /* Construction-specific colors */
+    --construction-orange: 14 100% 57%;
+    --construction-orange-light: 14 100% 67%;
+    --construction-green: 81 67% 48%;
+    --construction-green-light: 81 67% 58%;
+    --construction-blue: 204 65% 11%;
+    --construction-blue-light: 204 65% 21%;
+    --construction-dark: 210 63% 11%;
+    --construction-gray: 158 13% 50%;
+    
+    /* Success colors */
+    --success: 81 67% 48%;
+    --success-foreground: 0 0% 100%;
+    
+    /* Sidebar Light Mode */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 210 63% 11%;
+    --sidebar-primary: 14 100% 57%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 158 13% 95%;
+    --sidebar-accent-foreground: 210 63% 11%;
+    --sidebar-border: 158 13% 85%;
+    --sidebar-ring: 14 100% 57%;
+  }
+
+  .dark {
+    /* MetaConstrutor Dark Mode */
+    --background: 210 63% 11%;
+    --foreground: 0 0% 100%;
+    
+    --card: 210 63% 8%;
+    --card-foreground: 0 0% 100%;
+    
+    --popover: 210 63% 11%;
+    --popover-foreground: 0 0% 100%;
+    
+    --primary: 14 100% 57%;
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 202 76% 44%;
+    --secondary-foreground: 0 0% 100%;
+    
+    --muted: 210 63% 15%;
+    --muted-foreground: 158 13% 70%;
+    
+    --accent: 202 76% 44%;
+    --accent-foreground: 0 0% 100%;
+    
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --border: 210 63% 20%;
+    --input: 210 63% 15%;
+    --ring: 14 100% 57%;
+    
+    /* Construction colors for dark mode */
+    --construction-orange: 14 100% 57%;
+    --construction-orange-light: 14 100% 67%;
+    --construction-green: 81 67% 48%;
+    --construction-green-light: 81 67% 58%;
+    --construction-blue: 204 65% 11%;
+    --construction-blue-light: 204 65% 21%;
+    --construction-dark: 210 63% 11%;
+    --construction-gray: 158 13% 50%;
+    
+    /* Success colors */
+    --success: 81 67% 48%;
+    --success-foreground: 0 0% 100%;
+    
+    /* Sidebar dark mode */
+    --sidebar-background: 210 63% 11%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 14 100% 57%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 63% 15%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 210 63% 20%;
+    --sidebar-ring: 14 100% 57%;
+  }
+  
+  /* Enhanced color variations for better contrast */
+  .theme-construction {
+    --primary-variant: 14 95% 62%;
+    --secondary-variant: 202 71% 49%;
+    --success-variant: 81 62% 43%;
+    --info-variant: 202 71% 49%;
+    --warning-variant: 14 95% 52%;
+  }
+
+  .dark .theme-construction {
+    --primary-variant: 14 95% 52%;
+    --secondary-variant: 202 71% 39%;
+    --success-variant: 81 62% 53%;
+    --info-variant: 202 71% 39%;
+    --warning-variant: 14 95% 47%;
+  }
+  
+  /* Gradients */
+  .gradient-construction {
+    background: linear-gradient(135deg, hsl(var(--construction-orange)), hsl(var(--construction-orange-light)));
+  }
+  
+  .gradient-success {
+    background: linear-gradient(135deg, hsl(var(--construction-green)), hsl(var(--construction-green-light)));
+  }
+  
+  .gradient-info {
+    background: linear-gradient(135deg, hsl(var(--construction-blue)), hsl(var(--construction-blue-light)));
+  }
+  
+  /* Login gradients */
+  .gradient-login-bg {
+    background: linear-gradient(135deg, hsl(var(--construction-blue)) 0%, hsl(210 63% 11%) 100%);
+  }
+  
+  .gradient-login-card {
+    background: linear-gradient(135deg, hsl(var(--construction-orange)) 0%, hsl(210 63% 11%) 100%);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html, body {
+    @apply bg-background text-foreground antialiased;
+    overflow-x: hidden;
+    word-wrap: break-word;
+  }
+
+
+  
+  /* Scroll behavior improvements */
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  /* Custom scrollbar styles for better UX */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground)) hsl(var(--muted));
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: hsl(var(--muted));
+    border-radius: 3px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground));
+    border-radius: 3px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--foreground));
+  }
+
+  /* Scrollbar personalizado para telas de login/cadastro */
+  .scrollbar-thumb-white\/20 {
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-thumb-white\/20::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .scrollbar-thumb-white\/20::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thumb-white\/20::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+  }
+
+  .scrollbar-thumb-white\/20::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+  }
+
+  .scrollbar-track-transparent::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  /* Touch improvements */
+  .touch-manipulation {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Mobile-first responsive improvements */
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  
+  /* Fix for text truncation in mobile */
+  .truncate-mobile {
+    @apply truncate;
+  }
+  
+  @media (max-width: 640px) {
+    .truncate-mobile {
+      max-width: 150px;
+    }
+  }
+}
+
+@layer utilities {
+  /* Mobile-specific utilities */
+  @media (max-width: 768px) {
+    .mobile-padding {
+      @apply px-4 py-2;
+    }
+    
+    .mobile-text-sm {
+      @apply text-sm;
+    }
+  }
+  
+  /* Touch-friendly sizing */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Garantir botões tenham tamanho mínimo para touch */
+  .touch-safe {
+    min-height: 44px;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  @media (max-width: 768px) {
+    .touch-safe {
+      min-height: 48px;
+      min-width: 48px;
+    }
+  }
+  
+  /* Responsive spacing */
+  .responsive-spacing {
+    @apply space-y-4 md:space-y-6;
+  }
+  
+  /* Enhanced hover and focus effects with better contrast */
+  .hover-scale {
+    @apply transition-transform duration-200 hover:scale-105;
+  }
+  
+  /* Fade in animation for images and elements */
+  .animate-fade-in {
+    @apply opacity-0 animate-in fade-in duration-700;
+  }
+  
+  /* Blur transition effects */
+  .blur-xs {
+    filter: blur(2px);
+  }
+  
+  /* Better touch targets for mobile */
+  .touch-safe {
+    min-height: 44px;
+    min-width: 44px;
+    @apply flex items-center justify-center;
+  }
+  
+  @media (max-width: 768px) {
+    .touch-safe {
+      min-height: 48px;
+      min-width: 48px;
+    }
+  }
+  
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+  }
+  
+  /* Better contrast utilities */
+  .text-contrast {
+    @apply text-foreground;
+  }
+  
+  .bg-contrast {
+    @apply bg-background;
+  }
+  
+  /* Mobile improvements for touch interfaces */
+  .touch-safe {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Better mobile padding and margins */
+  .mobile-safe {
+    @apply p-4 m-2;
+  }
+  
+  @media (max-width: 768px) {
+    .mobile-safe {
+      @apply p-3 m-1;
+    }
+  }
+
+  /* Calendar RAC styles for perfect alignment and visibility */
+  .rac-calendar .icon-btn {
+    @apply h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-foreground/10 border border-border bg-background text-foreground;
+    display: grid;
+    place-items: center;
+  }
+
+  .rac-calendar .day-btn {
+    @apply h-8 w-8 sm:h-9 sm:w-9 md:h-10 md:w-10 aspect-square rounded-lg
+           tabular-nums text-foreground bg-transparent relative text-xs sm:text-sm
+           focus:outline-none focus:ring-2 focus:ring-[#FF5722] focus:ring-offset-1 focus:ring-offset-background;
+    display: grid;
+    place-items: center;
+  }
+
+  /* fora do mês */
+  .rac-calendar .day-btn[data-outside-month] { 
+    @apply text-muted-foreground/60 hover:bg-transparent; 
+  }
+
+  /* hover não altera a cor do número */
+  .rac-calendar .day-btn:hover { 
+    @apply bg-foreground/10; 
+  }
+
+  /* dia selecionado */
+  .rac-calendar .day-btn[data-selected] { 
+    @apply bg-[#FF5722] text-white font-medium; 
+  }
+
+  /* hoje */
+  .rac-calendar .day-btn[data-today] { 
+    @apply ring-2 ring-[#FF5722] ring-offset-1 ring-offset-background; 
+  }
+
+  /* desabilitado */
+  .rac-calendar .day-btn[aria-disabled="true"] { 
+    @apply opacity-50 pointer-events-none; 
+  }
+
+  /* garantir 7 colunas fixas com espaçamento responsivo */
+  .rac-calendar .grid { 
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr)); 
+    gap: 2px;
+  }
+
+  /* Container do calendário responsivo */
+  .rac-calendar {
+    @apply w-full max-w-sm mx-auto;
+  }
+
+  /* Cabeçalho do calendário */
+  .rac-calendar .caption {
+    @apply mb-2 sm:mb-4;
+  }
+
+  .rac-calendar .caption_label {
+    @apply text-sm sm:text-base font-medium;
+  }
+
+  /* Responsividade para mobile */
+  @media (max-width: 640px) {
+    .rac-calendar {
+      @apply max-w-full px-2;
+    }
+    
+    .rac-calendar .grid {
+      gap: 1px;
+    }
+    
+    .rac-calendar .day-btn {
+      min-height: 32px;
+      min-width: 32px;
+    }
+  }
+
+  /* CORREÇÃO: garantir contraste perfeito em todos os temas */
+  .rac-calendar .day-btn { 
+    color: hsl(var(--foreground)) !important; 
+    background-color: transparent;
+  }
+
+  .rac-calendar .day-btn:hover { 
+    background-color: hsl(var(--accent)) !important;
+    color: hsl(var(--accent-foreground)) !important;
+  }
+
+  /* dia selecionado - sobrescreve acima */
+  .rac-calendar .day-btn[data-selected] { 
+    background-color: hsl(var(--primary)) !important; 
+    color: hsl(var(--primary-foreground)) !important;
+  }
+
+  /* hoje - mantém contraste */
+  .rac-calendar .day-btn[data-today] { 
+    color: hsl(var(--foreground)) !important;
+    border: 2px solid hsl(var(--primary));
+  }
+
+  /* fora do mês */
+  .rac-calendar .day-btn[data-outside-month] { 
+    color: hsl(var(--muted-foreground)) !important;
+    opacity: 0.5;
+  }
+  /* Layout e responsividade melhoradas */
+  .responsive-card {
+    @apply transition-all duration-300 hover:shadow-lg;
+  }
+  
+  .mobile-stack {
+    @apply flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between;
+  }
+  
+  .truncate-mobile {
+    @apply truncate max-w-[200px] sm:max-w-none;
+  }
+  
+  .button-group-mobile {
+    @apply flex gap-2 overflow-x-auto pb-1 sm:pb-0;
+  }
+  
+  .flex-responsive {
+    @apply flex flex-wrap gap-2 sm:flex-nowrap;
+  }
+  
+  /* Melhorias de touch para mobile */
+  .touch-safe {
+    @apply min-h-[44px] min-w-[44px] sm:min-h-[32px] sm:min-w-[32px];
+  }
+}

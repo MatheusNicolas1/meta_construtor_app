@@ -1,0 +1,225 @@
+/* 
+ * Home Spacing Override
+ * Replica o espaçamento exato da página /home para outras páginas
+ * Gerado automaticamente para manter consistência visual
+ */
+
+/* 
+ * Seletores identificados:
+ * - Header: nav[data-state] (LandingNavigation)
+ * - Home Badge: Link com texto "Gestão Inteligente de Obras" no HeroSectionModern
+ * - Primeira seção: section.py-12.md:py-16.lg:py-20 (primeira section da home)
+ */
+
+/* 
+ * Valores calculados baseados na estrutura da página /home:
+ * Desktop (>=1200px): deltaDesktop = 160px (md:pt-40 = 160px)
+ * Tablet (768-1199px): deltaTablet = 160px (md:pt-40 = 160px)
+ * Mobile (<768px): deltaMobile = 128px (pt-32 = 128px)
+ * 
+ * Nota: O HeroSectionModern usa pt-32 pb-16 md:pt-40 md:pb-24
+ * que cria o espaçamento exato entre o header fixo e o conteúdo
+ */
+
+/* Página Preco - replicar espaçamento total da /home entre menu -> badge */
+.page-preco .page-first-section {
+  margin-top: 0 !important;     /* nunca usar margin-top para empurrar a seção */
+  padding-top: 11rem !important; /* mobile: py-12 (3rem) + pt-32 (8rem) = 11rem */
+}
+
+@media (min-width: 768px) {
+  .page-preco .page-first-section {
+    padding-top: 14rem !important; /* tablet: md:py-16 (4rem) + md:pt-40 (10rem) = 14rem */
+  }
+}
+
+@media (min-width: 1024px) {
+  .page-preco .page-first-section {
+    padding-top: 10rem !important; /* desktop: lg:py-20 (5rem) + lg:py-20 (5rem) = 10rem */
+  }
+}
+
+/* Espaçamento entre badge e título em /preco para igualar à /home */
+.page-preco #pricing .text-center + .text-center,
+.page-preco #pricing .text-center + * .text-center {
+  /* não usar seletores frágeis; garantimos via componente Pricing abaixo */
+}
+
+/* Ajuste direto no bloco que contém título/descrição dentro do componente Pricing */
+.page-preco #pricing .text-center.space-y-4.mb-8 {
+  margin-top: 0 !important;             /* remove gap extra acima do título */
+}
+
+/* Ajuste para o título principal sem badge */
+.page-preco #pricing .text-center.space-y-4.mb-4 {
+  margin-top: 0 !important;             /* remove gap extra acima do título */
+}
+
+/* ==========================
+   Espaçamentos entre seções
+   (replicar /home)
+   ========================== */
+
+/* Wrapper principal do Pricing (override do py-20) */
+.page-preco #pricing > div.w-full.max-w-\[100vw\] {
+  padding-top: 3rem !important;   /* py-12 */
+  padding-bottom: 3rem !important;
+}
+
+@media (min-width: 768px) {
+  .page-preco #pricing > div.w-full.max-w-\[100vw\] {
+    padding-top: 4rem !important; /* md:py-16 */
+    padding-bottom: 4rem !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .page-preco #pricing > div.w-full.max-w-\[100vw\] {
+    padding-top: 5rem !important; /* lg:py-20 */
+    padding-bottom: 5rem !important;
+  }
+}
+
+/* Bloco acima do carrossel (override pt-8/12/16) */
+.page-preco #pricing .relative.w-full.max-w-\[100vw\] {
+  padding-top: 1rem !important;   /* pt-4 */
+}
+
+@media (min-width: 640px) {
+  .page-preco #pricing .relative.w-full.max-w-\[100vw\] {
+    padding-top: 2rem !important; /* sm:pt-8 */
+  }
+}
+
+@media (min-width: 768px) {
+  .page-preco #pricing .relative.w-full.max-w-\[100vw\] {
+    padding-top: 3rem !important; /* md:pt-12 */
+  }
+}
+
+/* Espaço do bloco de toggle abaixo do título */
+.page-preco #pricing .flex.justify-center.items-center.mb-4 {
+  margin-top: 0.5rem !important;   /* mt-2 feeling */
+  margin-bottom: 1rem !important;  /* mb-4 mantém respiro mínimo */
+}
+
+@media (min-width: 768px) {
+  .page-preco #pricing .text-center.mb-4 + .text-center.space-y-4.mb-8 {
+    margin-top: 2rem !important;        /* md:mt-8 */
+  }
+}
+
+/* Página Sobre */
+.page-sobre .page-first-section {
+  margin-top: 160px !important;
+}
+
+@media (max-width: 1199px) {
+  .page-sobre .page-first-section {
+    margin-top: 160px !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .page-sobre .page-first-section {
+    margin-top: 128px !important;
+  }
+}
+
+/* Página Contato */
+.page-contato .page-first-section {
+  margin-top: 160px !important;
+}
+
+@media (max-width: 1199px) {
+  .page-contato .page-first-section {
+    margin-top: 160px !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .page-contato .page-first-section {
+    margin-top: 128px !important;
+  }
+}
+
+/* Páginas Checkout */
+.page-checkout .page-first-section {
+  margin-top: 160px !important;
+}
+
+@media (max-width: 1199px) {
+  .page-checkout .page-first-section {
+    margin-top: 160px !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .page-checkout .page-first-section {
+    margin-top: 128px !important;
+  }
+}
+
+/* 
+ * Correção do background das páginas Sobre e Contato
+ * Garantir que o background se estenda até o topo da viewport
+ */
+
+/* Página Sobre - Background se estende até o topo */
+.page-sobre .page-first-section {
+  /* Remover padding top que cria lacuna */
+  padding-top: 0 !important;
+  /* Adicionar padding interno para o conteúdo */
+  padding-bottom: 4rem !important; /* pb-16 */
+  /* Garantir que o background cubra toda a área */
+  background-attachment: fixed;
+  background-size: cover;
+  background-position: top center;
+  /* Estender até o topo da viewport */
+  margin-top: 0 !important;
+  /* Adicionar padding interno para compensar o header fixo */
+  padding-top: 8rem !important; /* pt-32 */
+}
+
+@media (min-width: 768px) {
+  .page-sobre .page-first-section {
+    padding-top: 10rem !important; /* md:pt-40 */
+    padding-bottom: 6rem !important; /* md:pb-24 */
+  }
+}
+
+@media (min-width: 1024px) {
+  .page-sobre .page-first-section {
+    padding-top: 5rem !important; /* lg:py-20 */
+    padding-bottom: 5rem !important; /* lg:py-20 */
+  }
+}
+
+/* Página Contato - Replicar espaçamento exato da página /home */
+.page-contato .page-first-section {
+  /* Espaçamento total da /home: py-12 + pt-32 = 11rem */
+  padding-top: 11rem !important; /* py-12 (3rem) + pt-32 (8rem) = 11rem total */
+  padding-bottom: 4rem !important; /* pb-16 - mesmo valor da /home */
+  /* Garantir que o background cubra toda a área */
+  background-attachment: fixed;
+  background-size: cover;
+  background-position: top center;
+  /* Manter margin-top padrão */
+  margin-top: 0 !important;
+}
+
+@media (min-width: 768px) {
+  .page-contato .page-first-section {
+    /* Espaçamento total da /home: md:py-16 + md:pt-40 = 14rem */
+    padding-top: 14rem !important; /* md:py-16 (4rem) + md:pt-40 (10rem) = 14rem total */
+    padding-bottom: 6rem !important; /* md:pb-24 - mesmo valor da /home */
+  }
+}
+
+@media (min-width: 1024px) {
+  .page-contato .page-first-section {
+    /* Espaçamento total da /home: lg:py-20 + lg:py-20 = 10rem */
+    padding-top: 10rem !important; /* lg:py-20 (5rem) + lg:py-20 (5rem) = 10rem total */
+    padding-bottom: 5rem !important; /* lg:py-20 - mesmo valor da /home */
+  }
+}

@@ -1,0 +1,542 @@
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { NavigationSafety } from "@/utils/navigationSafety";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Checklist as ChecklistType, ChecklistItem } from "@/types/checklist";
+import { FileUploadComponent } from "@/components/checklist/FileUploadComponent";
+import { 
+  ArrowLeft, 
+  Save, 
+  Printer, 
+  Download, 
+  Mail, 
+  Calendar,
+  User,
+  Building,
+  CheckSquare,
+  AlertCircle,
+  FileCheck,
+  Camera,
+  Paperclip
+} from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { toastEnhanced } from "@/components/ToastEnhanced";
+import "../styles/print.css";
+
+const ChecklistDetalhes = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  
+  const [checklist, setChecklist] = useState<ChecklistType | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setSaving] = useState(false);
+  const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
+  const [emailRecipients, setEmailRecipients] = useState("");
+
+  // Mock data - em produção viria do backend
+  useEffect(() => {
+    // Simular carregamento dos dados
+    setTimeout(() => {
+      if (id === "checklist-1") {
+        setChecklist({
+          id: "checklist-1",
+          title: "Checklist de Segurança - Início de Obra",
+          category: "Segurança",
+          description: "Verificações obrigatórias antes do início dos trabalhos",
+          obra: { id: "obra-1", name: "Residencial Vista Verde" },
+          responsible: { id: "resp-1", name: "João Silva", email: "joao@example.com", role: "Engenheiro Civil" },
+          status: "Em Andamento",
+          dueDate: "2024-02-15",
+          createdAt: "2024-01-15T10:00:00Z",
+          updatedAt: "2024-01-16T14:30:00Z",
+          startedAt: "2024-01-16T08:00:00Z",
+          templateUsed: { id: "template-1", name: "Segurança no Início da Obra" },
+          progress: { total: 5, completed: 3, percentage: 60 },
+          items: [
+            {
+              id: "item-1",
+              title: "Verificar EPIs da equipe",
+              description: "Conferir se todos os trabalhadores possuem EPIs adequados",
+              priority: "Crítica",
+              status: "Concluído",
+              requiresAttachment: true,
+              isObligatory: true,
+              attachments: [],
+              completedAt: "2024-01-16T09:00:00Z",
+              completedBy: "João Silva"
+            },
+            {
+              id: "item-2",
+              title: "Inspeção de equipamentos de segurança",
+              priority: "Crítica",
+              status: "Concluído",
+              requiresAttachment: true,
+              isObligatory: true,
+              attachments: [],
+              completedAt: "2024-01-16T10:00:00Z",
+              completedBy: "João Silva"
+            },
+            {
+              id: "item-3",
+              title: "Verificar sinalização de segurança",
+              priority: "Alta",
+              status: "Concluído",
+              requiresAttachment: false,
+              isObligatory: true,
+              attachments: [],
+              completedAt: "2024-01-16T11:00:00Z",
+              completedBy: "João Silva"
+            },
+            {
+              id: "item-4",
+              title: "Teste de equipamentos elétricos",
+              priority: "Crítica",
+              status: "Em andamento",
+              requiresAttachment: true,
+              isObligatory: true,
+              attachments: []
+            },
+            {
+              id: "item-5",
+              title: "Verificar extintores de incêndio",
+              priority: "Média",
+              status: "Não iniciado",
+              requiresAttachment: false,
+              isObligatory: false,
+              attachments: []
+            }
+          ]
+        });
+      }
+      setIsLoading(false);
+    }, 1000);
+  }, [id]);
+
+  const getPriorityBadge = (priority: string) => {
+    switch (priority) {
+      case 'Crítica':
+        return <Badge variant="destructive" className="text-xs">Crítica</Badge>;
+      case 'Alta':
+        return <Badge variant="secondary" className="bg-orange-100 text-orange-800 text-xs">Alta</Badge>;
+      case 'Média':
+        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 text-xs">Média</Badge>;
+      case 'Baixa':
+        return <Badge variant="outline" className="text-xs">Baixa</Badge>;
+      default:
+        return <Badge variant="outline" className="text-xs">{priority}</Badge>;
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'Concluído':
+        return <Badge className="bg-green-100 text-green-800 text-xs">Concluído</Badge>;
+      case 'Em andamento':
+        return <Badge className="bg-blue-100 text-blue-800 text-xs">Em andamento</Badge>;
+      case 'Não iniciado':
+        return <Badge variant="outline" className="text-xs">Não iniciado</Badge>;
+      case 'Não aplicável':
+        return <Badge variant="secondary" className="text-xs">Não aplicável</Badge>;
+      default:
+        return <Badge variant="outline" className="text-xs">{status}</Badge>;
+    }
+  };
+
+  const handleItemStatusChange = (itemId: string, completed: boolean) => {
+    if (!checklist) return;
+
+    setChecklist(prev => {
+      if (!prev) return prev;
+      
+      const updatedItems = prev.items.map(item => {
+        if (item.id === itemId) {
+          return {
+            ...item,
+            status: completed ? "Concluído" : "Não iniciado" as any,
+            completedAt: completed ? new Date().toISOString() : undefined,
+            completedBy: completed ? "Usuário Atual" : undefined
+          };
+        }
+        return item;
+      });
+
+      const completedCount = updatedItems.filter(item => item.status === "Concluído").length;
+      const percentage = Math.round((completedCount / updatedItems.length) * 100);
+
+      return {
+        ...prev,
+        items: updatedItems,
+        progress: {
+          total: updatedItems.length,
+          completed: completedCount,
+          percentage
+        }
+      };
+    });
+  };
+
+  const handleItemObservationChange = (itemId: string, observation: string) => {
+    if (!checklist) return;
+
+    setChecklist(prev => {
+      if (!prev) return prev;
+      
+      const updatedItems = prev.items.map(item => {
+        if (item.id === itemId) {
+          return { ...item, observations: observation };
+        }
+        return item;
+      });
+
+      return { ...prev, items: updatedItems };
+    });
+  };
+
+  const handleSave = async () => {
+    if (!checklist) return;
+    
+    setSaving(true);
+    
+    try {
+      // Simular salvamento - PATCH /checklist/:id
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      toastEnhanced.success("Checklist salvo", "As alterações foram salvas com sucesso.");
+    } catch (error) {
+      toastEnhanced.error("Erro ao salvar", "Ocorreu um erro ao salvar o checklist.");
+    }
+    
+    setSaving(false);
+  };
+
+  const handlePrint = () => {
+    // Aplicar CSS @media print otimizado
+    const printStyles = `
+      @media print {
+        body * { visibility: hidden; }
+        .print-area, .print-area * { visibility: visible; }
+        .print-area { position: absolute; left: 0; top: 0; width: 100%; }
+        .print-hidden { display: none !important; }
+        .print-break { page-break-before: always; }
+        .print-no-break { page-break-inside: avoid; }
+      }
+    `;
+    
+    const styleSheet = document.createElement("style");
+    styleSheet.innerText = printStyles;
+    document.head.appendChild(styleSheet);
+    
+    window.print();
+    
+    setTimeout(() => {
+      document.head.removeChild(styleSheet);
+    }, 1000);
+  };
+
+  const handleExportPDF = async () => {
+    toastEnhanced.info("Exportando PDF", "Gerando arquivo PDF...");
+    
+    try {
+      // Implementar com html2pdf ou jsPDF
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Simular download do PDF
+      const link = document.createElement('a');
+      link.href = '#'; // URL do PDF gerado
+      link.download = `checklist-${checklist?.title?.replace(/\s+/g, '-')}.pdf`;
+      
+      toastEnhanced.success("PDF exportado", "O arquivo foi baixado com sucesso.");
+    } catch (error) {
+      toastEnhanced.error("Erro ao exportar", "Não foi possível gerar o PDF.");
+    }
+  };
+
+  const handleSendEmail = async () => {
+    if (!emailRecipients.trim()) {
+      toastEnhanced.error("Erro", "Informe pelo menos um destinatário.");
+      return;
+    }
+
+    toastEnhanced.info("Enviando e-mail", "O checklist está sendo enviado...");
+
+    try {
+      // Simular envio com endpoint backend
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      toastEnhanced.success("E-mail enviado", `Checklist enviado para: ${emailRecipients}`);
+      setIsEmailDialogOpen(false);
+      setEmailRecipients("");
+    } catch (error) {
+      toastEnhanced.error("Erro no envio", "Não foi possível enviar o e-mail.");
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="responsive-spacing">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Carregando checklist...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!checklist) {
+    return (
+      <div className="responsive-spacing">
+        <Card>
+          <CardContent className="p-6 text-center">
+            <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Checklist não encontrado</h3>
+            <p className="text-muted-foreground mb-4">O checklist solicitado não foi encontrado ou não existe.</p>
+            <Button onClick={() => NavigationSafety.safeNavigate(navigate, '/checklist')}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Voltar para Checklists
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="responsive-spacing print-area print:p-4">
+      {/* Header */}
+      <div className="flex flex-col gap-4 mb-6 print:mb-4 print-hidden">
+        <div className="flex items-center justify-between">
+          <Button variant="outline" onClick={() => NavigationSafety.safeNavigate(navigate, '/checklist')}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Voltar
+          </Button>
+          
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handlePrint}>
+              <Printer className="h-4 w-4 mr-2" />
+              Imprimir
+            </Button>
+            <Button variant="outline" onClick={handleExportPDF}>
+              <Download className="h-4 w-4 mr-2" />
+              Exportar PDF
+            </Button>
+            <Dialog open={isEmailDialogOpen} onOpenChange={setIsEmailDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <Mail className="h-4 w-4 mr-2" />
+                  Enviar Email
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Enviar Checklist por E-mail</DialogTitle>
+                  <DialogDescription>
+                    Insira os e-mails dos destinatários (separados por vírgula)
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label>Destinatários</Label>
+                    <Input
+                      placeholder="email1@exemplo.com, email2@exemplo.com"
+                      value={emailRecipients}
+                      onChange={(e) => setEmailRecipients(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => setIsEmailDialogOpen(false)}>
+                      Cancelar
+                    </Button>
+                    <Button onClick={handleSendEmail}>
+                      Enviar
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+            <Button 
+              onClick={handleSave} 
+              disabled={isSaving}
+              className="gradient-construction border-0 hover:opacity-90"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {isSaving ? "Salvando..." : "Salvar"}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Cabeçalho do Checklist */}
+      <Card className="print-no-break">
+        <CardHeader>
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+            <div className="flex-1">
+              <CardTitle className="text-xl md:text-2xl mb-2">{checklist.title}</CardTitle>
+              <CardDescription className="text-base">{checklist.description}</CardDescription>
+              
+              <div className="flex flex-wrap gap-4 mt-4">
+                <div className="flex items-center gap-2">
+                  <Building className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">{checklist.obra.name}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">{checklist.responsible.name} ({checklist.responsible.role})</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">
+                    Prazo: {format(new Date(checklist.dueDate), "dd/MM/yyyy", { locale: ptBR })}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Badge variant="secondary" className="w-fit">{checklist.category}</Badge>
+              {checklist.status === 'Concluído' ? (
+                <Badge className="bg-green-100 text-green-800 w-fit">Concluído</Badge>
+              ) : checklist.status === 'Em Andamento' ? (
+                <Badge className="bg-blue-100 text-blue-800 w-fit">Em Andamento</Badge>
+              ) : (
+                <Badge variant="outline" className="w-fit">{checklist.status}</Badge>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent>
+          <div className="space-y-4">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-muted-foreground">Progresso Geral</span>
+                <span className="text-sm font-semibold">{checklist.progress.percentage}%</span>
+              </div>
+              <div className="w-full bg-muted rounded-full h-3">
+                <div 
+                  className="bg-construction-green h-3 rounded-full transition-all duration-300"
+                  style={{ width: `${checklist.progress.percentage}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                <span>{checklist.progress.completed} de {checklist.progress.total} itens concluídos</span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Separator className="my-6" />
+
+      {/* Itens do Checklist */}
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <CheckSquare className="h-5 w-5" />
+          Itens do Checklist
+        </h2>
+
+        {checklist.items.map((item, index) => (
+          <Card key={item.id} className="transition-all hover:shadow-lg print-no-break">
+            <CardContent className="p-6">
+              <div className="space-y-4">
+                {/* Header do Item */}
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-3 flex-1">
+                    <Checkbox
+                      checked={item.status === "Concluído"}
+                      onCheckedChange={(checked) => handleItemStatusChange(item.id, checked === true)}
+                      className="mt-1 print-hidden"
+                    />
+                    <div className="flex-1">
+                      <h3 className="font-medium text-card-foreground mb-1">
+                        {index + 1}. {item.title}
+                      </h3>
+                      {item.description && (
+                        <p className="text-sm text-muted-foreground mb-2">{item.description}</p>
+                      )}
+                      <div className="flex flex-wrap gap-2">
+                        {getPriorityBadge(item.priority)}
+                        {getStatusBadge(item.status)}
+                        {item.isObligatory && (
+                          <Badge variant="outline" className="text-xs text-red-600 border-red-200">
+                            Obrigatório
+                          </Badge>
+                        )}
+                        {item.requiresAttachment && (
+                          <Badge variant="outline" className="text-xs text-blue-600 border-blue-200">
+                            Requer Evidência
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Observações */}
+                <div>
+                  <Label className="text-sm font-medium">Observações</Label>
+                  <Textarea
+                    placeholder="Adicione observações sobre este item..."
+                    value={item.observations || ''}
+                    onChange={(e) => handleItemObservationChange(item.id, e.target.value)}
+                    className="mt-1 print-hidden"
+                    rows={2}
+                  />
+                  {item.observations && (
+                    <div className="hidden print:block mt-2 p-2 bg-muted rounded text-sm">
+                      {item.observations}
+                    </div>
+                  )}
+                </div>
+
+                {/* Upload de Evidências */}
+                {item.requiresAttachment && (
+                  <div className="print-hidden">
+                    <Label className="text-sm font-medium flex items-center gap-2">
+                      <Paperclip className="h-4 w-4" />
+                      Evidências
+                    </Label>
+                    <div className="mt-2 p-4 border-2 border-dashed border-muted-foreground/25 rounded-lg">
+                      <div className="text-center">
+                        <Camera className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Adicione fotos ou documentos como evidência
+                        </p>
+                        <Button variant="outline" size="sm">
+                          <Camera className="h-4 w-4 mr-2" />
+                          Adicionar Evidência
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Informações de Conclusão */}
+                {item.completedAt && item.completedBy && (
+                  <div className="text-xs text-muted-foreground pt-2 border-t">
+                    <div className="flex items-center gap-2">
+                      <FileCheck className="h-3 w-3" />
+                      Concluído por {item.completedBy} em {format(new Date(item.completedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export default ChecklistDetalhes;

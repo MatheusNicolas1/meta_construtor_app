@@ -1,0 +1,33 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "installCommand": "npm install --legacy-peer-deps",
+  "devCommand": "npm run dev",
+  "headers": [
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=300, s-maxage=300"
+        }
+      ]
+    }
+  ],
+  "env": {
+    "VITE_SUPABASE_URL": "https://bgdvlhttyjeuprrfxgun.supabase.co",
+    "VITE_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJnZHZsaHR0eWpldXBycmZ4Z3VuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5ODM4NjUsImV4cCI6MjA3MzU1OTg2NX0.SO1sQBUKs12RQ7tArdPmgbbIq4MU2Ygwl6FNZT-3uLA",
+    "DATABASE_URL": "postgresql://postgres.bgdvlhttyjeuprrfxgun:[SAlocin1996,.;@aws-1-sa-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true",
+    "DIRECT_URL": "postgresql://postgres.bgdvlhttyjeuprrfxgun:[SAlocin1996,.;]@aws-1-sa-east-1.pooler.supabase.com:5432/postgres"
+  }
+}

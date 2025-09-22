@@ -113,15 +113,10 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
         </div>
       </section>
 
-      {/* Right column: hero image + testimonials */}
+      {/* Right column: hero image only - testimonials removed */}
       {heroImageSrc && (
         <section className="hidden md:block flex-1 relative p-4">
           <div className="animate-slide-in-right absolute inset-4 rounded-3xl bg-cover bg-center" style={{ backgroundImage: `url(${heroImageSrc})` }}></div>
-          {testimonials.length > 0 && (
-            <div className="absolute inset-4 rounded-3xl overflow-hidden">
-              <AutoScrollTestimonials testimonials={testimonials} duration={10} className="w-full h-full" />
-            </div>
-          )}
         </section>
       )}
     </div>

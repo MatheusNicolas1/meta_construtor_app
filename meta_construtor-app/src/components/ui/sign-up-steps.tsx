@@ -85,19 +85,19 @@ const NameStep = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5 bg-background/95 backdrop-blur-sm p-6 rounded-2xl border-2 border-border shadow-xl">
+    <form onSubmit={handleSubmit} className="space-y-5 bg-white/95 backdrop-blur-sm p-6 rounded-2xl border-2 border-construction-orange shadow-xl">
       <div className="animate-fade-in">
-        <label className="text-sm font-semibold text-foreground">Nome completo</label>
+        <label className="text-sm font-bold text-gray-900 mb-2 block">Nome completo</label>
         <GlassInputWrapper>
           <div className="relative">
-            <IdCard className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <IdCard className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-600" />
             <input 
               name="name" 
               type="text" 
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Digite seu nome completo" 
-              className="w-full bg-transparent text-sm p-4 pl-10 rounded-2xl focus:outline-none text-foreground placeholder:text-muted-foreground" 
+              className="w-full bg-transparent text-sm p-4 pl-10 rounded-2xl focus:outline-none text-gray-900 placeholder:text-gray-500 font-medium" 
               required
               minLength={2}
             />
@@ -108,7 +108,7 @@ const NameStep = ({
       <button 
         type="submit" 
         disabled={name.trim().length < 2 || isValidating}
-        className="animate-fade-in w-full rounded-2xl bg-construction-orange py-4 font-medium text-white hover:bg-construction-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="animate-fade-in w-full rounded-2xl bg-construction-orange py-4 font-bold text-white hover:bg-construction-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-lg"
       >
         {isValidating ? 'Validando...' : 'Continuar'}
       </button>
@@ -425,6 +425,8 @@ export const SignUpSteps: React.FC<SignUpStepsProps> = ({ onComplete }) => {
     confirmPassword: ''
   });
 
+  console.log('🔧 SignUpSteps renderizado - currentStep:', currentStep);
+
   const handleNameNext = async () => {
     setIsValidating(true);
     // Simulate name validation
@@ -454,8 +456,13 @@ export const SignUpSteps: React.FC<SignUpStepsProps> = ({ onComplete }) => {
   };
 
   return (
-    <div className="space-y-6 relative z-20 bg-background/95 backdrop-blur-sm p-8 rounded-2xl border-2 border-border shadow-2xl">
+    <div className="space-y-6 relative z-20 bg-background/95 backdrop-blur-sm p-8 rounded-2xl border-2 border-border shadow-2xl min-h-[400px]">
       <StepIndicator currentStep={currentStep} totalSteps={4} />
+      
+      {/* Debug info */}
+      <div className="text-xs text-muted-foreground mb-4">
+        Debug: currentStep = {currentStep}
+      </div>
       
       {currentStep === 1 && (
         <NameStep

@@ -1,14 +1,14 @@
 // Configurações de autenticação
 export const AUTH_CONFIG = {
   // URL base do projeto
-  BASE_URL: 'https://metaconstrutor-73t1q0fdr-meta-construtors-projects.vercel.app',
+  BASE_URL: 'https://metaconstrutor-app-eosin.vercel.app',
   
   // URLs de redirecionamento
   REDIRECT_URLS: {
     // URL de produção
-    PRODUCTION: 'https://metaconstrutor-73t1q0fdr-meta-construtors-projects.vercel.app/dashboard',
+    PRODUCTION: 'https://metaconstrutor-app-eosin.vercel.app/dashboard',
     // URL de desenvolvimento local
-    LOCAL: 'http://localhost:3001/dashboard',
+    LOCAL: 'http://localhost:3000/dashboard',
   },
   
   // Configurações do Google OAuth

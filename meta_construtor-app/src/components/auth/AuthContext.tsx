@@ -105,11 +105,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Verificar se não está já na página de dashboard
             if (window.location.pathname !== '/dashboard') {
               // Aguardar um pouco mais em mobile para garantir que a sessão esteja persistida
-              const delay = isMobile ? 1000 : 500;
+              const delay = isMobile ? 1500 : 800;
               setTimeout(() => {
                 console.log('🚀 Executando redirecionamento para /dashboard');
-                // Usar navigate com replace para evitar histórico indesejado
-                navigate('/dashboard', { replace: true });
+                // Forçar redirecionamento com window.location para garantir que funcione
+                window.location.href = '/dashboard';
               }, delay);
             }
           }

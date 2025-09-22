@@ -1,49 +1,44 @@
-const CACHE_NAME = 'metaconstrutor-v1';
-const urlsToCache = [
-  '/',
-  '/static/js/bundle.js',
-  '/static/css/main.css',
-  '/manifest.json'
-];
+const CACHE_NAME = 'metaconstrutor-v3';
 
-// Cache de recursos estáticos
+// Instalar service worker
 self.addEventListener('install', (event) => {
+  console.log('Service Worker installing...');
+  // Não fazer cache de URLs específicas na instalação
+  // Apenas marcar como instalado
+  self.skipWaiting();
+});
+
+// Ativar service worker
+self.addEventListener('activate', (event) => {
+  console.log('Service Worker activating...');
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        return cache.addAll(urlsToCache);
-      })
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            console.log('Deleting old cache:', cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    }).then(() => {
+      // Assumir controle de todas as páginas
+      return self.clients.claim();
+    })
   );
 });
 
 // Servir do cache quando disponível
 self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Cache hit - return response
-        if (response) {
-          return response;
-        }
-
-        return fetch(event.request).then(
-          (response) => {
-            // Check if we received a valid response
-            if (!response || response.status !== 200 || response.type !== 'basic') {
-              return response;
-            }
-
-            // Clone the response
-            const responseToCache = response.clone();
-
-            caches.open(CACHE_NAME)
-              .then((cache) => {
-                cache.put(event.request, responseToCache);
-              });
-
-            return response;
-          }
-        );
-      })
-  );
+  // Apenas interceptar requisições de navegação (páginas)
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .catch(() => {
+          // Se falhar, tentar servir do cache
+          return caches.match('/');
+        })
+    );
+  }
+  // Para outras requisições, deixar passar normalmente
 });

@@ -1,9 +1,8 @@
-import React, { memo, useMemo } from "react";
+import React, { memo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Building2, Users, Wrench, ClipboardList, FileText } from "lucide-react";
-import { useAggressiveMemo, useInstantCallback } from "@/hooks/useInstantCallback";
-import { OptimizedLink } from "@/components/OptimizedLink";
+import { Link } from "react-router-dom";
 
 // Componente otimizado para stats
 const StatCard = memo(({ stat }: { stat: any }) => (
@@ -23,20 +22,9 @@ const StatCard = memo(({ stat }: { stat: any }) => (
 
 StatCard.displayName = "StatCard";
 
-// Componentes lazy-loaded
-const RecentRDOs = React.lazy(() => 
-  import("@/components/RecentRDOs").then(module => ({ default: module.RecentRDOs }))
-);
-const RecentObras = React.lazy(() => 
-  import("@/components/RecentObras").then(module => ({ default: module.RecentObras }))
-);
-const ActivityCalendarModern = React.lazy(() => 
-  import("@/components/ActivityCalendarModern").then(module => ({ default: module.ActivityCalendarModern }))
-);
-
 const OptimizedDashboard = memo(() => {
-  // Usar memoização agressiva para evitar recálculos desnecessários
-  const stats = useAggressiveMemo(() => [
+  // Stats simplificados sem hooks complexos
+  const stats = [
     {
       title: "Obras Ativas",
       value: "12",
@@ -65,7 +53,7 @@ const OptimizedDashboard = memo(() => {
       icon: ClipboardList,
       color: "text-yellow-500",
     },
-  ], []);
+  ];
 
   return (
     <div className="space-y-6">
@@ -75,18 +63,18 @@ const OptimizedDashboard = memo(() => {
           <p className="text-muted-foreground">Visão geral das suas obras e projetos</p>
         </div>
         <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
-          <OptimizedLink to="/rdo" className="w-full sm:w-auto">
+          <Link to="/rdo" className="w-full sm:w-auto">
             <Button variant="outline" className="w-full sm:w-auto text-sidebar-foreground border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground touch-safe">
               <FileText className="mr-2 h-4 w-4" />
               Novo RDO
             </Button>
-          </OptimizedLink>
-          <OptimizedLink to="/obras" className="w-full sm:w-auto">
+          </Link>
+          <Link to="/obras" className="w-full sm:w-auto">
             <Button className="gradient-construction border-0 hover:opacity-90 w-full sm:w-auto touch-safe">
               <Building2 className="mr-2 h-4 w-4" />
               Nova Obra
             </Button>
-          </OptimizedLink>
+          </Link>
         </div>
       </div>
 
@@ -97,26 +85,22 @@ const OptimizedDashboard = memo(() => {
         ))}
       </div>
 
-      {/* Componentes lazy-loaded com Suspense */}
-      <React.Suspense fallback={
-        <div className="h-64 bg-card rounded-lg border border-border animate-pulse" />
-      }>
-        <ActivityCalendarModern />
-      </React.Suspense>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <React.Suspense fallback={
-          <div className="h-96 bg-card rounded-lg border border-border animate-pulse" />
-        }>
-          <RecentRDOs />
-        </React.Suspense>
-
-        <React.Suspense fallback={
-          <div className="h-96 bg-card rounded-lg border border-border animate-pulse" />
-        }>
-          <RecentObras />
-        </React.Suspense>
-      </div>
+      {/* Seção de boas-vindas simplificada */}
+      <Card className="bg-card border-border">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold text-card-foreground">
+            Bem-vindo ao Meta Construtor
+          </CardTitle>
+          <CardDescription>
+            Gerencie suas obras e projetos de forma eficiente
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            Use os botões acima para criar novas obras ou RDOs, ou navegue pelo menu lateral para acessar outras funcionalidades.
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 });

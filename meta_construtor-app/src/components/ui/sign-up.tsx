@@ -72,22 +72,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
             <h1 className="animate-fade-in text-4xl md:text-5xl font-semibold leading-tight text-foreground">{title}</h1>
             <p className="animate-fade-in text-muted-foreground">{description}</p>
 
-            {/* Free Trial Highlight - Melhorado */}
-            <div className="animate-fade-in bg-gradient-to-r from-primary/10 via-construction-orange/10 to-primary/10 border-2 border-primary/20 rounded-2xl p-4 sm:p-6 relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12"></div>
-              <div className="text-center relative z-10">
-                <div className="flex items-center justify-center gap-2 mb-2">
-                  <span className="text-xl">🎉</span>
-                  <h3 className="text-primary font-bold text-lg">Teste Grátis por 14 dias</h3>
-                  <span className="text-xl">🚀</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  <span className="font-semibold text-construction-orange">Sem compromisso</span> • 
-                  <span className="font-semibold text-primary"> Acesso completo</span> • 
-                  <span className="font-semibold text-green-600"> Cancele quando quiser</span>
-                </p>
-              </div>
-            </div>
+            {/* Removed Free Trial Highlight as solicitado */}
 
             <div className="relative z-30">
               <SignUpSteps onComplete={onSignUp} />

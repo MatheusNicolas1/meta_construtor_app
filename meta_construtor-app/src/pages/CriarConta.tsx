@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import SEO from "@/components/SEO";
 
 // Testimonials específicos para criar conta com imagens diferentes e funcionais
@@ -43,13 +44,48 @@ const CriarConta = () => {
     setIsLoading(true);
     
     try {
-      // Simulação de criação de conta com dados das etapas
-      console.log('Dados do cadastro:', data);
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Criar conta no Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          data: {
+            full_name: data.name,
+            phone: data.phone,
+            document_type: data.documentType,
+            document: data.document
+          }
+        }
+      });
+
+      if (authError) {
+        throw new Error(authError.message);
+      }
+
+      // Criar perfil na tabela profiles
+      if (authData.user) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: authData.user.id,
+            full_name: data.name,
+            email: data.email,
+            phone: data.phone,
+            document_type: data.documentType,
+            document: data.document,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+
+        if (profileError) {
+          console.error('Erro ao criar perfil:', profileError);
+          // Não falha a criação se o perfil não for criado, pois o usuário já foi criado no auth
+        }
+      }
       
       toast({
         title: "Conta criada com sucesso!",
-        description: "Bem-vindo ao Meta Construtor. Você será redirecionado para o login.",
+        description: "Bem-vindo ao Meta Construtor. Verifique seu email para confirmar a conta e faça login.",
       });
 
       // Redirecionar para login após sucesso
@@ -58,6 +94,7 @@ const CriarConta = () => {
       }, 2000);
 
     } catch (error: any) {
+      console.error('Erro ao criar conta:', error);
       toast({
         title: "Erro ao criar conta",
         description: error.message || "Ocorreu um erro inesperado. Tente novamente.",
@@ -93,6 +130,7 @@ const CriarConta = () => {
       />
       <div className="min-h-screen bg-background">
         <SignUpPage
+          title={<span className="font-light text-foreground tracking-tighter">Cadastre-se</span>}
           heroImageSrc="https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=1200&h=800&fit=crop"
           testimonials={createAccountTestimonials}
           onSignUp={handleSignUp}

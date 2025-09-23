@@ -60,8 +60,6 @@ const RootRedirect: React.FC = () => {
   // Redirecionar baseado no status de autenticação
   if (isAuthenticated || sessionExists) {
     console.log('✅ RootRedirect - Usuário autenticado, redirecionando para /dashboard');
-    // Forçar redirecionamento para dashboard
-    window.location.href = '/dashboard';
     return <Navigate to="/dashboard" replace />;
   } else {
     console.log('🏠 RootRedirect - Usuário não autenticado, redirecionando para /home');

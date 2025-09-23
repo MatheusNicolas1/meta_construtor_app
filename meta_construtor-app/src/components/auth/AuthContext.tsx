@@ -108,8 +108,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               const delay = isMobile ? 1500 : 800;
               setTimeout(() => {
                 console.log('🚀 Executando redirecionamento para /dashboard');
-                // Forçar redirecionamento com window.location para garantir que funcione
-                window.location.href = '/dashboard';
+                // Usar navegação interna para funcionar em desktop e mobile
+                navigate('/dashboard', { replace: true });
               }, delay);
             }
           }

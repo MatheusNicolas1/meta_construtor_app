@@ -1,0 +1,196 @@
+import { 
+  Home, 
+  Briefcase,
+  FileText, 
+  CheckSquare, 
+  Calendar, 
+  Users, 
+  Wrench, 
+  Folder, 
+  Truck, 
+  BarChart3, 
+  Zap,
+  Shield,
+  DollarSign
+} from "lucide-react";
+import { NavLink, useLocation, Link } from "react-router-dom";
+import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import Logo from "./Logo";
+import { useAuth } from "./auth/AuthContext";
+
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from "@/components/ui/sidebar";
+
+export function AppSidebar() {
+  const { state, isMobile, setOpenMobile } = useSidebar();
+  const location = useLocation();
+  const { t } = useTranslation();
+  const { roles } = useAuth();
+  const collapsed = state === "collapsed";
+
+  const menuItems = [
+    { title: t('menu.obras'), url: "/obras", icon: Briefcase, tourId: "obras" },
+    { title: t('menu.rdo'), url: "/rdo", icon: FileText, tourId: "rdo" },
+    { title: t('menu.checklist'), url: "/checklist", icon: CheckSquare, tourId: "checklist" },
+    { title: t('menu.atividades'), url: "/atividades", icon: Calendar, tourId: "atividades" },
+    { title: t('menu.equipes'), url: "/equipes", icon: Users, tourId: "equipes" },
+    { title: t('menu.equipamentos'), url: "/equipamentos", icon: Wrench, tourId: "equipamentos" },
+  ];
+
+  const secondaryItems = [
+    { title: t('menu.documentos'), url: "/documentos", icon: Folder, tourId: "documentos" },
+    { title: t('menu.fornecedores'), url: "/fornecedores", icon: Truck, tourId: "fornecedores" },
+    { title: 'Despesas', url: "/despesas", icon: DollarSign, tourId: "despesas" },
+    { title: t('menu.relatorios'), url: "/relatorios", icon: BarChart3, tourId: "relatorios" },
+    { title: t('menu.integracoes'), url: "/integracoes", icon: Zap, tourId: "integracoes" },
+  ];
+
+  const isAdmin = roles.includes('Administrador');
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  }, [location.pathname, isMobile, setOpenMobile]);
+
+  const isActive = (path: string) => {
+    return location.pathname.startsWith(path);
+  };
+
+  const getNavClass = (path: string) =>
+    isActive(path) 
+      ? "bg-primary text-primary-foreground hover:bg-primary/90" 
+      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground";
+
+  return (
+    <Sidebar 
+      className={`transition-all duration-300 ease-in-out ${collapsed ? "w-16" : "w-64"}`}
+      collapsible="icon"
+      side="left"
+    >
+      <SidebarContent className="bg-sidebar">
+        {/* Header com Logo */}
+        <div className={`border-b border-sidebar-border transition-all duration-300 ${collapsed ? 'px-2 py-3' : 'px-4 py-4'}`}>
+          <div className="flex items-center justify-center">
+            <Link 
+              to="/dashboard" 
+              className="flex items-center justify-center hover:opacity-80 transition-opacity touch-safe w-full"
+              title={collapsed ? "MetaConstrutor - Dashboard" : "Dashboard"}
+            >
+              {!collapsed && (
+                <Logo size="md" className="transition-all duration-300" />
+              )}
+              {collapsed && (
+                <div className="w-8 h-8 flex items-center justify-center">
+                  <Logo size="sm" className="transition-all duration-300" />
+                </div>
+              )}
+            </Link>
+          </div>
+        </div>
+
+        {/* Navegação Principal */}
+        <div className="flex-1 overflow-y-auto">
+          <SidebarGroup className={`transition-all duration-300 ${collapsed ? 'px-2 py-2' : 'px-3 py-2'}`}>
+            {!collapsed && (
+              <SidebarGroupLabel className="text-sidebar-foreground/70 px-2 py-1.5 text-xs font-semibold uppercase tracking-wider">
+                {t('menu.dashboard')}
+              </SidebarGroupLabel>
+            )}
+            <SidebarGroupContent>
+              <SidebarMenu className="space-y-1">
+                {menuItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild tooltip={collapsed ? item.title : undefined}>
+                      <NavLink 
+                        to={item.url}
+                        data-tour={item.tourId}
+                        className={`${getNavClass(item.url)} flex items-center gap-3 transition-all duration-200 rounded-lg h-10 ${
+                          collapsed ? 'justify-center px-0 w-10 mx-auto' : 'justify-start px-3'
+                        }`}
+                        title={collapsed ? item.title : undefined}
+                        end={false}
+                      >
+                        <item.icon className="h-5 w-5 flex-shrink-0" />
+                        {!collapsed && <span className="truncate text-sm font-medium">{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
+          <SidebarGroup className={`transition-all duration-300 ${collapsed ? 'px-2 py-2' : 'px-3 py-2'}`}>
+            {!collapsed && (
+              <SidebarGroupLabel className="text-sidebar-foreground/70 px-2 py-1.5 text-xs font-semibold uppercase tracking-wider">
+                {t('settings.title')}
+              </SidebarGroupLabel>
+            )}
+            <SidebarGroupContent>
+              <SidebarMenu className="space-y-1">
+                {secondaryItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild tooltip={collapsed ? item.title : undefined}>
+                      <NavLink 
+                        to={item.url}
+                        data-tour={item.tourId}
+                        className={`${getNavClass(item.url)} flex items-center gap-3 transition-all duration-200 rounded-lg h-10 ${
+                          collapsed ? 'justify-center px-0 w-10 mx-auto' : 'justify-start px-3'
+                        }`}
+                        title={collapsed ? item.title : undefined}
+                      >
+                        <item.icon className="h-5 w-5 flex-shrink-0" />
+                        {!collapsed && <span className="truncate text-sm font-medium">{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
+          {/* Painel Administrativo - Somente para Administradores */}
+          {isAdmin && (
+            <SidebarGroup className={`transition-all duration-300 ${collapsed ? 'px-2 py-2' : 'px-3 py-2'}`}>
+              {!collapsed && (
+                <SidebarGroupLabel className="text-sidebar-foreground/70 px-2 py-1.5 text-xs font-semibold uppercase tracking-wider">
+                  Administração
+                </SidebarGroupLabel>
+              )}
+              <SidebarGroupContent>
+                <SidebarMenu className="space-y-1">
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip={collapsed ? "Painel Admin" : undefined}>
+                      <NavLink 
+                        to="/admin/dashboard"
+                        className={`${getNavClass('/admin/dashboard')} flex items-center gap-3 transition-all duration-200 rounded-lg h-10 ${
+                          collapsed ? 'justify-center px-0 w-10 mx-auto' : 'justify-start px-3'
+                        }`}
+                        title={collapsed ? "Painel Admin" : undefined}
+                      >
+                        <Shield className="h-5 w-5 flex-shrink-0" />
+                        {!collapsed && <span className="truncate text-sm font-medium">Painel Admin</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )}
+        </div>
+      </SidebarContent>
+    </Sidebar>
+  );
+}

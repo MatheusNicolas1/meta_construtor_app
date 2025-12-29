@@ -1,0 +1,2 @@
+Force rebuild to clear HMR runtime and plugin state
+Timestamp: 2025-11-07T02:41:10Z

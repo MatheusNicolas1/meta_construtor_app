@@ -61,9 +61,9 @@ MILESTONE 1 — MODELO MULTI-TENANT E INTEGRIDADE DO BANCO (ORG FIRST)
 1.2 Vínculo de usuários por organização (membership)
 
 * Criar tabela org_members (user_id, org_id, role, status)
-  STATUS:
-  VALIDAÇÃO:
-  EVIDÊNCIA:
+  STATUS: DONE
+  VALIDAÇÃO: Migration criada (20260206_create_org_members_table.sql) com tabela org_members. Enum org_member_status (active, invited, inactive) criado. FKs para orgs(id) e auth.users(id) com DELETE CASCADE. Constraint UNIQUE(org_id, user_id). RLS habilitado com 4 policies complexas cobrindo hierarquia (Owner > Admin > Gerente > Colaborador). Trigger para atualizar joined_at automaticamente ao ativar. Backfill garante que todo owner de org seja inserido automaticamento como membro 'Administrador'. Utiliza enum app_role existente.
+  EVIDÊNCIA: supabase/migrations/20260206_create_org_members_table.sql (210 linhas), indices para performance (idx_org_members_org, idx_org_members_user), policies verificando hierarquia (org_members_select_policy, etc).
 
 1.3 Padronizar org_id no domínio
 

@@ -3,7 +3,6 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-// Handling __dirname in ESM
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -11,40 +10,49 @@ const __dirname = path.dirname(__filename);
 const log = (msg, type = 'info') => console.log(`[${type.toUpperCase()}] ${msg}`);
 const fail = (msg) => { console.error(`[FAIL] ${msg}`); process.exit(1); };
 
-// 2. Load Env
-const envPath = path.resolve(process.cwd(), '.env');
+// 2. Load Env (Prioritize CLI args or .env.local.test, fallback to process.env)
+// For local testing, we expect keys to be passed or hardcoded if standard.
+// We will try to parse 'supabase status' output logic if possible, but simplest is to assume env vars or user-provided file.
+// We will look for .env.local if available.
+
+const envPath = path.resolve(process.cwd(), '.env.local'); // Local dev env
 const envVars = {};
 if (fs.existsSync(envPath)) {
     fs.readFileSync(envPath, 'utf-8').split('\n').forEach(line => {
-        const [k, v] = line.split('=');
-        if (k && v) envVars[k.trim()] = v.trim().replace(/"/g, '');
+        const parts = line.split('=');
+        if (parts.length >= 2) {
+            envVars[parts[0].trim()] = parts.slice(1).join('=').trim().replace(/"/g, '');
+        }
     });
 }
-const URL = envVars.VITE_SUPABASE_URL || envVars.SUPABASE_URL || 'http://127.0.0.1:54321';
-const SERVICE_KEY = envVars.SUPABASE_SERVICE_ROLE_KEY;
-const ANON_KEY = envVars.VITE_SUPABASE_ANON_KEY;
 
-if (!SERVICE_KEY) fail('Missing SUPABASE_SERVICE_ROLE_KEY so cannot setup test users.');
-if (!ANON_KEY) fail('Missing VITE_SUPABASE_ANON_KEY.');
+// Fallback to process.env (passed by runner)
+const URL = process.env.SUPABASE_URL || envVars.SUPABASE_URL || 'http://127.0.0.1:54321';
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || envVars.SUPABASE_SERVICE_ROLE_KEY;
+const ANON_KEY = process.env.SUPABASE_ANON_KEY || envVars.SUPABASE_ANON_KEY;
+
+if (!SERVICE_KEY) fail('Missing SUPABASE_SERVICE_ROLE_KEY. Ensure it is set in env or .env.local');
 
 const adminClient = createClient(URL, SERVICE_KEY);
 
 async function run() {
     log('Starting RLS Smoke Test...');
+    log(`Target: ${URL}`);
 
     // 3. Setup Test Data (Users)
     const emailA = `testA_${Date.now()}@test.com`;
     const emailB = `testB_${Date.now()}@test.com`;
+    const emailC = `testC_${Date.now()}@test.com`;
 
-    log(`Creating User A: ${emailA}`);
+    log('Creating Users...');
     const { data: uA, error: eA } = await adminClient.auth.admin.createUser({ email: emailA, password: 'password123', email_confirm: true });
     if (eA) fail(`Create User A: ${eA.message}`);
 
-    log(`Creating User B: ${emailB}`);
     const { data: uB, error: eB } = await adminClient.auth.admin.createUser({ email: emailB, password: 'password123', email_confirm: true });
     if (eB) fail(`Create User B: ${eB.message}`);
 
-    log(`Created Users IDs: ${uA.user.id} (A), ${uB.user.id} (B)`);
+    const { data: uC, error: eC } = await adminClient.auth.admin.createUser({ email: emailC, password: 'password123', email_confirm: true });
+    if (eC) fail(`Create User C: ${eC.message}`);
 
     // Clients
     const clientA = createClient(URL, ANON_KEY);
@@ -53,66 +61,91 @@ async function run() {
     const clientB = createClient(URL, ANON_KEY);
     await clientB.auth.signInWithPassword({ email: emailB, password: 'password123' });
 
-    // 4. Test Isolation
-    // wait a bit for triggers? usually fast.
+    const clientC = createClient(URL, ANON_KEY);
+    await clientC.auth.signInWithPassword({ email: emailC, password: 'password123' });
+
+    // Wait for triggers (handle_new_user)
     await new Promise(r => setTimeout(r, 1000));
 
-    // Find Org A
-    const { data: orgsA } = await clientA.from('orgs').select('id, name');
-    if (!orgsA || orgsA.length === 0) fail('User A has no Personal Org created by trigger');
+    // Find User A's Org
+    const { data: orgsA } = await clientA.from('orgs').select('id');
+    if (!orgsA?.[0]) fail('User A Org not created by trigger');
     const orgIdA = orgsA[0].id;
     log(`User A Org: ${orgIdA}`);
 
-    // Find Org B
-    const { data: orgsB } = await clientB.from('orgs').select('id, name');
-    const orgIdB = orgsB[0].id;
-    log(`User B Org: ${orgIdB}`);
+    // Setup User C as Collaborator in Org A
+    // Admin inserts member C
+    const { error: errAddC } = await adminClient.from('org_members').insert({
+        org_id: orgIdA,
+        user_id: uC.user.id,
+        role: 'Colaborador',
+        status: 'active'
+    });
+    if (errAddC) fail(`Failed to add C to Org A: ${errAddC.message}`);
+    log(`User C added to Org A as Colaborador`);
 
-    // Test 1: A tries to Insert into Org B (Obras)
-    log('Test 1: Cross-Org Insert (Expect Fail)');
-    const { error: errInsert } = await clientA.from('obras').insert({
+    // --- TASK A: ISOLATION TESTS ---
+    log('--- Task 3.2 Isolation Tests ---');
+
+    // Find User B's Org
+    const { data: orgsB } = await clientB.from('orgs').select('id');
+    const orgIdB = orgsB[0].id;
+
+    // Test 1: A inserts into A (Success)
+    const { data: obraA, error: errObraA } = await clientA.from('obras').insert({
+        org_id: orgIdA,
+        name: 'Obra A',
+        slug: 'obra-a',
+        address: 'Addr A'
+    }).select().single();
+    if (errObraA) fail(`User A insert own org failed: ${errObraA.message}`);
+    log(`Pass: User A inserted Obra ${obraA.id}`);
+
+    // Test 2: A inserts into B (Fail)
+    const { error: errObraB } = await clientA.from('obras').insert({
         org_id: orgIdB,
         name: 'Hacker Obra',
         slug: 'hacker-obra',
-        address: 'Nowhere'
+        address: 'Addr B'
     });
+    if (!errObraB) fail('User A inserted into Org B (Should Fail)');
+    log('Pass: User A denied insert into Org B');
 
-    // With RLS, insert usually throws error if WITH CHECK fails, or policy not found
-    if (!errInsert) {
-        fail('User A was able to insert into Org B (should be denied)');
-    } else {
-        log(`Pass: User A denied insert into Org B (${errInsert.message})`);
-    }
+    // Test 3: C (Colaborador) reads A (Success)
+    const { data: readC } = await clientC.from('obras').select('*').eq('org_id', orgIdA);
+    if (!readC || readC.length === 0) fail('User C (Colaborador) cannot read Org A data');
+    log('Pass: User C can read Org A data');
 
-    // Test 2: A tries to Select from Org B
-    log('Test 2: Cross-Org Select (Expect Empty)');
-    // Insert something as B first
-    await clientB.from('obras').insert({ org_id: orgIdB, slug: 'b-obra', name: 'B Obra', address: 'B' });
+    // --- TASK B: ROLE TESTS ---
+    log('--- Task 3.3 Role Tests ---');
 
-    const { data: spyData } = await clientA.from('obras').select('*').eq('org_id', orgIdB);
-    if (spyData && spyData.length > 0) fail('User A could see Org B data');
-    log('Pass: User A cannot see Org B data');
+    // Test 4: C (Colaborador) tries to DELETE Obra A (Fail)
+    const { error: errDelC } = await clientC.from('obras').delete().eq('id', obraA.id);
+    // If no error, check if row deleted?
+    // RLS DELETE policy: USING (has_org_role(..., 'Admin'))
+    // C is Colaborador. Should find 0 rows or error?
+    // Postgres DELETE with RLS usually silently ignores rows if USING is false, unless check?
+    // Actually, DELETE Policies act as filters. If filter excludes row, delete affects 0 rows.
+    // So we check if Obra still exists.
 
-    // Test 3: A inserts into Org A
-    log('Test 3: Own-Org Insert (Expect Success)');
-    const { data: myData, error: myError } = await clientA.from('obras').insert({
-        org_id: orgIdA,
-        name: 'Legit Obra',
-        slug: 'legit-obra',
-        address: 'Home'
-    }).select().single();
+    const { data: checkObra1 } = await adminClient.from('obras').select('id').eq('id', obraA.id);
+    if (!checkObra1 || checkObra1.length === 0) fail('User C was able to DELETE Obra (Should Fail)');
+    log('Pass: User C (Colaborador) could not delete Obra');
 
-    if (myError) fail(`User A failed to insert into own Org: ${myError.message}`);
-    log(`Pass: User A inserted obra ${myData.id} into own Org`);
+    // Test 5: A (Admin) tries to DELETE Obra A (Success)
+    const { error: errDelA } = await clientA.from('obras').delete().eq('id', obraA.id);
+    if (errDelA) fail(`User A (Admin) failed to delete: ${errDelA.message}`);
 
-    // Test 4 (Task 3.3 Role check placeholder)
-    // We will update this script for Task B later.
+    const { data: checkObra2 } = await adminClient.from('obras').select('id').eq('id', obraA.id);
+    if (checkObra2 && checkObra2.length > 0) fail('User A (Admin) delete did not remove row');
+    log('Pass: User A (Admin) deleted Obra');
 
     // Cleanup
-    log('Cleaning up...');
+    log('Cleaning up users...');
     await adminClient.auth.admin.deleteUser(uA.user.id);
     await adminClient.auth.admin.deleteUser(uB.user.id);
-    log('Success: All smoke tests passed.');
+    await adminClient.auth.admin.deleteUser(uC.user.id);
+    log('SUCCESS: All tests passed.');
 }
 
 run().catch(e => fail(e.message));

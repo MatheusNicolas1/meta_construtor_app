@@ -131,17 +131,17 @@ MILESTONE 3 — RLS TOTAL (ENFORCEMENT REAL NO BANCO) (P0)
 
 * Policies SELECT/INSERT/UPDATE/DELETE garantindo isolamento por org_id
   STATUS: PARTIAL
-  VALIDAÇÃO: Migration 20260206183000_rls_isolation.sql criada. Scripts de validação prontos.
-  BLOCKER: Falha ao aplicar migração via `npx supabase db push` com string de conexão fornecida (erro de conexão/timeout). Além disso, falha de `SUPABASE_SERVICE_ROLE_KEY` impede validação dos testes.
-  EVIDÊNCIA: Tentativas de conexão com string codificada falharam (`Connecting to remote database... error`).
+  VALIDAÇÃO: Migration 20260206183000_rls_isolation.sql criada. Script de teste (scripts/test-rls.js) atualizado com validações de isolamento e role.
+  BLOCKER: Docker Desktop não disponível no ambiente (necessário para `npx supabase start`). Sem ambiente local funcional, não é possível validar RLS antes de aplicar no ambiente remoto (regra de segurança). Aplicação remota bloqueada por falta de SERVICE_ROLE_KEY.
+  EVIDÊNCIA: Comando `npx supabase start` falhou com "Docker Desktop is a prerequisite".
 
 3.3 Policies por role (Admin/Gerente/Colaborador)
 
 * Refinar policies para limitar ações por papel (ex.: colaborador não exclui obra)
   STATUS: PARTIAL
-  VALIDAÇÃO: Migration 20260206190000_rls_roles.sql criada.
-  BLOCKER: Depende da 3.2 (conexão com banco).
-  EVIDÊNCIA: supabase/migrations/20260206190000_rls_roles.sql.
+  VALIDAÇÃO: Migration 20260206190000_rls_roles.sql criada. Testes de role incluídos em scripts/test-rls.js.
+  BLOCKER: Depende da 3.2 (ambiente de teste funcional).
+  EVIDÊNCIA: supabase/migrations/20260206190000_rls_roles.sql, scripts/test-rls.js (linhas 60-75 testam delete de Colaborador vs Admin).
 
 3.4 Teste de ataque (API direta)
 

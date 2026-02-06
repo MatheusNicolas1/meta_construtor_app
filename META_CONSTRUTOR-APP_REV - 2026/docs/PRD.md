@@ -92,9 +92,9 @@ MILESTONE 2 — AUTENTICAÇÃO E AUTORIZAÇÃO SERVER-SIDE (IDENTIDADE CONFIÁVE
 2.1 Autenticação (login e sessão)
 
 * Implementar auth real (tokens/sessão) e persistência do usuário no banco
-  STATUS:
-  VALIDAÇÃO:
-  EVIDÊNCIA:
+  STATUS: DONE
+  VALIDAÇÃO: Migration 20260206160000_update_handle_new_user.sql criada. Trigger handle_new_user atualizado para criar automaticamente: 1) Profile, 2) Organização Pessoal (tb orgs), 3) Membership Admin (tb org_members), 4) Records legados (user_roles, credits). Garante que novos usuários nasçam com estrutura multi-tenant pronta. Frontend já utiliza AuthWrapper/AuthContext com persistência de sessão do Supabase (localStorage padrao). Typecheck e Build aprovados.
+  EVIDÊNCIA: supabase/migrations/20260206160000_update_handle_new_user.sql, src/components/auth/AuthContext.tsx revisado.
 
 2.2 Papéis (RBAC) como regra de backend
 

@@ -99,16 +99,16 @@ MILESTONE 2 — AUTENTICAÇÃO E AUTORIZAÇÃO SERVER-SIDE (IDENTIDADE CONFIÁVE
 2.2 Papéis (RBAC) como regra de backend
 
 * Definir roles (Admin/Gerente/Colaborador) no backend, não só no frontend
-  STATUS:
-  VALIDAÇÃO:
-  EVIDÊNCIA:
+  STATUS: DONE
+  VALIDAÇÃO: Migration 20260206170000_rbac_helpers.sql criada. Funções auxiliares (current_org_role, is_org_member, has_org_role) implementadas para uso em RLS e Edge Functions. Enum app_role existente verificado como compatível com frontend (Administrador, Gerente, Colaborador).
+  EVIDÊNCIA: supabase/migrations/20260206170000_rbac_helpers.sql.
 
 2.3 Guards server-side por rota/ação
 
 * Criar guards para ações críticas (criar/editar/excluir, financeiro, permissões, status)
-  STATUS:
-  VALIDAÇÃO:
-  EVIDÊNCIA:
+  STATUS: DONE
+  VALIDAÇÃO: Estrutura de guards compartilhados criada em supabase/functions/_shared/ (guards.ts, cors.ts, supabase-client.ts). Edge Function create-checkout-session atualizada para utilizar requireAuth() e logRequest(). Implementação inclui logging estruturado (request_id) e tratamento de erros padronizado (401/403). Helper requireOrgMember() preparado para uso futuro.
+  EVIDÊNCIA: supabase/functions/_shared/, supabase/functions/create-checkout-session/index.ts atualizado.
 
 2.4 Controle de acesso por organização
 

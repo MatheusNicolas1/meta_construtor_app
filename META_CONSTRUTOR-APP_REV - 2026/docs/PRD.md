@@ -82,9 +82,9 @@ MILESTONE 1 — MODELO MULTI-TENANT E INTEGRIDADE DO BANCO (ORG FIRST)
 1.5 Seeds mínimos para dev
 
 * Criar seeds: org + admin + obra exemplo (mínimo reprodutível)
-  STATUS:
-  VALIDAÇÃO:
-  EVIDÊNCIA:
+  STATUS: DONE
+  VALIDAÇÃO: Arquivo supabase/seed.sql criado. Utiliza UUIDs determinísticos (ex: user ...0001, org ...0002). Cria: 1 Admin (admin@local.test), 1 Org 'Dev Corp', 1 Obra 'Obra Exemplo', 1 RDO, 1 Atividade e 1 Expense. Script idempotente usando ON CONFLICT DO NOTHING. Desativa triggers temporariamente (session_replication_role = 'replica') para inserir em auth.users. Validado "typecheck" do frontend.
+  EVIDÊNCIA: supabase/seed.sql, UUIDs utilizados (00000000-0000-0000-0000-000000000001 a 00000000-0000-0000-0000-000000000007).
 
 ======================================================================
 

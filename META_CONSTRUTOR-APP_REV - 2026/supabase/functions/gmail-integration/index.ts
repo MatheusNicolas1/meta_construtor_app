@@ -1,10 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { corsHeaders } from "../_shared/cors.ts";
+import { createScopedClient } from "../_shared/supabase-client.ts";
+import { requireAuth, logRequest } from "../_shared/guards.ts";
 
 interface GmailSendRequest {
   action: 'send' | 'test' | 'oauth-url' | 'oauth-callback';
@@ -19,36 +16,25 @@ interface GmailSendRequest {
 }
 
 serve(async (req) => {
+  const requestId = crypto.randomUUID();
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let user_id: string | undefined;
+
   try {
-    // Verify JWT token
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Missing authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    const supabaseClient = createScopedClient(req);
+    // 2.4 Standardized Auth Guard
+    const user = await requireAuth(supabaseClient);
+    user_id = user.id;
 
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
-    );
+    // Log intent
+    logRequest(requestId, user_id, null, 'gmail-integration', 'success', 'Auth passed');
 
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const { action, to, cc, bcc, subject, body, isHtml, code, redirectUri }: GmailSendRequest = await req.json();
+    const requestData: GmailSendRequest = await req.json();
+    const { action, to, cc, bcc, subject, body, isHtml, code, redirectUri } = requestData;
 
     // Get OAuth credentials from secrets
     const clientId = Deno.env.get('GMAIL_CLIENT_ID');
@@ -57,9 +43,9 @@ serve(async (req) => {
     if (!clientId || !clientSecret) {
       console.log('Gmail OAuth credentials not configured');
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           error: 'Gmail integration not configured. Please add GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET secrets.',
-          configured: false 
+          configured: false
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -90,10 +76,7 @@ serve(async (req) => {
       case 'oauth-callback': {
         // Exchange authorization code for tokens
         if (!code || !redirectUri) {
-          return new Response(
-            JSON.stringify({ error: 'Missing code or redirectUri' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
+          throw new Error('Missing code or redirectUri');
         }
 
         const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
@@ -112,16 +95,13 @@ serve(async (req) => {
 
         if (tokenData.error) {
           console.error('OAuth token error:', tokenData);
-          return new Response(
-            JSON.stringify({ error: tokenData.error_description || 'Failed to exchange code' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
+          throw new Error(tokenData.error_description || 'Failed to exchange code');
         }
 
         // Return tokens (in production, store these securely per user)
         return new Response(
-          JSON.stringify({ 
-            success: true, 
+          JSON.stringify({
+            success: true,
             accessToken: tokenData.access_token,
             refreshToken: tokenData.refresh_token,
             expiresIn: tokenData.expires_in
@@ -133,8 +113,8 @@ serve(async (req) => {
       case 'test': {
         // Test connection by checking if credentials are configured
         return new Response(
-          JSON.stringify({ 
-            success: true, 
+          JSON.stringify({
+            success: true,
             message: 'Gmail integration is configured. OAuth flow required for full functionality.',
             configured: true
           }),
@@ -143,21 +123,16 @@ serve(async (req) => {
       }
 
       case 'send': {
-        // Note: Sending emails requires a valid access token obtained via OAuth
-        // This is a placeholder - in production, retrieve user's stored tokens
         if (!to || !subject || !body) {
-          return new Response(
-            JSON.stringify({ error: 'Missing required fields: to, subject, body' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
+          throw new Error('Missing required fields: to, subject, body');
         }
 
         console.log('Gmail send request:', { to, subject, userId: user.id });
-        
+
         // Placeholder response - actual implementation requires stored OAuth tokens
         return new Response(
-          JSON.stringify({ 
-            success: false, 
+          JSON.stringify({
+            success: false,
             message: 'Email sending requires OAuth authorization. Please complete the OAuth flow first.',
             requiresOAuth: true
           }),
@@ -166,17 +141,16 @@ serve(async (req) => {
       }
 
       default:
-        return new Response(
-          JSON.stringify({ error: 'Invalid action' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        throw new Error('Invalid action');
     }
-  } catch (error: unknown) {
-    console.error('Gmail integration error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+  } catch (error: any) {
+    logRequest(requestId, user_id, null, 'gmail-integration', 'error', error.message);
+    const errorMessage = error.message || 'Internal server error';
+    const status = errorMessage.includes('Unauthorized') ? 401 : 400;
+
     return new Response(
       JSON.stringify({ error: errorMessage }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

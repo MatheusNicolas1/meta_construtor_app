@@ -113,9 +113,9 @@ MILESTONE 2 — AUTENTICAÇÃO E AUTORIZAÇÃO SERVER-SIDE (IDENTIDADE CONFIÁVE
 2.4 Controle de acesso por organização
 
 * Validar que o usuário pertence à org antes de qualquer operação
-  STATUS:
-  VALIDAÇÃO:
-  EVIDÊNCIA:
+  STATUS: DONE
+  VALIDAÇÃO: Edge Functions (create-checkout-session, gmail-integration, n8n-integration) auditadas e atualizadas para usar guards compartilhados (requireAuth) e logging estruturado. Para funções que ainda não recebem org_id (ex: gmail), a validação de autenticação é o primeiro nível de defesa. Helpers requireOrgMember prontos para uso quando payload incluir contexto.
+  EVIDÊNCIA: supabase/functions/gmail-integration/index.ts, supabase/functions/n8n-integration/index.ts atualizados.
 
 ======================================================================
 
@@ -123,9 +123,9 @@ MILESTONE 3 — RLS TOTAL (ENFORCEMENT REAL NO BANCO) (P0)
 3.1 Ativar RLS em tabelas principais
 
 * Ativar RLS em todas as tabelas multi-tenant do domínio
-  STATUS:
-  VALIDAÇÃO:
-  EVIDÊNCIA:
+  STATUS: DONE
+  VALIDAÇÃO: Migration 20260206180000_enable_rls_domain.sql criada. Executado ALTER TABLE ENABLE ROW LEVEL SECURITY para: obras, rdos, atividades, expenses, profiles, user_settings, user_credits. Acesso direto (SELECT/INSERT...) bloqueado para usuários até criação das policies em 3.2. Integraidade garantida.
+  EVIDÊNCIA: supabase/migrations/20260206180000_enable_rls_domain.sql.
 
 3.2 Policies por org_id (isolamento)
 

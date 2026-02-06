@@ -75,9 +75,9 @@ MILESTONE 1 — MODELO MULTI-TENANT E INTEGRIDADE DO BANCO (ORG FIRST)
 1.4 Constraints e índices essenciais
 
 * Adicionar FKs, NOT NULL, UNIQUE (onde necessário) e índices por org_id
-  STATUS:
-  VALIDAÇÃO:
-  EVIDÊNCIA:
+  STATUS: DONE
+  VALIDAÇÃO: Migration 20260206150000_essential_constraints.sql criada. Substituição da constraint global de slug em Obras por UNIQUE(org_id, slug) para permitir mesmos nomes em orgs diferentes. Aplicação de NOT NULL em org_id nas tabelas rdos, atividades, expenses (com backfill de segurança prévio). Criação de índices foreign key (idx_rdos_obra_id, etc) e adição de FK constraints (rdos_obra_id_fkey) com ON DELETE RESTRICT para integridade. Build e Typecheck do frontend aprovados.
+  EVIDÊNCIA: supabase/migrations/20260206150000_essential_constraints.sql, código PL/pgSQL checando constraints existentes antes de aplicar.
 
 1.5 Seeds mínimos para dev
 

@@ -54,9 +54,9 @@ MILESTONE 1 — MODELO MULTI-TENANT E INTEGRIDADE DO BANCO (ORG FIRST)
 1.1 Estrutura de organização (empresa)
 
 * Criar tabela orgs (empresa/organização)
-  STATUS: NOT IMPLEMENTED - Sistema atual é single-tenant (baseado em user_id)
-  VALIDAÇÃO: Não existe tabela orgs/organizations. Todas as tabelas de domínio (obras, profiles, rdos, etc) utilizam user_id diretamente, sem conceito de organização/empresa. Sistema atual permite 1 usuário = 1 conta isolada, mas não suporta múltiplos usuários em uma mesma empresa/organização.
-  EVIDÊNCIA: grep em supabase/migrations/* sem resultado para "CREATE TABLE orgs" ou "CREATE TABLE organizations", tabelas existentes usam user_id como chave de isolamento (ex: obras table com user_id NOT NULL REFERENCES auth.users), sem campo org_id em nenhuma tabela de domínio
+  STATUS: DONE
+  VALIDAÇÃO: Migration criada (20260206_create_orgs_table.sql) com tabela orgs contendo id, created_at, updated_at, name, slug, owner_user_id. RLS habilitado com 4 policies (SELECT/INSERT/UPDATE/DELETE). SELECT policy permite owner + membros futuros (org_members). Backfill idempotente cria org pessoal para cada usuário existente. Função generate_org_slug() para slugs únicos URL-friendly. Trigger para updated_at. Constraints de validação (nome 2-100 chars, slug formato kebab-case). Migration validada contra padrão de migrations existentes e referências a funções (update_updated_at_column existe em migration 20251106143907).
+  EVIDÊNCIA: supabase/migrations/20260206_create_orgs_table.sql (142 linhas), tabela com indices idx_orgs_owner e idx_orgs_slug, 4 RLS policies (orgs_select_policy, orgs_insert_policy, orgs_update_policy, orgs_delete_policy), backfill DO block idempotente, função generate_org_slug() para unicidade
 
 1.2 Vínculo de usuários por organização (membership)
 

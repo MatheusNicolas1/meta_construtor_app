@@ -13,34 +13,37 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 
-// Mock user data - replace with actual user data from your auth system
-const mockUser = {
-  name: "João Silva",
-  email: "joao.silva@metaconstrutor.com",
-  role: "Engenheiro Civil",
-  avatar: "", // Empty for now, will show initials
-};
+import { useAuth } from "@/components/auth/AuthContext";
 
 export function UserProfile() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, signOut } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  // Fallback data if user is loading or not present (shouldn't happen in protected routes)
+  const userData = {
+    name: user?.name || (user as any)?.user_metadata?.name || user?.email || "Usuário",
+    email: user?.email || "",
+    role: user?.role || (user as any)?.user_metadata?.role || "Usuário",
+    avatar: user?.avatar_url || (user as any)?.user_metadata?.avatar_url || "",
+  };
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
-    
+
     try {
       // TODO: Replace with actual logout logic when Supabase is integrated
       // await supabase.auth.signOut();
-      
+
       // Simulate logout delay
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       toast({
         title: "Sessão encerrada",
         description: "Você foi desconectado com sucesso.",
       });
-      
+
       // Redirect to login page
       startTransition(() => {
         navigate("/login");
@@ -81,62 +84,62 @@ export function UserProfile() {
           data-tour="perfil"
         >
           <Avatar className="h-8 w-8">
-            <AvatarImage src={mockUser.avatar} alt={mockUser.name} />
+            <AvatarImage src={userData.avatar} alt={userData.name} />
             <AvatarFallback className="bg-primary text-primary-foreground text-sm">
-              {getInitials(mockUser.name)}
+              {getInitials(userData.name)}
             </AvatarFallback>
           </Avatar>
           <div className="hidden md:flex flex-col items-start text-left">
             <span className="text-sm font-medium text-foreground truncate max-w-[120px]">
-              {mockUser.name}
+              {userData.name}
             </span>
             <span className="text-xs text-muted-foreground truncate max-w-[120px]">
-              {mockUser.role}
+              {userData.role}
             </span>
           </div>
           <ChevronDown className="h-4 w-4 text-muted-foreground hidden md:block" />
         </Button>
       </DropdownMenuTrigger>
-      
+
       <DropdownMenuContent className="w-64 max-w-[90vw] bg-popover border-border" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{mockUser.name}</p>
+            <p className="text-sm font-medium leading-none">{userData.name}</p>
             <p className="text-xs leading-none text-muted-foreground">
-              {mockUser.email}
+              {userData.email}
             </p>
             <p className="text-xs leading-none text-muted-foreground">
-              {mockUser.role}
+              {userData.role}
             </p>
           </div>
         </DropdownMenuLabel>
-        
+
         <DropdownMenuSeparator />
-        
+
         <DropdownMenuItem onClick={handleProfileClick} className="cursor-pointer">
           <User className="mr-2 h-4 w-4" />
           <span>Meu Perfil</span>
         </DropdownMenuItem>
-        
+
         <DropdownMenuItem onClick={() => startTransition(() => navigate("/configuracoes"))} className="cursor-pointer">
           <Settings className="mr-2 h-4 w-4" />
           <span>Configurações</span>
         </DropdownMenuItem>
-        
+
         <DropdownMenuItem onClick={() => startTransition(() => navigate("/faq"))} className="cursor-pointer">
           <HelpCircle className="mr-2 h-4 w-4" />
           <span>FAQ / Dúvidas</span>
         </DropdownMenuItem>
-        
+
         <DropdownMenuItem onClick={() => startTransition(() => navigate("/feedback"))} className="cursor-pointer">
           <MessageSquarePlus className="mr-2 h-4 w-4" />
           <span>Feedback</span>
         </DropdownMenuItem>
-        
+
         <DropdownMenuSeparator />
-        
-        <DropdownMenuItem 
-          onClick={handleLogout} 
+
+        <DropdownMenuItem
+          onClick={handleLogout}
           className="cursor-pointer text-destructive focus:text-destructive"
           disabled={isLoggingOut}
         >

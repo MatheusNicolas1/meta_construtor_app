@@ -6,8 +6,6 @@ interface SignUpData {
   name: string;
   email: string;
   phone: string;
-  documentType: 'cpf' | 'cnpj' | '';
-  document: string;
   password: string;
   confirmPassword: string;
 }
@@ -50,55 +48,49 @@ export const useSignUp = (): UseSignUpReturn => {
 
       // Verificar duplicidade usando função do banco
       const cleanPhone = data.phone.replace(/\D/g, '');
-      const cleanDocument = data.document.replace(/\D/g, '');
-      
-      console.log('[DEBUG] Verificando duplicidade para:', { 
-        email: data.email, 
-        phone: cleanPhone, 
-        document: cleanDocument 
+
+      console.log('[DEBUG] Verificando duplicidade para:', {
+        email: data.email,
+        phone: cleanPhone
       });
-      
+
       const { data: checkResult, error: checkError } = await supabase
         .rpc('check_user_duplicates', {
           p_email: data.email,
           p_phone: cleanPhone,
-          p_cpf_cnpj: cleanDocument
+          p_cpf_cnpj: ''
         });
 
       console.log('[DEBUG] Resultado da verificação:', { checkResult, checkError });
 
       if (checkError) {
-        console.error('[ERROR] Erro na verificação de duplicidade:', checkError);
-        throw new Error(`Erro ao validar dados: ${checkError.message || 'Verifique sua conexão'}`);
-      }
-      
-      const result = checkResult as { has_duplicate: boolean; duplicate_field: string | null };
-      
-      if (result?.has_duplicate) {
-        const field = result.duplicate_field;
-        let errorMessage = '';
-        
-        if (field === 'email') {
-          errorMessage = 'Este e-mail já está cadastrado. Faça login para acessar sua conta.';
-        } else if (field === 'phone') {
-          errorMessage = 'Este telefone já está cadastrado em outra conta. Faça login ou use outro número.';
-        } else if (field === 'cpf_cnpj') {
-          errorMessage = data.documentType === 'cpf' ? 
-            'Este CPF já está cadastrado em outra conta. Faça login ou use outro CPF.' : 
-            'Este CNPJ já está cadastrado em outra conta. Faça login ou use outro CNPJ.';
-        } else {
-          errorMessage = 'Já existe um usuário cadastrado com algumas das informações fornecidas (E-mail, Celular, CPF ou CNPJ). Por favor, utilize a função de Login.';
-        }
-        
-        toast.error(errorMessage, {
-          duration: 6000,
-          action: {
-            label: 'Ir para Login',
-            onClick: () => window.location.href = '/login'
+        console.error('[ERROR] Erro na verificação de duplicidade (continuando):', checkError);
+        // Continuamos mesmo com erro
+      } else {
+        const result = checkResult as { has_duplicate: boolean; duplicate_field: string | null };
+
+        if (result?.has_duplicate) {
+          const field = result.duplicate_field;
+          let errorMessage = '';
+
+          if (field === 'email') {
+            errorMessage = 'Este e-mail já está cadastrado. Faça login para acessar sua conta.';
+          } else if (field === 'phone') {
+            errorMessage = 'Este telefone já está cadastrado em outra conta. Faça login ou use outro número.';
+          } else {
+            errorMessage = 'Já existe um usuário cadastrado com algumas das informações fornecidas. Por favor, utilize a função de Login.';
           }
-        });
-        
-        throw new Error(errorMessage);
+
+          toast.error(errorMessage, {
+            duration: 6000,
+            action: {
+              label: 'Ir para Login',
+              onClick: () => window.location.href = '/login'
+            }
+          });
+
+          throw new Error(errorMessage);
+        }
       }
 
       console.log('[DEBUG] Iniciando criação de usuário no Supabase Auth...');
@@ -112,23 +104,22 @@ export const useSignUp = (): UseSignUpReturn => {
           data: {
             name: data.name,
             phone: cleanPhone,
-            cpf_cnpj: cleanDocument,
             plan_type: 'free',
           },
         },
       });
 
-      console.log('[DEBUG] Resposta do signUp:', { 
-        user: authData?.user?.id, 
+      console.log('[DEBUG] Resposta do signUp:', {
+        user: authData?.user?.id,
         session: !!authData?.session,
-        error: signUpError 
+        error: signUpError
       });
 
       if (signUpError) {
         console.error('[ERROR] Erro no signUp:', signUpError);
-        
-        if (signUpError.message.includes('already registered') || 
-            signUpError.message.includes('User already registered')) {
+
+        if (signUpError.message.includes('already registered') ||
+          signUpError.message.includes('User already registered')) {
           toast.error('Este e-mail já está cadastrado. Faça login ou use outro e-mail.', {
             duration: 5000,
             action: {
@@ -138,15 +129,15 @@ export const useSignUp = (): UseSignUpReturn => {
           });
           throw new Error('Este e-mail já está cadastrado. Faça login ou use outro e-mail.');
         }
-        
+
         if (signUpError.message.includes('Invalid email')) {
           throw new Error('E-mail inválido. Verifique e tente novamente.');
         }
-        
+
         if (signUpError.message.includes('Password')) {
           throw new Error('Senha inválida. Use no mínimo 10 caracteres com letras, números e símbolos.');
         }
-        
+
         throw new Error(`Erro ao criar conta: ${signUpError.message}`);
       }
 
@@ -155,19 +146,19 @@ export const useSignUp = (): UseSignUpReturn => {
       }
 
       console.log('[DEBUG] Usuário criado com sucesso. Aguardando criação do perfil...');
-      
+
       // Aguardar a criação do perfil via trigger
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
+
       // Verificar se o perfil foi criado
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('id')
         .eq('id', authData.user.id)
         .maybeSingle();
-      
+
       console.log('[DEBUG] Verificação do perfil:', { profile, profileError });
-      
+
       if (profileError || !profile) {
         console.error('[ERROR] Erro ao verificar perfil:', profileError);
         throw new Error('Conta criada, mas houve um problema ao configurar o perfil. Entre em contato com o suporte.');

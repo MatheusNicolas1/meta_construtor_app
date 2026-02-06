@@ -9,7 +9,7 @@ import LandingNavigation from '@/components/landing/LandingNavigation';
 const CheckoutCancel = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  
+
   const planKey = searchParams.get('plan') || 'basic';
 
   const planNames = {
@@ -45,10 +45,10 @@ const CheckoutCancel = () => {
         description="Seu pagamento foi cancelado. Você pode tentar novamente quando quiser."
         canonical={window.location.href}
       />
-      
+
       <div className="min-h-screen bg-background">
         <LandingNavigation />
-        
+
         <main className="pt-16">
           <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
             {/* Cancelamento */}
@@ -56,15 +56,15 @@ const CheckoutCancel = () => {
               <div className="mx-auto w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mb-4">
                 <XCircle className="w-8 h-8 text-amber-600" />
               </div>
-              
+
               <h1 className="text-3xl font-bold text-foreground mb-2">
                 Pagamento Cancelado
               </h1>
-              
+
               <p className="text-lg text-muted-foreground mb-6">
                 Você cancelou o processo de pagamento do plano <strong>{planName}</strong>.
               </p>
-              
+
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
                 <p className="text-amber-800 text-sm">
                   Não se preocupe! Nenhum valor foi cobrado e você pode tentar novamente quando quiser.
@@ -90,7 +90,7 @@ const CheckoutCancel = () => {
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-start gap-3">
                     <div className="w-2 h-2 bg-green-500 rounded-full mt-2 shrink-0" />
                     <div>
@@ -99,7 +99,7 @@ const CheckoutCancel = () => {
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-start gap-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 shrink-0" />
                     <div>
@@ -128,21 +128,21 @@ const CheckoutCancel = () => {
                       Mudança de ideia sobre o plano escolhido
                     </p>
                   </div>
-                  
+
                   <div className="flex items-start gap-3">
                     <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full mt-2 shrink-0" />
                     <p className="text-sm text-muted-foreground">
                       Necessidade de avaliar outras opções
                     </p>
                   </div>
-                  
+
                   <div className="flex items-start gap-3">
                     <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full mt-2 shrink-0" />
                     <p className="text-sm text-muted-foreground">
                       Problemas técnicos durante o processo
                     </p>
                   </div>
-                  
+
                   <div className="flex items-start gap-3">
                     <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full mt-2 shrink-0" />
                     <p className="text-sm text-muted-foreground">
@@ -174,7 +174,7 @@ const CheckoutCancel = () => {
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-start gap-3">
                     <div className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-medium">
                       2
@@ -186,7 +186,7 @@ const CheckoutCancel = () => {
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-start gap-3">
                     <div className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-medium">
                       3
@@ -204,7 +204,7 @@ const CheckoutCancel = () => {
 
             {/* Ações */}
             <div className="space-y-4">
-              <Button 
+              <Button
                 onClick={handleRetryCheckout}
                 className="w-full"
                 size="lg"
@@ -212,9 +212,9 @@ const CheckoutCancel = () => {
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Tentar Novamente
               </Button>
-              
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Button 
+                <Button
                   onClick={handleBackToPlans}
                   variant="outline"
                   className="w-full"
@@ -222,8 +222,8 @@ const CheckoutCancel = () => {
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Ver Todos os Planos
                 </Button>
-                
-                <Button 
+
+                <Button
                   onClick={handleContactSupport}
                   variant="outline"
                   className="w-full"
@@ -232,8 +232,8 @@ const CheckoutCancel = () => {
                   Falar com Suporte
                 </Button>
               </div>
-              
-              <Button 
+
+              <Button
                 onClick={handleBackToHome}
                 variant="ghost"
                 className="w-full"
@@ -247,10 +247,10 @@ const CheckoutCancel = () => {
               <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg p-6">
                 <h3 className="font-semibold mb-2">Oferta Especial!</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Que tal começar com nosso teste gratuito de 14 dias? 
+                  Que tal começar com nosso teste gratuito de 14 dias?
                   Você terá acesso completo a todas as funcionalidades.
                 </p>
-                <Button 
+                <Button
                   onClick={() => navigate('/checkout?plan=free')}
                   variant="outline"
                 >

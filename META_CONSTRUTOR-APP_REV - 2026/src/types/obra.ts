@@ -15,6 +15,7 @@ export interface Obra {
   categoria?: string;
   prioridade?: 'Baixa' | 'Média' | 'Alta';
   observacoes?: string;
+  orcamento_previsto?: number;
 }
 
 export interface CreateObraData {

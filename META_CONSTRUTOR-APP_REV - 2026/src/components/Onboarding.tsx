@@ -46,14 +46,16 @@ const tourSteps: Step[] = [
     placement: 'right',
   },
   {
-    target: '[data-tour="credits"]',
-    content: '💰 No plano Free, você ganha +1 crédito a cada compartilhamento validado no Instagram ou LinkedIn!',
-    placement: 'bottom',
+    target: 'body',
+    content: '💰 O sistema de créditos permite criar RDOs de forma controlada. No plano Free, você tem 7 créditos mensais que se renovam no dia 1º de cada mês!',
+    placement: 'center',
+    disableBeacon: true,
   },
   {
     target: '[data-tour="perfil"]',
     content: 'Acesse seu Perfil para configurar suas informações e preferências. Você pode reabrir este tour a qualquer momento!',
     placement: 'bottom',
+    spotlightClicks: true,
   },
 ];
 
@@ -96,7 +98,7 @@ export const Onboarding = ({ forceShow = false, onComplete }: OnboardingProps) =
 
     if (finishedStatuses.includes(status)) {
       setRunTour(false);
-      
+
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user && !forceShow) {
@@ -115,7 +117,7 @@ export const Onboarding = ({ forceShow = false, onComplete }: OnboardingProps) =
         console.error('Erro ao atualizar onboarding:', error);
       }
     }
-    
+
     // Atualizar índice da etapa em qualquer transição
     if (type === 'step:after' && action === 'next') {
       setStepIndex(index + 1);

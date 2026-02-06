@@ -7,24 +7,30 @@ import { AutocompleteInput } from "@/components/ui/autocomplete-input";
 import { EquipeExpandableCard } from "@/components/EquipeExpandableCard";
 import { useEquipesSupabase } from "@/hooks/useEquipesSupabase";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, Search, Plus, Loader2 } from "lucide-react";
+import { Users, Search, Plus, Loader2, AlertCircle } from "lucide-react";
+import { usePermissions } from "@/hooks/usePermissions";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 const Equipes = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  
+  const { equipe: equipePerms, isLoading: isPermsLoading } = usePermissions();
+
   const [formData, setFormData] = useState({
     nome: "",
     funcao: "",
     telefone: "",
     email: "",
   });
-  
+
   const { equipes, isLoading, createEquipe, deleteEquipe } = useEquipesSupabase();
-  
+
   const [funcoesDisponiveis] = useState([
     "Engenheiro Civil",
-    "Mestre de Obras", 
+    "Mestre de Obras",
     "Pedreiro",
     "Eletricista",
     "Encanador",
@@ -73,7 +79,11 @@ const Equipes = () => {
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="gradient-construction border-0 hover:opacity-90 w-full sm:w-auto sm:flex-shrink-0">
+              <Button
+                className="gradient-construction border-0 hover:opacity-90 w-full sm:w-auto sm:flex-shrink-0"
+                disabled={!equipePerms.canCreate}
+                title={equipePerms.isAtLimit ? `Limite de ${equipePerms.maxUsers} colaboradores atingido` : !equipePerms.canCreate ? "Você não tem permissão para cadastrar colaboradores" : ""}
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Novo Colaborador</span>
                 <span className="sm:hidden">Adicionar</span>
@@ -89,8 +99,8 @@ const Equipes = () => {
               <div className="grid gap-4 py-4">
                 <div className="space-y-2">
                   <Label htmlFor="nome">Nome Completo *</Label>
-                  <Input 
-                    id="nome" 
+                  <Input
+                    id="nome"
                     placeholder="Nome do colaborador"
                     value={formData.nome}
                     onChange={(e) => setFormData(prev => ({ ...prev, nome: e.target.value }))}
@@ -103,14 +113,14 @@ const Equipes = () => {
                     onValueChange={(value) => setFormData(prev => ({ ...prev, funcao: value }))}
                     placeholder="Digite ou selecione uma função"
                     options={funcoesDisponiveis}
-                    onAddNewOption={() => {}}
+                    onAddNewOption={() => { }}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="telefone">Telefone</Label>
-                    <Input 
-                      id="telefone" 
+                    <Input
+                      id="telefone"
                       placeholder="(11) 99999-9999"
                       value={formData.telefone}
                       onChange={(e) => setFormData(prev => ({ ...prev, telefone: e.target.value }))}
@@ -118,9 +128,9 @@ const Equipes = () => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email">E-mail</Label>
-                    <Input 
-                      id="email" 
-                      type="email" 
+                    <Input
+                      id="email"
+                      type="email"
                       placeholder="email@exemplo.com"
                       value={formData.email}
                       onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
@@ -129,8 +139,8 @@ const Equipes = () => {
                 </div>
               </div>
               <div className="flex justify-end space-x-2">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => {
                     setIsDialogOpen(false);
                     setFormData({ nome: "", funcao: "", telefone: "", email: "" });
@@ -139,8 +149,8 @@ const Equipes = () => {
                 >
                   Cancelar
                 </Button>
-                <Button 
-                  className="gradient-construction border-0" 
+                <Button
+                  className="gradient-construction border-0"
                   onClick={handleSubmit}
                   disabled={createEquipe.isPending}
                 >
@@ -158,6 +168,19 @@ const Equipes = () => {
           </Dialog>
         </div>
 
+        {equipePerms.isAtLimit && (
+          <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 text-destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Limite de Colaboradores Atingido</AlertTitle>
+            <AlertDescription className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <span>Seu plano atual permite até {equipePerms.maxUsers} colaborador(es). Para adicionar mais membros, faça o upgrade do seu plano.</span>
+              <Button size="sm" variant="outline" onClick={() => navigate('/preco')} className="border-destructive/50 hover:bg-destructive/20 text-destructive">
+                Ver Planos
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="w-full">
           <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -170,7 +193,7 @@ const Equipes = () => {
           </div>
         </div>
 
-        {isLoading ? (
+        {(isLoading || isPermsLoading) ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {[1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-48 w-full" />

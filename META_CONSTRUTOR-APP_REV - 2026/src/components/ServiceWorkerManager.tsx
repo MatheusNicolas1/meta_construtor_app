@@ -3,14 +3,13 @@ import { useEffect } from 'react';
 export const ServiceWorkerManager = () => {
   useEffect(() => {
     if ('serviceWorker' in navigator) {
-      // Registrar service worker para cache
-      navigator.serviceWorker.register('/sw.js?v=3', { scope: '/' })
-        .then((registration) => {
-          console.log('SW registered: ', registration);
-        })
-        .catch((registrationError) => {
-          console.log('SW registration failed: ', registrationError);
-        });
+      // DESATIVAR/REMOVER Service Worker para evitar erros de rede/cache
+      navigator.serviceWorker.getRegistrations().then(function (registrations) {
+        for (let registration of registrations) {
+          registration.unregister();
+          console.log('Service Worker unregistered');
+        }
+      });
     }
 
     // Service Worker registration only

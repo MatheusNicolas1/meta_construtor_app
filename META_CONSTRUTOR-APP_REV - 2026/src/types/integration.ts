@@ -12,6 +12,9 @@ export interface Integration {
   configuration: IntegrationConfig;
   status: 'connected' | 'disconnected' | 'error' | 'pending';
   errorMessage?: string;
+  priority?: number;
+  fluxos?: string[];
+  isAdvanced?: boolean;
 }
 
 export interface IntegrationConfig {
@@ -182,7 +185,7 @@ export interface PaginatedResponse<T> extends ApiResponse<T[]> {
 }
 
 // Integration Events
-export type IntegrationEvent = 
+export type IntegrationEvent =
   | 'obra.created'
   | 'obra.updated'
   | 'obra.completed'

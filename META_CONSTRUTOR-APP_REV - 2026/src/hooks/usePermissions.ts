@@ -2,10 +2,44 @@ import { useMemo } from 'react';
 import { useAuth } from '@/components/auth/AuthContext';
 import type { UserRole } from '@/types/user';
 import { getUserPermissions } from '@/types/user';
+import { usePlanLimits } from './usePlanLimits';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 export const usePermissions = () => {
   const { user, roles } = useAuth();
-  
+  const { limits, isLoading: isPlanLoading } = usePlanLimits();
+
+  // Buscar contagem atual de obras
+  const { data: obrasCount = 0, isLoading: isObrasLoading } = useQuery({
+    queryKey: ['obras-count', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return 0;
+      const { count, error } = await supabase
+        .from('obras')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: !!user?.id,
+  });
+
+  // Buscar contagem atual de membros da equipe
+  const { data: equipeCount = 0, isLoading: isEquipeLoading } = useQuery({
+    queryKey: ['equipe-count', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return 0;
+      const { count, error } = await supabase
+        .from('equipes')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: !!user?.id,
+  });
+
   const userRole = roles[0] || 'Colaborador';
   const basePermissions = getUserPermissions(userRole);
 
@@ -40,18 +74,31 @@ export const usePermissions = () => {
     },
   }), [basePermissions, user?.id]);
 
-  const obraPermissions = useMemo(() => ({
-    canCreate: true,
-    canEdit: roles.includes('Administrador') || roles.includes('Gerente'),
-    canDelete: roles.includes('Administrador'),
-  }), [roles]);
+  const isAdmin = roles.includes('Administrador');
+  const isManager = roles.includes('Gerente');
 
-  const equipePermissions = useMemo(() => ({
-    canCreate: roles.includes('Administrador') || roles.includes('Gerente'),
-    canEdit: roles.includes('Administrador') || roles.includes('Gerente'),
-    canManageColaboradores: roles.includes('Administrador') || roles.includes('Gerente'),
-    canDeleteColaboradores: roles.includes('Administrador'),
-  }), [roles]);
+  const obraPermissions = useMemo(() => {
+    const isAtLimit = !limits.unlimitedObras && obrasCount >= limits.maxObras;
+    return {
+      canCreate: (isAdmin || isManager) && !isAtLimit,
+      canEdit: isAdmin || isManager,
+      canDelete: isAdmin,
+      isAtLimit,
+      maxObras: limits.maxObras,
+    };
+  }, [roles, limits, obrasCount, isAdmin, isManager]);
+
+  const equipePermissions = useMemo(() => {
+    const isAtLimit = !limits.unlimitedUsers && equipeCount >= limits.maxUsers;
+    return {
+      canCreate: (isAdmin || isManager) && !isAtLimit,
+      canEdit: isAdmin || isManager,
+      canManageColaboradores: isAdmin || isManager,
+      canDeleteColaboradores: isAdmin,
+      isAtLimit,
+      maxUsers: limits.maxUsers,
+    };
+  }, [roles, limits, equipeCount, isAdmin, isManager]);
 
   const relatorioPermissions = useMemo(() => ({
     canView: basePermissions.canViewAllRDOs,
@@ -59,11 +106,11 @@ export const usePermissions = () => {
   }), [basePermissions]);
 
   const sistemaPermissions = useMemo(() => ({
-    canConfigure: roles.includes('Administrador'),
-    canAudit: roles.includes('Administrador') || roles.includes('Gerente'),
-    canBackup: roles.includes('Administrador'),
-    canManageIntegrations: roles.includes('Administrador'),
-  }), [roles]);
+    canConfigure: isAdmin,
+    canAudit: isAdmin || isManager,
+    canBackup: isAdmin,
+    canManageIntegrations: isAdmin,
+  }), [isAdmin, isManager]);
 
   return {
     ...permissions,
@@ -72,12 +119,16 @@ export const usePermissions = () => {
     equipe: equipePermissions,
     relatorio: relatorioPermissions,
     sistema: sistemaPermissions,
+    isLoading: isPlanLoading || isObrasLoading || isEquipeLoading,
+    planType: limits, // Note: might want to return planType name as well
+    obrasCount,
+    equipeCount,
   };
 };
 
 export const useRole = () => {
   const { roles } = useAuth();
-  
+
   return useMemo(() => ({
     isAdmin: roles.includes('Administrador'),
     isGerente: roles.includes('Gerente'),
@@ -88,7 +139,7 @@ export const useRole = () => {
 
 export const useRouteAccess = (path: string) => {
   const { isAuthenticated } = useAuth();
-  
+
   return useMemo(() => ({
     hasAccess: isAuthenticated,
     path,

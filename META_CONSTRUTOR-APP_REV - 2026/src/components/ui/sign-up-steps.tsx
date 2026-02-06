@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, Mail, IdCard, Phone, Check, X } from 'lucide-react';
 import { parsePhoneNumber, isValidPhoneNumber } from 'libphonenumber-js';
-import { validateCPF, validateCNPJ, formatCPF, formatCNPJ } from '@/utils/cpfCnpjValidator';
+
 import { validatePasswordStrength, isPasswordValid } from '@/utils/passwordValidator';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -12,8 +12,6 @@ interface SignUpData {
   name: string;
   email: string;
   phone: string;
-  documentType: 'cpf' | 'cnpj' | '';
-  document: string;
   password: string;
   confirmPassword: string;
 }
@@ -35,9 +33,8 @@ const StepIndicator = ({ currentStep, totalSteps }: { currentStep: number; total
     {Array.from({ length: totalSteps }, (_, i) => (
       <div
         key={i}
-        className={`h-2 w-8 rounded-full transition-colors ${
-          i < currentStep ? 'bg-construction-orange' : 'bg-border'
-        }`}
+        className={`h-2 w-8 rounded-full transition-colors ${i < currentStep ? 'bg-construction-orange' : 'bg-border'
+          }`}
       />
     ))}
   </div>
@@ -48,7 +45,7 @@ const StepIndicator = ({ currentStep, totalSteps }: { currentStep: number; total
 const validateEmail = (email: string): boolean => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) return false;
-  
+
   // Validar domínio básico
   const domain = email.split('@')[1];
   return domain && domain.includes('.') && domain.split('.')[1].length >= 2;
@@ -58,17 +55,17 @@ const validatePhone = (phone: string): boolean => {
   try {
     // Remove formatação e tenta validar com libphonenumber
     const cleanPhone = phone.replace(/\D/g, '');
-    
+
     // Se tem 11 dígitos, assume Brasil
     if (cleanPhone.length === 11) {
       return isValidPhoneNumber('+55' + cleanPhone, 'BR');
     }
-    
+
     // Se já tem +, valida diretamente
     if (phone.startsWith('+')) {
       return isValidPhoneNumber(phone);
     }
-    
+
     return false;
   } catch {
     return false;
@@ -85,14 +82,14 @@ const formatPhone = (value: string): string => {
 
 // --- STEP COMPONENTS ---
 
-const NameStep = ({ 
-  name, 
-  setName, 
-  onNext, 
-  isValidating 
-}: { 
-  name: string; 
-  setName: (value: string) => void; 
+const NameStep = ({
+  name,
+  setName,
+  onNext,
+  isValidating
+}: {
+  name: string;
+  setName: (value: string) => void;
   onNext: () => void;
   isValidating: boolean;
 }) => {
@@ -110,13 +107,13 @@ const NameStep = ({
         <GlassInputWrapper>
           <div className="relative">
             <IdCard className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input 
-              name="name" 
-              type="text" 
+            <input
+              name="name"
+              type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Digite seu nome completo" 
-              className="w-full bg-transparent text-sm p-4 pl-10 rounded-2xl focus:outline-none text-foreground placeholder:text-muted-foreground" 
+              placeholder="Digite seu nome completo"
+              className="w-full bg-transparent text-sm p-4 pl-10 rounded-2xl focus:outline-none text-foreground placeholder:text-muted-foreground"
               required
               minLength={2}
             />
@@ -124,8 +121,8 @@ const NameStep = ({
         </GlassInputWrapper>
       </div>
 
-      <button 
-        type="submit" 
+      <button
+        type="submit"
         disabled={name.trim().length < 2 || isValidating}
         className="animate-fade-in w-full rounded-2xl bg-construction-orange py-4 font-medium text-white hover:bg-construction-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
@@ -135,19 +132,19 @@ const NameStep = ({
   );
 };
 
-const EmailPhoneStep = ({ 
-  email, 
+const EmailPhoneStep = ({
+  email,
   setEmail,
   phone,
-  setPhone, 
-  onNext, 
+  setPhone,
+  onNext,
   onBack,
-  isValidating 
-}: { 
-  email: string; 
+  isValidating
+}: {
+  email: string;
   setEmail: (value: string) => void;
   phone: string;
-  setPhone: (value: string) => void; 
+  setPhone: (value: string) => void;
   onNext: () => void;
   onBack: () => void;
   isValidating: boolean;
@@ -173,13 +170,13 @@ const EmailPhoneStep = ({
         <GlassInputWrapper>
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input 
-              name="email" 
-              type="email" 
+            <input
+              name="email"
+              type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="seu@email.com" 
-              className="w-full bg-transparent text-sm p-4 pl-10 rounded-2xl focus:outline-none text-foreground placeholder:text-muted-foreground" 
+              placeholder="seu@email.com"
+              className="w-full bg-transparent text-sm p-4 pl-10 rounded-2xl focus:outline-none text-foreground placeholder:text-muted-foreground"
               required
             />
             {email.length > 0 && (
@@ -200,13 +197,13 @@ const EmailPhoneStep = ({
         <GlassInputWrapper>
           <div className="relative">
             <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input 
-              name="phone" 
-              type="tel" 
+            <input
+              name="phone"
+              type="tel"
               value={phone}
               onChange={(e) => handlePhoneChange(e.target.value)}
-              placeholder="(11) 99999-9999" 
-              className="w-full bg-transparent text-sm p-4 pl-10 rounded-2xl focus:outline-none text-foreground placeholder:text-muted-foreground" 
+              placeholder="(11) 99999-9999"
+              className="w-full bg-transparent text-sm p-4 pl-10 rounded-2xl focus:outline-none text-foreground placeholder:text-muted-foreground"
               required
             />
             {phone.length > 0 && (
@@ -226,15 +223,15 @@ const EmailPhoneStep = ({
       </div>
 
       <div className="flex gap-3">
-        <button 
+        <button
           type="button"
           onClick={onBack}
           className="animate-fade-in flex-1 rounded-2xl border border-border py-4 font-medium text-foreground hover:bg-muted transition-colors"
         >
           Voltar
         </button>
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           disabled={!isEmailValid || !isPhoneValid || isValidating}
           className="animate-fade-in flex-1 rounded-2xl bg-construction-orange py-4 font-medium text-white hover:bg-construction-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
@@ -245,129 +242,22 @@ const EmailPhoneStep = ({
   );
 };
 
-const DocumentStep = ({ 
-  documentType, 
-  setDocumentType, 
-  document, 
-  setDocument, 
-  onNext, 
-  onBack,
-  isValidating 
-}: { 
-  documentType: 'cpf' | 'cnpj' | ''; 
-  setDocumentType: (value: 'cpf' | 'cnpj') => void; 
-  document: string; 
-  setDocument: (value: string) => void; 
-  onNext: () => void;
-  onBack: () => void;
-  isValidating: boolean;
-}) => {
-  const handleDocumentChange = (value: string) => {
-    if (documentType === 'cpf') {
-      setDocument(formatCPF(value));
-    } else if (documentType === 'cnpj') {
-      setDocument(formatCNPJ(value));
-    }
-  };
 
-  const isDocumentValid = () => {
-    if (documentType === 'cpf') return validateCPF(document);
-    if (documentType === 'cnpj') return validateCNPJ(document);
-    return false;
-  };
+// DocumentStep removed
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isDocumentValid()) {
-      onNext();
-    }
-  };
 
-  return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      <div className="animate-fade-in">
-        <label className="text-sm font-medium text-muted-foreground">Tipo de documento</label>
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={() => setDocumentType('cpf')}
-            className={`p-4 rounded-2xl border transition-colors ${
-              documentType === 'cpf' 
-                ? 'border-construction-orange bg-construction-orange/10 text-construction-orange' 
-                : 'border-border bg-foreground/5 text-foreground hover:bg-muted'
-            }`}
-          >
-            CPF (Pessoa Física)
-          </button>
-          <button
-            type="button"
-            onClick={() => setDocumentType('cnpj')}
-            className={`p-4 rounded-2xl border transition-colors ${
-              documentType === 'cnpj' 
-                ? 'border-construction-orange bg-construction-orange/10 text-construction-orange' 
-                : 'border-border bg-foreground/5 text-foreground hover:bg-muted'
-            }`}
-          >
-            CNPJ (Pessoa Jurídica)
-          </button>
-        </div>
-      </div>
-
-      {documentType && (
-        <div className="animate-fade-in">
-          <label className="text-sm font-medium text-muted-foreground">
-            {documentType === 'cpf' ? 'CPF' : 'CNPJ'}
-          </label>
-          <GlassInputWrapper>
-            <div className="relative">
-              <IdCard className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <input 
-                name="document" 
-                type="text" 
-                value={document}
-                onChange={(e) => handleDocumentChange(e.target.value)}
-                placeholder={documentType === 'cpf' ? '000.000.000-00' : '00.000.000/0000-00'}
-                className="w-full bg-transparent text-sm p-4 pl-10 rounded-2xl focus:outline-none text-foreground placeholder:text-muted-foreground" 
-                maxLength={documentType === 'cpf' ? 14 : 18}
-                required
-              />
-            </div>
-          </GlassInputWrapper>
-        </div>
-      )}
-
-      <div className="flex gap-3">
-        <button 
-          type="button"
-          onClick={onBack}
-          className="animate-fade-in flex-1 rounded-2xl border border-border py-4 font-medium text-foreground hover:bg-muted transition-colors"
-        >
-          Voltar
-        </button>
-        <button 
-          type="submit" 
-          disabled={!isDocumentValid() || isValidating}
-          className="animate-fade-in flex-1 rounded-2xl bg-construction-orange py-4 font-medium text-white hover:bg-construction-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isValidating ? 'Validando...' : 'Continuar'}
-        </button>
-      </div>
-    </form>
-  );
-};
-
-const PasswordStep = ({ 
-  password, 
-  setPassword, 
-  confirmPassword, 
-  setConfirmPassword, 
-  onComplete, 
-  onBack 
-}: { 
-  password: string; 
-  setPassword: (value: string) => void; 
-  confirmPassword: string; 
-  setConfirmPassword: (value: string) => void; 
+const PasswordStep = ({
+  password,
+  setPassword,
+  confirmPassword,
+  setConfirmPassword,
+  onComplete,
+  onBack
+}: {
+  password: string;
+  setPassword: (value: string) => void;
+  confirmPassword: string;
+  setConfirmPassword: (value: string) => void;
   onComplete: () => void;
   onBack: () => void;
 }) => {
@@ -405,9 +295,8 @@ const PasswordStep = ({
                 {[...Array(4)].map((_, i) => (
                   <div
                     key={i}
-                    className={`h-1 w-6 rounded ${
-                      i < passwordStrength.score ? getStrengthColor() : 'bg-border'
-                    }`}
+                    className={`h-1 w-6 rounded ${i < passwordStrength.score ? getStrengthColor() : 'bg-border'
+                      }`}
                   />
                 ))}
               </div>
@@ -416,23 +305,23 @@ const PasswordStep = ({
         </div>
         <GlassInputWrapper>
           <div className="relative">
-            <input 
-              name="password" 
-              type={showPassword ? 'text' : 'password'} 
+            <input
+              name="password"
+              type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Crie uma senha forte" 
-              className="w-full bg-transparent text-sm p-4 pr-12 rounded-2xl focus:outline-none text-foreground placeholder:text-muted-foreground" 
+              placeholder="Crie uma senha forte"
+              className="w-full bg-transparent text-sm p-4 pr-12 rounded-2xl focus:outline-none text-foreground placeholder:text-muted-foreground"
               required
               minLength={10}
             />
-            <button 
-              type="button" 
-              onClick={() => setShowPassword(!showPassword)} 
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
               className="absolute inset-y-0 right-3 flex items-center"
             >
-              {showPassword ? 
-                <EyeOff className="w-5 h-5 text-muted-foreground hover:text-foreground transition-colors" /> : 
+              {showPassword ?
+                <EyeOff className="w-5 h-5 text-muted-foreground hover:text-foreground transition-colors" /> :
                 <Eye className="w-5 h-5 text-muted-foreground hover:text-foreground transition-colors" />
               }
             </button>
@@ -451,22 +340,22 @@ const PasswordStep = ({
         </div>
         <GlassInputWrapper>
           <div className="relative">
-            <input 
-              name="confirmPassword" 
-              type={showConfirmPassword ? 'text' : 'password'} 
+            <input
+              name="confirmPassword"
+              type={showConfirmPassword ? 'text' : 'password'}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirme sua senha" 
-              className="w-full bg-transparent text-sm p-4 pr-12 rounded-2xl focus:outline-none text-foreground placeholder:text-muted-foreground" 
+              placeholder="Confirme sua senha"
+              className="w-full bg-transparent text-sm p-4 pr-12 rounded-2xl focus:outline-none text-foreground placeholder:text-muted-foreground"
               required
             />
-            <button 
-              type="button" 
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)} 
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
               className="absolute inset-y-0 right-3 flex items-center"
             >
-              {showConfirmPassword ? 
-                <EyeOff className="w-5 h-5 text-muted-foreground hover:text-foreground transition-colors" /> : 
+              {showConfirmPassword ?
+                <EyeOff className="w-5 h-5 text-muted-foreground hover:text-foreground transition-colors" /> :
                 <Eye className="w-5 h-5 text-muted-foreground hover:text-foreground transition-colors" />
               }
             </button>
@@ -505,11 +394,11 @@ const PasswordStep = ({
 
       <div className="animate-fade-in">
         <label className="flex items-start gap-3 cursor-pointer text-sm">
-          <input 
-            type="checkbox" 
-            name="terms" 
+          <input
+            type="checkbox"
+            name="terms"
             required
-            className="mt-1 h-4 w-4 rounded border border-border bg-transparent text-construction-orange focus:ring-2 focus:ring-construction-orange/20" 
+            className="mt-1 h-4 w-4 rounded border border-border bg-transparent text-construction-orange focus:ring-2 focus:ring-construction-orange/20"
           />
           <span className="text-foreground/90">
             Concordo com os <a href="#" className="text-construction-orange hover:underline">Termos de Uso</a> e <a href="#" className="text-construction-orange hover:underline">Política de Privacidade</a>
@@ -518,15 +407,15 @@ const PasswordStep = ({
       </div>
 
       <div className="flex gap-3">
-        <button 
+        <button
           type="button"
           onClick={onBack}
           className="animate-fade-in flex-1 rounded-2xl border border-border py-4 font-medium text-foreground hover:bg-muted transition-colors"
         >
           Voltar
         </button>
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           disabled={!isPasswordStrong || !doPasswordsMatch}
           className="animate-fade-in flex-1 rounded-2xl bg-construction-orange py-4 font-medium text-white hover:bg-construction-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
@@ -546,8 +435,6 @@ export const SignUpSteps: React.FC<SignUpStepsProps> = ({ onComplete }) => {
     name: '',
     email: '',
     phone: '',
-    documentType: '',
-    document: '',
     password: '',
     confirmPassword: ''
   });
@@ -565,7 +452,7 @@ export const SignUpSteps: React.FC<SignUpStepsProps> = ({ onComplete }) => {
     try {
       // Validar unicidade de email e telefone
       const cleanPhone = formData.phone.replace(/\D/g, '');
-      
+
       const { data, error } = await supabase.rpc('check_user_duplicates', {
         p_email: formData.email,
         p_phone: cleanPhone,
@@ -573,24 +460,25 @@ export const SignUpSteps: React.FC<SignUpStepsProps> = ({ onComplete }) => {
       });
 
       if (error) {
-        console.error('Erro ao verificar duplicados:', error);
-        toast.error('Erro ao validar dados. Tente novamente.');
-        setIsValidating(false);
-        return;
-      }
+        console.error('Erro ao verificar duplicados (continuando):', error);
+        // Não bloqueia o fluxo se houver erro técnico na validação, 
+        // deixa o Supabase Auth tratar na criação
+      } else {
+        // Type assertion para o retorno da função RPC
+        const result = data as { has_duplicate: boolean; duplicate_field: string | null } | null;
 
-      // Type assertion para o retorno da função RPC
-      const result = data as { has_duplicate: boolean; duplicate_field: string | null } | null;
-      
-      if (result?.has_duplicate) {
-        const field = result.duplicate_field;
-        if (field === 'email') {
-          toast.error('Este e-mail já está cadastrado. Use outro e-mail ou faça login.');
-        } else if (field === 'phone') {
-          toast.error('Este telefone já está cadastrado. Use outro número ou faça login.');
+        if (result?.has_duplicate) {
+          const field = result.duplicate_field;
+          if (field === 'email') {
+            toast.error('Este e-mail já está cadastrado. Use outro e-mail ou faça login.');
+            setIsValidating(false);
+            return;
+          } else if (field === 'phone') {
+            toast.error('Este telefone já está cadastrado. Use outro número ou faça login.');
+            setIsValidating(false);
+            return;
+          }
         }
-        setIsValidating(false);
-        return;
       }
 
       // Se passou na validação, avança para próxima etapa
@@ -603,47 +491,7 @@ export const SignUpSteps: React.FC<SignUpStepsProps> = ({ onComplete }) => {
     }
   };
 
-  const handleDocumentNext = async () => {
-    setIsValidating(true);
-    try {
-      // Validar unicidade do documento (CPF/CNPJ)
-      const cleanPhone = formData.phone.replace(/\D/g, '');
-      const cleanDocument = formData.document.replace(/\D/g, '');
-      
-      const { data, error } = await supabase.rpc('check_user_duplicates', {
-        p_email: formData.email,
-        p_phone: cleanPhone,
-        p_cpf_cnpj: cleanDocument
-      });
-
-      if (error) {
-        console.error('Erro ao verificar duplicados:', error);
-        toast.error('Erro ao validar dados. Tente novamente.');
-        setIsValidating(false);
-        return;
-      }
-
-      // Type assertion para o retorno da função RPC
-      const result = data as { has_duplicate: boolean; duplicate_field: string | null } | null;
-      
-      if (result?.has_duplicate) {
-        const field = result.duplicate_field;
-        if (field === 'cpf_cnpj') {
-          toast.error('Este CPF/CNPJ já está cadastrado. Use outro documento ou faça login.');
-        }
-        setIsValidating(false);
-        return;
-      }
-
-      // Se passou na validação, avança para próxima etapa
-      setCurrentStep(4);
-    } catch (error) {
-      console.error('Erro na validação:', error);
-      toast.error('Erro ao validar dados. Tente novamente.');
-    } finally {
-      setIsValidating(false);
-    }
-  };
+  // handleDocumentNext removed
 
   const handleComplete = () => {
     onComplete(formData);
@@ -651,8 +499,8 @@ export const SignUpSteps: React.FC<SignUpStepsProps> = ({ onComplete }) => {
 
   return (
     <div className="space-y-6">
-      <StepIndicator currentStep={currentStep} totalSteps={4} />
-      
+      <StepIndicator currentStep={currentStep} totalSteps={3} />
+
       {currentStep === 1 && (
         <NameStep
           name={formData.name}
@@ -675,25 +523,13 @@ export const SignUpSteps: React.FC<SignUpStepsProps> = ({ onComplete }) => {
       )}
 
       {currentStep === 3 && (
-        <DocumentStep
-          documentType={formData.documentType as 'cpf' | 'cnpj' | ''}
-          setDocumentType={(documentType) => setFormData(prev => ({ ...prev, documentType, document: '' }))}
-          document={formData.document}
-          setDocument={(document) => setFormData(prev => ({ ...prev, document }))}
-          onNext={handleDocumentNext}
-          onBack={() => setCurrentStep(2)}
-          isValidating={isValidating}
-        />
-      )}
-
-      {currentStep === 4 && (
         <PasswordStep
           password={formData.password}
           setPassword={(password) => setFormData(prev => ({ ...prev, password }))}
           confirmPassword={formData.confirmPassword}
           setConfirmPassword={(confirmPassword) => setFormData(prev => ({ ...prev, confirmPassword }))}
           onComplete={handleComplete}
-          onBack={() => setCurrentStep(3)}
+          onBack={() => setCurrentStep(2)}
         />
       )}
     </div>

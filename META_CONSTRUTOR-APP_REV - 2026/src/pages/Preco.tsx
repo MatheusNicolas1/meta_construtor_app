@@ -11,9 +11,9 @@ import { ArrowRight } from 'lucide-react';
 const demoPlans = [
   {
     name: "GRATUITO",
-    price: "0",
-    yearlyPrice: "0",
-    period: "para sempre",
+    price: "0,00",
+    yearlyPrice: "0,00",
+    period: "por mês",
     features: [
       "7 Créditos RDO Gratuitos",
       "1 crédito = 1 RDO criado",
@@ -27,7 +27,7 @@ const demoPlans = [
     description: "Plataforma gratuita - teste sem limites de tempo!",
     buttonText: "Começar Grátis Agora",
     href: "/login",
-    isPopular: true,
+    isPopular: false,
   },
   {
     name: "BÁSICO",
@@ -108,22 +108,22 @@ const demoPlans = [
 
 const Preco = () => {
   const navigate = useNavigate();
-  
+
   return (
     <PerformanceManager>
-      <SEO 
+      <SEO
         title="Preços - Meta Construtor | Planos e Valores"
         description="Conheça nossos planos de preços. Desde R$ 129,90/mês. Sistema de créditos gratuito disponível. Escolha o plano ideal para sua construtora."
         canonical={window.location.href}
       />
-      
+
       <div className="min-h-screen bg-background">
         <LandingNavigation />
-        
-        <main className="pt-16 md:pt-20">
+
+        <main className="pt-16 md:pt-20 overflow-x-hidden">
           {/* Hero Section */}
           <section className="py-8 md:py-10 bg-background w-full">
-            <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <div className="w-full max-w-6xl mx-auto px-6 lg:px-12 text-center">
               <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground">
                 Comece Gratuitamente com 7 Créditos RDO
               </h1>
@@ -140,7 +140,7 @@ const Preco = () => {
 
           {/* CTA Section */}
           <section className="py-10 md:py-12 bg-muted/30 w-full">
-            <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <div className="w-full max-w-6xl mx-auto px-6 lg:px-12 text-center">
               <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-3">
                 Pronto para transformar sua gestão de obras?
               </h2>
@@ -148,13 +148,13 @@ const Preco = () => {
                 Junte-se a centenas de construtoras que já otimizaram seus processos com o Meta Construtor.
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <button 
+                <button
                   onClick={() => navigate('/login')}
                   className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3.5 rounded-lg font-semibold transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
                 >
                   Começar Gratuitamente
                 </button>
-                <button 
+                <button
                   onClick={() => navigate('/contato')}
                   className="border-2 border-border hover:border-primary hover:bg-muted text-foreground px-8 py-3.5 rounded-lg font-semibold transition-all duration-300"
                 >
@@ -164,7 +164,7 @@ const Preco = () => {
             </div>
           </section>
         </main>
-        
+
         <FooterSection />
       </div>
     </PerformanceManager>

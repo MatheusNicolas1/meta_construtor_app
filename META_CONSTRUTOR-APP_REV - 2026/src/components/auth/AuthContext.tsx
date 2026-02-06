@@ -56,6 +56,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         name: profile?.name || authUser.email || "Usuário",
         email: authUser.email || "",
         role: rolesList[0] || "Colaborador",
+        avatar_url: profile?.avatar_url || "",
         createdAt: authUser.created_at,
         updatedAt: profile?.updated_at || authUser.created_at,
       });
@@ -108,25 +109,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = useCallback(async (emailOrPhone: string, password: string) => {
     try {
       let email = emailOrPhone;
-      
+
       // Se não parece ser email, buscar email pelo telefone
       if (!emailOrPhone.includes('@')) {
         const cleanPhone = emailOrPhone.replace(/\D/g, '');
-        
+
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('email')
           .eq('phone', cleanPhone)
           .maybeSingle();
-        
+
         if (profileError || !profile) {
           toast.error("Telefone não encontrado. Verifique e tente novamente.");
           throw new Error("Telefone não cadastrado");
         }
-        
+
         email = profile.email;
       }
-      
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -155,7 +156,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      
+
       setUser(null);
       setSession(null);
       setRoles([]);
@@ -179,7 +180,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { data, error } = await supabase.auth.refreshSession();
       if (error) throw error;
-      
+
       if (data.session) {
         setSession(data.session);
         if (data.user) {

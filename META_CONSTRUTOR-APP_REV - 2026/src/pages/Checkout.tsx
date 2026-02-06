@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import SEO from '@/components/SEO';
 import LandingNavigation from '@/components/landing/LandingNavigation';
 import { secureEmailSchema, strongPasswordSchema } from '@/components/security/InputValidator';
+import { supabase } from '@/integrations/supabase/client';
 
 // Schemas de validação
 const cpfCnpjSchema = z.string()
@@ -51,6 +52,7 @@ const planDetails = {
   free: {
     name: 'FREE',
     price: '0',
+    yearlyPrice: '0',
     period: 'por 14 dias',
     description: 'Teste gratuito de 14 dias',
     features: [
@@ -65,6 +67,7 @@ const planDetails = {
   basic: {
     name: 'BÁSICO',
     price: '129,90',
+    yearlyPrice: '103,92',
     period: 'por mês',
     description: 'Perfeito para pequenas construtoras',
     features: [
@@ -79,6 +82,7 @@ const planDetails = {
   professional: {
     name: 'PROFISSIONAL',
     price: '199,90',
+    yearlyPrice: '159,92',
     period: 'por mês',
     description: 'Ideal para construtoras em crescimento',
     features: [
@@ -94,6 +98,7 @@ const planDetails = {
   master: {
     name: 'MASTER',
     price: '499,90',
+    yearlyPrice: '399,92',
     period: 'por mês',
     description: 'Para construtoras estabelecidas',
     features: [
@@ -109,6 +114,7 @@ const planDetails = {
   business: {
     name: 'BUSINESS',
     price: 'Sob consulta',
+    yearlyPrice: 'Sob consulta',
     period: '',
     description: 'Para grandes incorporadoras e construtoras',
     features: [
@@ -126,7 +132,7 @@ const planDetails = {
 // Utilitários de formatação
 const formatCpfCnpj = (value: string) => {
   const cleaned = value.replace(/\D/g, '');
-  
+
   if (cleaned.length <= 11) {
     // CPF: 000.000.000-00
     return cleaned
@@ -145,7 +151,7 @@ const formatCpfCnpj = (value: string) => {
 
 const formatPhone = (value: string) => {
   const cleaned = value.replace(/\D/g, '');
-  
+
   if (cleaned.length <= 10) {
     // Fixo: (00) 0000-0000
     return cleaned
@@ -167,7 +173,14 @@ const Checkout = () => {
   const [duplicateUser, setDuplicateUser] = useState<{ exists: boolean; by?: string } | null>(null);
 
   const planKey = searchParams.get('plan') || 'basic';
+  const billingCycle = searchParams.get('billing') || 'monthly';
   const plan = planDetails[planKey as keyof typeof planDetails] || planDetails.basic;
+
+  // Use 'any' to bypass TS check for yearlyPrice since we're updating the object structure locally
+  // in a real scenario we'd update the type definition
+  const planWithYearly = plan as any;
+  const displayPrice = billingCycle === 'yearly' && planWithYearly.yearlyPrice ? planWithYearly.yearlyPrice : plan.price;
+  const displayPeriod = billingCycle === 'yearly' ? 'por mês (faturado anualmente)' : plan.period;
 
   const {
     register,
@@ -217,12 +230,12 @@ const Checkout = () => {
     // Simulação de checagem de duplicidade
     // Na implementação real, será uma chamada para o backend
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
+
     // Simulação: usuário "admin@example.com" já existe
     if (data.email === 'admin@example.com') {
       return { exists: true, by: 'email' };
     }
-    
+
     return { exists: false };
   };
 
@@ -231,32 +244,73 @@ const Checkout = () => {
     setDuplicateUser(null);
 
     try {
-      // Verificar duplicidade
-      const duplicateCheck = await checkDuplicateUser(data);
-      
-      if (duplicateCheck.exists) {
-        setDuplicateUser(duplicateCheck);
-        setIsLoading(false);
+      // 1. Create user account with Supabase Auth
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          data: {
+            name: data.fullName,
+            phone: data.phone,
+            cpf_cnpj: data.cpfCnpj,
+          }
+        }
+      });
+
+      if (signUpError) {
+        // Check if user already exists
+        if (signUpError.message.includes('already registered')) {
+          setDuplicateUser({ exists: true, by: 'email' });
+          setIsLoading(false);
+          return;
+        }
+        throw signUpError;
+      }
+
+      if (!authData.user) {
+        throw new Error('Falha ao criar usuário');
+      }
+
+      // 2. For Free plan, just redirect to success
+      if (planKey === 'free') {
+        toast({
+          title: 'Conta criada com sucesso!',
+          description: 'Redirecionando para o dashboard...',
+        });
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 1500);
         return;
       }
 
-      // Simular criação de sessão de checkout
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      // 3. Create Stripe checkout session for paid plans
+      const { data: sessionData, error: sessionError } = await supabase.functions.invoke(
+        'create-checkout-session',
+        {
+          body: {
+            plan: planKey,
+            billing: billingCycle
+          }
+        }
+      );
+
+      if (sessionError || !sessionData?.url) {
+        throw new Error(sessionError?.message || 'Erro ao criar sessão de pagamento');
+      }
+
       toast({
         title: 'Dados validados!',
         description: 'Redirecionando para pagamento...',
       });
 
-      // Redirecionar para simulação de sucesso (na implementação real seria Stripe)
-      setTimeout(() => {
-        navigate(`/checkout/success?plan=${planKey}`);
-      }, 1500);
+      // Redirect to Stripe Checkout
+      window.location.href = sessionData.url;
 
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Checkout error:', error);
       toast({
         title: 'Erro no processamento',
-        description: 'Ocorreu um erro. Tente novamente em alguns minutos.',
+        description: error.message || 'Ocorreu um erro. Tente novamente em alguns minutos.',
         variant: 'destructive',
       });
     } finally {
@@ -287,12 +341,12 @@ const Checkout = () => {
         description={`Finalize sua assinatura do plano ${plan.name}. ${plan.description}`}
         canonical={window.location.href}
       />
-      
+
       <div className="min-h-screen bg-background">
         <LandingNavigation />
-        
-        <main className="pt-16 pb-12">
-          <div className="container max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+
+        <main className="pt-32 pb-12 overflow-x-hidden">
+          <div className="w-full max-w-6xl mx-auto px-6 lg:px-12">
             {/* Header */}
             <div className="text-center mb-8">
               <Button
@@ -303,7 +357,7 @@ const Checkout = () => {
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Voltar para planos
               </Button>
-              
+
               <h1 className="text-3xl font-bold text-foreground mb-2">
                 Finalizar Assinatura
               </h1>
@@ -445,8 +499,8 @@ const Checkout = () => {
                         Conta já existe
                       </CardTitle>
                       <CardDescription className="text-amber-700">
-                        Já existe uma conta com o {duplicateUser.by === 'email' ? 'e-mail' : 
-                        duplicateUser.by === 'cpf' ? 'CPF/CNPJ' : 'telefone'} informado.
+                        Já existe uma conta com o {duplicateUser.by === 'email' ? 'e-mail' :
+                          duplicateUser.by === 'cpf' ? 'CPF/CNPJ' : 'telefone'} informado.
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -475,10 +529,10 @@ const Checkout = () => {
                     </CardTitle>
                     <div className="text-center">
                       <div className="text-3xl font-bold text-primary">
-                        {plan.price === 'Sob consulta' ? plan.price : `R$ ${plan.price}`}
+                        {displayPrice === 'Sob consulta' ? displayPrice : `R$ ${displayPrice}`}
                       </div>
                       {plan.period && (
-                        <div className="text-muted-foreground">{plan.period}</div>
+                        <div className="text-muted-foreground">{displayPeriod}</div>
                       )}
                     </div>
                     <CardDescription className="text-center">

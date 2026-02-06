@@ -213,6 +213,5 @@ Todas as correções foram implementadas com sucesso. A aplicação está:
 
 ---
 
-**Desenvolvido por:** Lovable AI  
 **Projeto:** Meta Construtor  
 **Versão:** 2.0.0

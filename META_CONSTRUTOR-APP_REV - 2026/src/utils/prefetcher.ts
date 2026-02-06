@@ -7,13 +7,13 @@ class IntelligentPrefetcher {
   // Prefetch baseado em padrões de navegação - Melhorado
   async prefetchRoute(route: string, dataFetcher?: () => Promise<any>) {
     if (this.prefetchQueue.has(route)) return;
-    
+
     this.prefetchQueue.add(route);
 
     // Mapeamento de rotas mais preciso
     const routeMap: Record<string, string> = {
       'Dashboard': 'Dashboard',
-      'Obras': 'Obras', 
+      'Obras': 'Obras',
       'ObraDetalhes': 'ObraDetalhes',
       'RDO': 'RDO',
       'RDOVisualizar': 'RDOVisualizar',
@@ -36,20 +36,15 @@ class IntelligentPrefetcher {
 
     const pageRoute = routeMap[route] || route;
 
-    // Preload do componente com fallback
+    // Preload do componente removido temporariamente para evitar erros de import dinâmico
+    /*
     try {
       await import(`../pages/${pageRoute}.tsx`);
       console.log(`✅ Prefetched route: ${route}`);
     } catch (error) {
-      try {
-        // Tentar com primeira letra minúscula
-        const lowercaseRoute = pageRoute.charAt(0).toLowerCase() + pageRoute.slice(1);
-        await import(`../pages/${lowercaseRoute}.tsx`);
-        console.log(`✅ Prefetched route (lowercase): ${route}`);
-      } catch (secondError) {
-        console.warn(`⚠️ Failed to prefetch route: ${route}`, error);
-      }
+       // ...
     }
+    */
 
     // Prefetch dos dados se fornecido
     if (dataFetcher) {
@@ -66,8 +61,8 @@ class IntelligentPrefetcher {
   // Prefetch de dados críticos otimizado
   async prefetchCriticalData() {
     const criticalEndpoints = [
-      { 
-        key: 'dashboard-stats', 
+      {
+        key: 'dashboard-stats',
         fetcher: () => Promise.resolve({
           totalObras: 24,
           obrasAtivas: 18,
@@ -75,8 +70,8 @@ class IntelligentPrefetcher {
           equipamentosAtivos: 42
         })
       },
-      { 
-        key: 'user-profile', 
+      {
+        key: 'user-profile',
         fetcher: () => {
           try {
             const authUser = localStorage.getItem("auth_user");
@@ -97,8 +92,8 @@ class IntelligentPrefetcher {
           }
         }
       },
-      { 
-        key: 'recent-obras', 
+      {
+        key: 'recent-obras',
         fetcher: () => Promise.resolve([
           { id: 1, nome: "Obra Centro", status: "Ativa", progresso: 75, dataInicio: "2024-01-15" },
           { id: 2, nome: "Obra Norte", status: "Ativa", progresso: 45, dataInicio: "2024-02-01" },
@@ -106,8 +101,8 @@ class IntelligentPrefetcher {
           { id: 4, nome: "Obra Oeste", status: "Concluida", progresso: 100, dataInicio: "2023-12-01" }
         ])
       },
-      { 
-        key: 'recent-rdos', 
+      {
+        key: 'recent-rdos',
         fetcher: () => Promise.resolve([
           { id: 1, obra: "Obra Centro", data: "2024-09-02", status: "Aprovado" },
           { id: 2, obra: "Obra Norte", data: "2024-09-01", status: "Pendente" },
@@ -131,7 +126,7 @@ class IntelligentPrefetcher {
           const startTime = performance.now();
           const data = await fetcher();
           const endTime = performance.now();
-          
+
           this.prefetchedData.set(key, data);
           console.log(`✅ Successfully prefetched: ${key} (${(endTime - startTime).toFixed(2)}ms)`, data);
         } catch (error) {
@@ -206,12 +201,12 @@ export const initializePrefetch = () => {
       { route: 'Dashboard', priority: 1 },
       { route: 'Obras', priority: 1 },
       { route: 'RDO', priority: 1 },
-      
+
       // Prioridade média
       { route: 'Atividades', priority: 2 },
       { route: 'ObraDetalhes', priority: 2 },
       { route: 'RDOVisualizar', priority: 2 },
-      
+
       // Prioridade baixa
       { route: 'Checklist', priority: 3 },
       { route: 'Equipamentos', priority: 3 },

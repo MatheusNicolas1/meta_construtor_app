@@ -12,7 +12,7 @@ const CheckoutSuccess = () => {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
-  
+
   const planKey = searchParams.get('plan') || 'basic';
   const sessionId = searchParams.get('session_id');
 
@@ -32,12 +32,12 @@ const CheckoutSuccess = () => {
       try {
         // Na implementação real, verificar com o backend se o pagamento foi processado
         await new Promise(resolve => setTimeout(resolve, 2000));
-        
+
         toast({
           title: 'Pagamento confirmado!',
           description: 'Sua assinatura foi ativada com sucesso.',
         });
-        
+
         setIsLoading(false);
       } catch (error) {
         toast({
@@ -45,7 +45,7 @@ const CheckoutSuccess = () => {
           description: 'Não conseguimos verificar seu pagamento. Entre em contato conosco.',
           variant: 'destructive',
         });
-        
+
         // Redirecionar para suporte em caso de erro
         setTimeout(() => {
           navigate('/contato');
@@ -61,7 +61,7 @@ const CheckoutSuccess = () => {
       title: 'Bem-vindo ao Meta Construtor!',
       description: 'Você será redirecionado para o dashboard.',
     });
-    
+
     setTimeout(() => {
       navigate('/dashboard');
     }, 1000);
@@ -91,12 +91,12 @@ const CheckoutSuccess = () => {
           description="Aguarde enquanto confirmamos seu pagamento."
           canonical={window.location.href}
         />
-        
+
         <div className="min-h-screen bg-background">
           <LandingNavigation />
-          
-          <main className="pt-16">
-            <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+
+          <main className="pt-16 overflow-x-hidden">
+            <div className="w-full max-w-2xl mx-auto px-6 lg:px-12 py-16">
               <Card>
                 <CardContent className="pt-6">
                   <div className="text-center space-y-4">
@@ -122,26 +122,26 @@ const CheckoutSuccess = () => {
         description="Seu pagamento foi processado com sucesso. Bem-vindo ao Meta Construtor!"
         canonical={window.location.href}
       />
-      
+
       <div className="min-h-screen bg-background">
         <LandingNavigation />
-        
-        <main className="pt-16">
-          <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+
+        <main className="pt-16 overflow-x-hidden">
+          <div className="w-full max-w-2xl mx-auto px-6 lg:px-12 py-16">
             {/* Sucesso */}
             <div className="text-center mb-8">
               <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
                 <CheckCircle className="w-8 h-8 text-green-600" />
               </div>
-              
+
               <h1 className="text-3xl font-bold text-foreground mb-2">
                 Pagamento Confirmado!
               </h1>
-              
+
               <p className="text-lg text-muted-foreground mb-6">
                 Sua assinatura do plano <strong>{planName}</strong> foi ativada com sucesso.
               </p>
-              
+
               <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
                 <p className="text-green-800 text-sm">
                   ✅ Conta criada com sucesso<br />
@@ -173,8 +173,8 @@ const CheckoutSuccess = () => {
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Próxima cobrança:</span>
                     <span className="font-medium">
-                      {planKey === 'free' ? 'Não se aplica' : 
-                       new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR')}
+                      {planKey === 'free' ? 'Não se aplica' :
+                        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR')}
                     </span>
                   </div>
                   {sessionId && (
@@ -208,7 +208,7 @@ const CheckoutSuccess = () => {
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-start gap-3">
                     <div className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-medium">
                       2
@@ -220,7 +220,7 @@ const CheckoutSuccess = () => {
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-start gap-3">
                     <div className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-medium">
                       3
@@ -238,7 +238,7 @@ const CheckoutSuccess = () => {
 
             {/* Ações */}
             <div className="space-y-4">
-              <Button 
+              <Button
                 onClick={handleGoToDashboard}
                 className="w-full"
                 size="lg"
@@ -246,9 +246,9 @@ const CheckoutSuccess = () => {
                 <ArrowRight className="mr-2 h-4 w-4" />
                 Acessar Dashboard
               </Button>
-              
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Button 
+                <Button
                   onClick={handleDownloadReceipt}
                   variant="outline"
                   className="w-full"
@@ -256,8 +256,8 @@ const CheckoutSuccess = () => {
                   <Download className="mr-2 h-4 w-4" />
                   Baixar Recibo
                 </Button>
-                
-                <Button 
+
+                <Button
                   onClick={handleSendReceiptEmail}
                   variant="outline"
                   className="w-full"
@@ -273,7 +273,7 @@ const CheckoutSuccess = () => {
               <p className="text-sm text-muted-foreground mb-2">
                 Precisa de ajuda? Entre em contato conosco
               </p>
-              <Button 
+              <Button
                 onClick={() => navigate('/contato')}
                 variant="link"
                 className="text-primary"

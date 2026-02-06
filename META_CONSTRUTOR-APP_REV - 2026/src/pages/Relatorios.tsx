@@ -6,21 +6,29 @@ import { DatePicker } from "@/components/DatePicker";
 import { Badge } from "@/components/ui/badge";
 import { RDOReportSection } from "@/components/reports/RDOReportSection";
 import { RDO } from "@/types/rdo";
-import { 
-  BarChart3, 
-  TrendingUp, 
-  TrendingDown, 
-  DollarSign, 
-  Calendar, 
-  Building2, 
-  Users, 
-  Wrench, 
+import {
+  BarChart3,
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Calendar,
+  Building2,
+  Users,
+  Wrench,
   ClipboardList,
   Download,
   FileText,
   PieChart,
-  Activity
+  Activity,
+  CalendarDays
 } from "lucide-react";
+import { useObras } from "@/hooks/useObras";
+import { useRDOs } from "@/hooks/useRDOs";
+import { format, subDays, isWithinInterval, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { toast } from "sonner";
+import { useEquipesSupabase } from "@/hooks/useEquipesSupabase";
+import { useEquipamentosSupabase } from "@/hooks/useEquipamentosSupabase";
 
 const Relatorios = () => {
   const [selectedObra, setSelectedObra] = useState("all");
@@ -28,145 +36,202 @@ const Relatorios = () => {
   const [dataInicio, setDataInicio] = useState<Date | undefined>();
   const [dataFim, setDataFim] = useState<Date | undefined>();
 
-  // Mock RDO data - in real app, this would be fetched from backend
-  const rdoData: RDO[] = [
-    {
-      id: 1,
-      data: "2024-01-15",
-      obraId: 1,
-      obraNome: "Residencial Vista Verde",
-      status: 'Aprovado' as const,
-      criadoPorId: 'user-1',
-      criadoPorNome: 'João Silva',
-      aprovadoPorId: 'user-manager',
-      aprovadoPorNome: 'Carlos Santos',
-      dataAprovacao: '2024-01-15T18:00:00Z',
-      periodo: 'Manhã',
-      clima: "Ensolarado",
-      equipeOciosa: false,
-      atividadesRealizadas: [
-        {
-          id: 1,
-          nome: "Concretagem de Laje",
-          categoria: "Estrutura",
-          quantidade: 120,
-          unidadeMedida: "m²",
-          percentualConcluido: 100,
-          status: "Concluída"
-        },
-        {
-          id: 2,
-          nome: "Instalação Elétrica",
-          categoria: "Instalações",
-          quantidade: 50,
-          unidadeMedida: "m",
-          percentualConcluido: 60,
-          status: "Em Andamento"
-        }
-      ],
-      atividadesExtras: [
-        {
-          id: 1,
-          nome: "Reparo Emergencial",
-          descricao: "Reparo de vazamento",
-          categoria: "Manutenção",
-          quantidade: 1,
-          unidadeMedida: "un",
-          percentualConcluido: 100,
-          justificativa: "Vazamento imprevisto no sistema hidráulico"
-        }
-      ],
-      equipesPresentes: [
-        {
-          id: 1,
-          nome: "João Silva",
-          funcao: "Engenheiro Civil",
-          horasTrabalho: 8,
-          presente: true
-        },
-        {
-          id: 2,
-          nome: "Maria Santos",
-          funcao: "Mestre de Obras",
-          horasTrabalho: 8,
-          presente: true
-        }
-      ],
-      equipamentosUtilizados: [
-        {
-          id: 1,
-          nome: "Betoneira B-400",
-          categoria: "Concreto",
-          horasUso: 6,
-          status: "Operacional"
-        }
-      ],
-      equipamentosQuebrados: [
-        {
-          id: 1,
-          nome: "Furadeira Industrial",
-          categoria: "Ferramentas",
-          descricaoProblema: "Motor queimado",
-          causouOciosidade: true,
-          horasParada: 2,
-          impactoProducao: "Baixo"
-        }
-      ],
-      acidentes: [],
-      materiaisFalta: [
-        {
-          id: 1,
-          nome: "Cimento Portland",
-          categoria: "Básicos",
-          quantidadeNecessaria: 50,
-          unidadeMedida: "sacos",
-          impactoProducao: "Alto",
-          prazoEntregaPrevisto: "2024-01-16"
-        }
-      ],
-      estoqueMateriais: [
-        {
-          id: 1,
-          nome: "Areia Fina",
-          categoria: "Agregados",
-          quantidadeAtual: 5,
-          quantidadeMinima: 10,
-          unidadeMedida: "m³",
-          alertaEstoqueMinimo: true
-        }
-      ],
-      observacoes: "Dia produtivo. Concretagem realizada sem intercorrências. Tempo bom para trabalho.",
-      imagens: [
-        {
-          id: 1,
-          nome: "laje_concretada.jpg",
-          url: "/images/laje_concretada.jpg",
-          descricao: "Laje após concretagem",
-          timestamp: "2024-01-15T14:30:00Z"
-        }
-      ],
-      documentos: [
-        {
-          id: 1,
-          nome: "controle_concreto.pdf",
-          tipo: "PDF",
-          url: "/docs/controle_concreto.pdf",
-          descricao: "Controle tecnológico do concreto",
-          timestamp: "2024-01-15T15:00:00Z"
-        }
-      ],
-      criadoEm: "2024-01-15T08:00:00Z",
-      atualizadoEm: "2024-01-15T17:30:00Z"
-    },
-    // Additional mock data can be added here
-  ];
+  const { obras: obrasData, isLoading: isLoadingObras } = useObras();
+  const { rdos: rdosData, isLoading: isLoadingRDOs } = useRDOs();
+  const { equipes: equipesData } = useEquipesSupabase();
+  const { equipamentos: equipamentosData } = useEquipamentosSupabase();
 
-  const obras = [
-    { id: 1, nome: "Residencial Vista Verde" },
-    { id: 2, nome: "Comercial Center Norte" },
-    { id: 3, nome: "Ponte Rio Azul" },
-    { id: 4, nome: "Hospital Regional Sul" }
-  ];
+  // Filter RDOs based on selection
+  const filteredRDOs = rdosData?.filter(rdo => {
+    // Obra filter
+    if (selectedObra !== "all" && rdo.obra_id?.toString() !== selectedObra) return false;
+
+    // Date filter
+    if (selectedPeriodo === "custom" && dataInicio && dataFim) {
+      const rdoDate = parseISO(rdo.data);
+      return isWithinInterval(rdoDate, { start: dataInicio, end: dataFim });
+    } else if (selectedPeriodo) {
+      const days = parseInt(selectedPeriodo);
+      if (!isNaN(days)) {
+        const rdoDate = parseISO(rdo.data);
+        const cutoffDate = subDays(new Date(), days);
+        return rdoDate >= cutoffDate;
+      }
+    }
+
+    return true;
+  }) || [];
+
+  // Adapt Supabase RDO data to component interface
+  // Note: The useRDOs hook returns a simpler structure than the detailed RDO interface
+  // We map what we can and provide defaults for the rest to avoid crashes
+  const mappedRDOs: RDO[] = filteredRDOs.map(rdo => ({
+    id: rdo.id,
+    data: rdo.data,
+    obraId: rdo.obra_id,
+    obraNome: rdo.obras?.nome || "Sem nome",
+    status: rdo.status as any,
+    criadoPorId: rdo.criado_por_id,
+    criadoPorNome: "Usuário", // Name not fetched in simple query
+    periodo: rdo.periodo as any,
+    clima: rdo.clima,
+    equipeOciosa: rdo.equipe_ociosa,
+    atividadesRealizadas: [], // Detailed data might not be in the fetch
+    atividadesExtras: [],
+    equipesPresentes: [],
+    equipamentosUtilizados: [],
+    equipamentosQuebrados: [],
+    acidentes: [],
+    materiaisFalta: [],
+    estoqueMateriais: [],
+    observacoes: rdo.observacoes || "",
+    imagens: [],
+    documentos: [],
+    criadoEm: rdo.created_at,
+    atualizadoEm: rdo.updated_at || rdo.created_at,
+  }));
+
+  const handleExportData = () => {
+    if (mappedRDOs.length === 0) {
+      toast.error("Não há dados para exportar com os filtros atuais.");
+      return;
+    }
+
+    const headers = ["ID", "Data", "Obra", "Período", "Clima", "Status", "Observações"];
+    const csvContent = [
+      headers.join(","),
+      ...mappedRDOs.map(row => [
+        row.id,
+        row.data,
+        `"${row.obraNome}"`,
+        row.periodo,
+        row.clima,
+        row.status,
+        `"${row.observacoes}"`
+      ].join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `relatorio_rdos_${format(new Date(), "yyyy-MM-dd")}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const calculateMetrics = () => {
+    const totalObras = obrasData?.length || 0;
+
+    // Progresso Médio
+    const totalProgresso = obrasData?.reduce((acc, obra) => acc + (obra.progresso || 0), 0) || 0;
+    const progressoMedio = totalObras > 0 ? Math.round(totalProgresso / totalObras) : 0;
+
+    // RDOs Emitidos
+    const totalRDOs = rdosData?.length || 0;
+
+    // Colaboradores Ativos
+    const totalColaboradores = equipesData?.filter(e => e.ativo).length || 0;
+
+    return {
+      totalObras,
+      progressoMedio,
+      totalRDOs,
+      totalColaboradores
+    };
+  };
+
+  const metrics = calculateMetrics();
+
+  const handleExportObras = () => {
+    if (!obrasData?.length) {
+      toast.error("Não há dados de obras para exportar.");
+      return;
+    }
+    const headers = ["ID", "Nome", "Cliente", "Status", "Progresso (%)", "Responsável"];
+    const csvContent = [
+      headers.join(","),
+      ...obrasData.map(row => [
+        row.id,
+        `"${row.nome}"`,
+        `"${row.cliente}"`,
+        row.status,
+        row.progresso,
+        `"${row.responsavel}"`
+      ].join(","))
+    ].join("\n");
+    downloadCSV(csvContent, "relatorio_obras");
+  };
+
+  const handleExportEquipes = () => {
+    if (!equipesData?.length) {
+      toast.error("Não há dados de equipes para exportar.");
+      return;
+    }
+    const headers = ["Nome", "Função", "Status", "Email", "Telefone"];
+    const csvContent = [
+      headers.join(","),
+      ...equipesData.map(row => [
+        `"${row.nome}"`,
+        `"${row.funcao}"`,
+        row.ativo ? "Ativo" : "Inativo",
+        row.email || "",
+        row.telefone || ""
+      ].join(","))
+    ].join("\n");
+    downloadCSV(csvContent, "relatorio_equipes");
+  };
+
+  const handleExportEquipamentos = () => {
+    if (!equipamentosData?.length) {
+      toast.error("Não há dados de equipamentos para exportar.");
+      return;
+    }
+    const headers = ["Nome", "Categoria", "Marca/Modelo", "Status", "Identificação"];
+    const csvContent = [
+      headers.join(","),
+      ...equipamentosData.map(row => [
+        `"${row.nome}"`,
+        `"${row.categoria}"`,
+        `"${row.marca}"`,
+        row.status,
+        `"${row.identificacao}"`
+      ].join(","))
+    ].join("\n");
+    downloadCSV(csvContent, "relatorio_equipamentos");
+  };
+
+  const downloadCSV = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${filename}_${format(new Date(), "yyyy-MM-dd")}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Relatório gerado com sucesso!");
+  };
+
+  const handleGenerateReport = (reportTitle: string) => {
+    switch (reportTitle) {
+      case "Relatório de Progresso por Obra":
+        handleExportObras();
+        break;
+      case "Relatório de Produtividade de Equipes":
+        handleExportEquipes();
+        break;
+      case "Relatório de Utilização de Equipamentos":
+        handleExportEquipamentos();
+        break;
+      case "Relatório de Atividades (RDO)":
+        handleExportData(); // Reusing the main RDO export
+        break;
+      default:
+        toast.info(`O relatório "${reportTitle}" será implementado em breve.`);
+    }
+  };
 
   const periodos = [
     { value: "7d", label: "Últimos 7 dias" },
@@ -229,35 +294,35 @@ const Relatorios = () => {
   const metricas = [
     {
       titulo: "Total de Obras",
-      valor: "12",
-      variacao: "+2",
-      percentual: 20,
-      tipo: "positivo",
+      valor: metrics.totalObras.toString(),
+      variacao: "+0",
+      percentual: 0,
+      tipo: "neutro",
       icon: Building2
     },
     {
       titulo: "Progresso Médio",
-      valor: "68%",
-      variacao: "+5%",
-      percentual: 5,
-      tipo: "positivo",
+      valor: `${metrics.progressoMedio}%`,
+      variacao: "+0%",
+      percentual: 0,
+      tipo: "neutro",
       icon: TrendingUp
     },
     {
-      titulo: "Orçamento Utilizado",
-      valor: "R$ 15.2M",
-      variacao: "+12%",
-      percentual: 12,
+      titulo: "RDOs Emitidos",
+      valor: metrics.totalRDOs.toString(),
+      variacao: "+0",
+      percentual: 0,
       tipo: "neutro",
-      icon: DollarSign
+      icon: ClipboardList
     },
     {
-      titulo: "Prazo Médio Restante",
-      valor: "4.2 meses",
-      variacao: "-0.3m",
-      percentual: -8,
-      tipo: "positivo",
-      icon: Calendar
+      titulo: "Colaboradores Ativos",
+      valor: metrics.totalColaboradores.toString(),
+      variacao: "+0",
+      percentual: 0,
+      tipo: "neutro",
+      icon: Users
     }
   ];
 
@@ -290,7 +355,10 @@ const Relatorios = () => {
           <h1 className="text-3xl font-bold text-foreground">Central de Relatórios</h1>
           <p className="text-muted-foreground">Análises e insights das suas obras e operações</p>
         </div>
-        <Button className="gradient-construction border-0 hover:opacity-90">
+        <Button
+          className="gradient-construction border-0 hover:opacity-90"
+          onClick={handleExportData}
+        >
           <Download className="mr-2 h-4 w-4" />
           Exportar Dados
         </Button>
@@ -312,7 +380,7 @@ const Relatorios = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas as obras</SelectItem>
-                  {obras.map((obra) => (
+                  {obrasData?.map((obra) => (
                     <SelectItem key={obra.id} value={obra.id.toString()}>
                       {obra.nome}
                     </SelectItem>
@@ -397,8 +465,8 @@ const Relatorios = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {obras.map((obra, index) => {
-                const progresso = [75, 45, 90, 25][index];
+              {obrasData?.map((obra, index) => {
+                const progresso = obra.progresso || 0;
                 return (
                   <div key={obra.id} className="space-y-2">
                     <div className="flex justify-between text-sm">
@@ -406,8 +474,8 @@ const Relatorios = () => {
                       <span className="font-medium text-construction-green">{progresso}%</span>
                     </div>
                     <div className="w-full bg-secondary rounded-full h-2">
-                      <div 
-                        className="bg-construction-green h-2 rounded-full transition-all" 
+                      <div
+                        className="bg-construction-green h-2 rounded-full transition-all"
                         style={{ width: `${progresso}%` }}
                       />
                     </div>
@@ -431,18 +499,18 @@ const Relatorios = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="text-center p-4 bg-construction-blue/10 rounded-lg">
                   <Users className="h-8 w-8 text-construction-blue mx-auto mb-2" />
-                  <p className="text-2xl font-bold text-card-foreground">45</p>
+                  <p className="text-2xl font-bold text-card-foreground">{equipesData?.length || 0}</p>
                   <p className="text-sm text-muted-foreground">Colaboradores</p>
                 </div>
                 <div className="text-center p-4 bg-construction-orange/10 rounded-lg">
                   <Wrench className="h-8 w-8 text-construction-orange mx-auto mb-2" />
-                  <p className="text-2xl font-bold text-card-foreground">28</p>
+                  <p className="text-2xl font-bold text-card-foreground">{equipamentosData?.length || 0}</p>
                   <p className="text-sm text-muted-foreground">Equipamentos</p>
                 </div>
               </div>
               <div className="text-center p-4 bg-construction-green/10 rounded-lg">
                 <Building2 className="h-8 w-8 text-construction-green mx-auto mb-2" />
-                <p className="text-2xl font-bold text-card-foreground">12</p>
+                <p className="text-2xl font-bold text-card-foreground">{obrasData?.length || 0}</p>
                 <p className="text-sm text-muted-foreground">Obras Ativas</p>
               </div>
             </div>
@@ -451,8 +519,8 @@ const Relatorios = () => {
       </div>
 
       {/* RDO Integration Section */}
-      <RDOReportSection 
-        rdos={rdoData}
+      <RDOReportSection
+        rdos={mappedRDOs}
         selectedObra={selectedObra}
         dateRange={dataInicio && dataFim ? { start: dataInicio, end: dataFim } : undefined}
       />
@@ -487,7 +555,12 @@ const Relatorios = () => {
                     {relatorio.descricao}
                   </p>
                   <div className="flex space-x-2">
-                    <Button size="sm" variant="outline" className="flex-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => handleGenerateReport(relatorio.titulo)}
+                    >
                       <FileText className="h-4 w-4 mr-1" />
                       Gerar
                     </Button>

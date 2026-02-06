@@ -33,7 +33,7 @@ export const SecurityHeaders: React.FC<SecurityHeadersProps> = ({
       <meta name="description" content={description} />
 
       {/* Security Headers */}
-      <meta httpEquiv="X-Frame-Options" content="DENY" />
+      {/* Security Headers - Note: Frame-Ancestors is ignored in meta tags in modern browsers */}
       <meta httpEquiv="X-Content-Type-Options" content="nosniff" />
       <meta httpEquiv="X-XSS-Protection" content="1; mode=block" />
       <meta httpEquiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
@@ -81,16 +81,13 @@ const buildCSP = (nonce: string): string => {
       // Supabase project (REST, Auth, Realtime)
       import.meta.env.VITE_SUPABASE_URL || "https://bgdvlhttyjeuprrfxgun.supabase.co",
       (import.meta.env.VITE_SUPABASE_URL ? import.meta.env.VITE_SUPABASE_URL.replace('https://', 'wss://') : "wss://bgdvlhttyjeuprrfxgun.supabase.co"),
-      // Lovable APIs
-      "https://api.lovable.dev",
-      "wss://api.lovable.dev",
+
       // Local dev (only used when isDevelopment === true)
       ...(isDevelopment ? ["ws://localhost:*", "http://localhost:*"] : []),
     ].join(' '),
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
-    "frame-ancestors 'none'",
     "upgrade-insecure-requests",
   ];
 

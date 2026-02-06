@@ -43,7 +43,7 @@ const getNotificationIcon = (type: string) => {
 const formatTimestamp = (timestamp: Date) => {
   const now = new Date();
   const diffInHours = (now.getTime() - timestamp.getTime()) / (1000 * 60 * 60);
-  
+
   if (diffInHours < 1) {
     return "Agora há pouco";
   } else if (diffInHours < 24) {
@@ -60,29 +60,36 @@ export function NotificationPanel() {
 
   useEffect(() => {
     loadNotifications();
-    
+
     // Set up realtime subscription com tratamento de erros
     let channel: any = null;
-    
+
     try {
-      channel = supabase
-        .channel('notifications-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'notifications'
-          },
-          () => {
-            loadNotifications();
-          }
-        )
-        .subscribe((status) => {
-          if (status === 'CHANNEL_ERROR') {
-            console.warn('Realtime subscription error - continuing without realtime updates');
-          }
-        });
+      // Obter user ID primeiro para filtrar
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (!user) return;
+
+        channel = supabase
+          .channel('notifications-changes')
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'notifications',
+              filter: `user_id=eq.${user.id}`
+            },
+            () => {
+              loadNotifications();
+            }
+          )
+          .subscribe((status) => {
+            if (status === 'CHANNEL_ERROR') {
+              // Silently handle channel error as it's expected in some dev environments
+              // console.warn('Realtime subscription error - continuing without realtime updates');
+            }
+          });
+      });
     } catch (error) {
       console.warn('Could not establish realtime connection:', error);
     }
@@ -116,7 +123,7 @@ export function NotificationPanel() {
       console.error('Error loading notifications:', error);
     }
   };
-  
+
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
   const markAsRead = async (id: string) => {
@@ -127,8 +134,8 @@ export function NotificationPanel() {
         .eq('id', id);
 
       if (error) throw error;
-      
-      setNotifications(prev => 
+
+      setNotifications(prev =>
         prev.map(n => n.id === id ? { ...n, is_read: true } : n)
       );
     } catch (error) {
@@ -140,7 +147,7 @@ export function NotificationPanel() {
     if (!notification.is_read) {
       markAsRead(notification.id);
     }
-    
+
     if (notification.route) {
       navigate(notification.route);
       setIsOpen(false);
@@ -159,7 +166,7 @@ export function NotificationPanel() {
         .eq('is_read', false);
 
       if (error) throw error;
-      
+
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
       toast.success('Todas as notificações marcadas como lidas');
     } catch (error) {
@@ -174,8 +181,8 @@ export function NotificationPanel() {
         <Button variant="ghost" size="sm" className="relative text-sidebar-foreground hover:text-sidebar-accent-foreground">
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <Badge 
-              variant="destructive" 
+            <Badge
+              variant="destructive"
               className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center z-10"
             >
               {unreadCount}
@@ -190,16 +197,16 @@ export function NotificationPanel() {
             Suas atualizações mais recentes
           </SheetDescription>
         </SheetHeader>
-        
+
         <div className="mt-4 flex items-center gap-2">
           {unreadCount > 0 && (
             <Button variant="outline" size="sm" onClick={markAllAsRead}>
               Marcar todas como lidas
             </Button>
           )}
-          <Button 
-            variant="ghost" 
-            size="sm" 
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => {
               navigate('/notificacoes');
               setIsOpen(false);
@@ -219,12 +226,11 @@ export function NotificationPanel() {
             ) : (
               notifications.map((notification, index) => (
                 <div key={notification.id}>
-                  <div 
-                    className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                      notification.is_read 
-                        ? "bg-muted/50" 
-                        : "bg-accent/50 border border-accent"
-                    }`}
+                  <div
+                    className={`p-3 rounded-lg cursor-pointer transition-colors ${notification.is_read
+                      ? "bg-muted/50"
+                      : "bg-accent/50 border border-accent"
+                      }`}
                     onClick={() => handleNotificationClick(notification)}
                   >
                     <div className="flex items-start space-x-3">

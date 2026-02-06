@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { usePermissions } from './usePermissions';
 
 export interface CreateEquipeData {
   nome: string;
@@ -12,6 +13,7 @@ export interface CreateEquipeData {
 
 export const useEquipesSupabase = () => {
   const queryClient = useQueryClient();
+  const { equipe: equipePerms } = usePermissions();
 
   const equipesQuery = useQuery({
     queryKey: ['equipes'],
@@ -32,6 +34,14 @@ export const useEquipesSupabase = () => {
 
   const createEquipe = useMutation({
     mutationFn: async (equipeData: CreateEquipeData) => {
+      // Validar permissões e limites
+      if (!equipePerms.canCreate) {
+        if (equipePerms.isAtLimit) {
+          throw new Error('Limite de colaboradores atingido para seu plano. Faça upgrade para continuar.');
+        }
+        throw new Error('Você não tem permissão para cadastrar colaboradores.');
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuário não autenticado');
 

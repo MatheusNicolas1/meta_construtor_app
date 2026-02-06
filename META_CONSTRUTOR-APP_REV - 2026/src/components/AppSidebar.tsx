@@ -1,24 +1,23 @@
-import { 
-  Home, 
+import {
+  Home,
   Briefcase,
-  FileText, 
-  CheckSquare, 
-  Calendar, 
-  Users, 
-  Wrench, 
-  Folder, 
-  Truck, 
-  BarChart3, 
+  FileText,
+  CheckSquare,
+  Calendar,
+  Users,
+  Wrench,
+  Folder,
+  Truck,
+  BarChart3,
   Zap,
   Shield,
   DollarSign
 } from "lucide-react";
 import { NavLink, useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
-import { useTranslation } from "react-i18next";
+import i18n from "@/lib/i18n";
 import Logo from "./Logo";
 import { useAuth } from "./auth/AuthContext";
-
 import {
   Sidebar,
   SidebarContent,
@@ -34,9 +33,11 @@ import {
 export function AppSidebar() {
   const { state, isMobile, setOpenMobile } = useSidebar();
   const location = useLocation();
-  const { t } = useTranslation();
-  const { roles } = useAuth();
+  // const { t } = useTranslation();
+  const { roles, user } = useAuth();
   const collapsed = state === "collapsed";
+
+  const t = (key: string) => i18n.t(key);
 
   const menuItems = [
     { title: t('menu.obras'), url: "/obras", icon: Briefcase, tourId: "obras" },
@@ -56,6 +57,7 @@ export function AppSidebar() {
   ];
 
   const isAdmin = roles.includes('Administrador');
+  const isSuperAdmin = user?.email === 'matheusnicolas.org@gmail.com';
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -69,22 +71,23 @@ export function AppSidebar() {
   };
 
   const getNavClass = (path: string) =>
-    isActive(path) 
-      ? "bg-primary text-primary-foreground hover:bg-primary/90" 
+    isActive(path)
+      ? "bg-primary text-primary-foreground hover:bg-primary/90"
       : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground";
 
   return (
-    <Sidebar 
+    <Sidebar
       className={`transition-all duration-300 ease-in-out ${collapsed ? "w-16" : "w-64"}`}
       collapsible="icon"
       side="left"
     >
       <SidebarContent className="bg-sidebar">
         {/* Header com Logo */}
-        <div className={`border-b border-sidebar-border transition-all duration-300 ${collapsed ? 'px-2 py-3' : 'px-4 py-4'}`}>
-          <div className="flex items-center justify-center">
-            <Link 
-              to="/dashboard" 
+        {/* Header com Logo */}
+        <div className={`border-b border-sidebar-border transition-all duration-300 h-14 sm:h-16 flex items-center ${collapsed ? 'px-2' : 'px-4'}`}>
+          <div className="flex items-center justify-center w-full">
+            <Link
+              to="/dashboard"
               className="flex items-center justify-center hover:opacity-80 transition-opacity touch-safe w-full"
               title={collapsed ? "MetaConstrutor - Dashboard" : "Dashboard"}
             >
@@ -113,12 +116,11 @@ export function AppSidebar() {
                 {menuItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild tooltip={collapsed ? item.title : undefined}>
-                      <NavLink 
+                      <NavLink
                         to={item.url}
                         data-tour={item.tourId}
-                        className={`${getNavClass(item.url)} flex items-center gap-3 transition-all duration-200 rounded-lg h-10 ${
-                          collapsed ? 'justify-center px-0 w-10 mx-auto' : 'justify-start px-3'
-                        }`}
+                        className={`${getNavClass(item.url)} flex items-center gap-3 transition-all duration-200 rounded-lg h-10 ${collapsed ? 'justify-center px-0 w-10 mx-auto' : 'justify-start px-3'
+                          }`}
                         title={collapsed ? item.title : undefined}
                         end={false}
                       >
@@ -143,12 +145,11 @@ export function AppSidebar() {
                 {secondaryItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild tooltip={collapsed ? item.title : undefined}>
-                      <NavLink 
+                      <NavLink
                         to={item.url}
                         data-tour={item.tourId}
-                        className={`${getNavClass(item.url)} flex items-center gap-3 transition-all duration-200 rounded-lg h-10 ${
-                          collapsed ? 'justify-center px-0 w-10 mx-auto' : 'justify-start px-3'
-                        }`}
+                        className={`${getNavClass(item.url)} flex items-center gap-3 transition-all duration-200 rounded-lg h-10 ${collapsed ? 'justify-center px-0 w-10 mx-auto' : 'justify-start px-3'
+                          }`}
                         title={collapsed ? item.title : undefined}
                       >
                         <item.icon className="h-5 w-5 flex-shrink-0" />
@@ -173,11 +174,10 @@ export function AppSidebar() {
                 <SidebarMenu className="space-y-1">
                   <SidebarMenuItem>
                     <SidebarMenuButton asChild tooltip={collapsed ? "Painel Admin" : undefined}>
-                      <NavLink 
+                      <NavLink
                         to="/admin/dashboard"
-                        className={`${getNavClass('/admin/dashboard')} flex items-center gap-3 transition-all duration-200 rounded-lg h-10 ${
-                          collapsed ? 'justify-center px-0 w-10 mx-auto' : 'justify-start px-3'
-                        }`}
+                        className={`${getNavClass('/admin/dashboard')} flex items-center gap-3 transition-all duration-200 rounded-lg h-10 ${collapsed ? 'justify-center px-0 w-10 mx-auto' : 'justify-start px-3'
+                          }`}
                         title={collapsed ? "Painel Admin" : undefined}
                       >
                         <Shield className="h-5 w-5 flex-shrink-0" />

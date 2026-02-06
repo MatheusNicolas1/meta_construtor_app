@@ -1,9 +1,10 @@
 import React, { Suspense, lazy, memo, type ReactNode } from 'react';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { SidebarProvider } from '@/components/ui/sidebar';
-import { ThemeProvider } from 'next-themes';
+import { ThemeProvider } from '@/components/ThemeProvider';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as Sonner } from '@/components/ui/sonner';
@@ -16,6 +17,7 @@ import type { UserRole } from '@/types/user';
 import { AuditProvider } from '@/components/security/AuditLogger';
 import SecurityHeaders from '@/components/security/SecurityHeaders';
 import { ServiceWorkerManager } from '@/components/ServiceWorkerManager';
+import { InteractionTracker } from '@/components/InteractionTracker';
 
 // Query client configuration
 const queryClient = new QueryClient({
@@ -50,235 +52,235 @@ import CheckoutSuccess from '@/pages/CheckoutSuccess';
 import CheckoutCancel from '@/pages/CheckoutCancel';
 
 // Lazy loading otimizado com chunk específicos
-const Dashboard = lazy(() => 
+const Dashboard = lazy(() =>
   import('@/pages/Dashboard').then(module => ({
     default: module.default
   }))
 );
 
-const Obras = lazy(() => 
+const Obras = lazy(() =>
   import('@/pages/Obras').then(module => ({
     default: module.default
   }))
 );
 
-const ObraDetalhes = lazy(() => 
+const ObraDetalhes = lazy(() =>
   import('@/pages/ObraDetalhes').then(module => ({
     default: module.default
   }))
 );
 
-const RDO = lazy(() => 
+const RDO = lazy(() =>
   import('@/pages/RDO').then(module => ({
     default: module.default
   }))
 );
 
-const RDOVisualizar = lazy(() => 
+const RDOVisualizar = lazy(() =>
   import('@/pages/RDOVisualizar').then(module => ({
     default: module.default
   }))
 );
 
-const Atividades = lazy(() => 
+const Atividades = lazy(() =>
   import('@/pages/Atividades').then(module => ({
     default: module.default
   }))
 );
 
-const Checklist = lazy(() => 
+const Checklist = lazy(() =>
   import('@/pages/Checklist').then(module => ({
     default: module.default
   }))
 );
 
-const ChecklistDetalhes = lazy(() => 
+const ChecklistDetalhes = lazy(() =>
   import('@/pages/ChecklistDetalhes').then(module => ({
     default: module.default
   }))
 );
 
-const Equipes = lazy(() => 
+const Equipes = lazy(() =>
   import('@/pages/Equipes').then(module => ({
     default: module.default
   }))
 );
 
-const Equipamentos = lazy(() => 
+const Equipamentos = lazy(() =>
   import('@/pages/Equipamentos').then(module => ({
     default: module.default
   }))
 );
 
-const Mais = lazy(() => 
+const Mais = lazy(() =>
   import('@/pages/Mais').then(module => ({
     default: module.default
   }))
 );
 
-const Documentos = lazy(() => 
+const Documentos = lazy(() =>
   import('@/pages/Documentos').then(module => ({
     default: module.default
   }))
 );
 
-const Fornecedores = lazy(() => 
+const Fornecedores = lazy(() =>
   import('@/pages/Fornecedores').then(module => ({
     default: module.default
   }))
 );
 
-const Relatorios = lazy(() => 
+const Relatorios = lazy(() =>
   import('@/pages/Relatorios').then(module => ({
     default: module.default
   }))
 );
 
-const Integracoes = lazy(() => 
+const Integracoes = lazy(() =>
   import('@/pages/Integracoes').then(module => ({
     default: module.default
   }))
 );
 
-const Configuracoes = lazy(() => 
+const Configuracoes = lazy(() =>
   import('@/pages/Configuracoes').then(module => ({
     default: module.default
   }))
 );
 
-const Perfil = lazy(() => 
+const Perfil = lazy(() =>
   import('@/pages/Perfil').then(module => ({
     default: module.default
   }))
 );
 
-const Feedback = lazy(() => 
+const Feedback = lazy(() =>
   import('@/pages/Feedback').then(module => ({
     default: module.default
   }))
 );
 
-const FAQ = lazy(() => 
+const FAQ = lazy(() =>
   import('@/pages/FAQ').then(module => ({
     default: module.default
   }))
 );
 
-const Seguranca = lazy(() => 
+const Seguranca = lazy(() =>
   import('@/pages/Seguranca').then(module => ({
     default: module.default
   }))
 );
 
-const NotFound = lazy(() => 
+const NotFound = lazy(() =>
   import('@/pages/NotFound').then(module => ({
     default: module.default
   }))
 );
 
-const Sobre = lazy(() => 
+const Sobre = lazy(() =>
   import('@/pages/Sobre').then(module => ({
     default: module.default
   }))
 );
 
-const PerfilPublico = lazy(() => 
+const PerfilPublico = lazy(() =>
   import('@/pages/PerfilPublico').then(module => ({
     default: module.default
   }))
 );
 
-const ConfigurarPerfil = lazy(() => 
+const ConfigurarPerfil = lazy(() =>
   import('@/pages/ConfigurarPerfil').then(module => ({
     default: module.default
   }))
 );
 
-const Contato = lazy(() => 
+const Contato = lazy(() =>
   import('@/pages/Contato').then(module => ({
     default: module.default
   }))
 );
 
-const Atualizacoes = lazy(() => 
+const Atualizacoes = lazy(() =>
   import('@/pages/Atualizacoes').then(module => ({
     default: module.default
   }))
 );
 
-const Carreiras = lazy(() => 
+const Carreiras = lazy(() =>
   import('@/pages/Carreiras').then(module => ({
     default: module.default
   }))
 );
 
-const Blog = lazy(() => 
+const Blog = lazy(() =>
   import('@/pages/Blog').then(module => ({
     default: module.default
   }))
 );
 
-const PrivacyPolicy = lazy(() => 
+const PrivacyPolicy = lazy(() =>
   import('@/pages/legal/PrivacyPolicy').then(module => ({
     default: module.default
   }))
 );
 
-const TermsOfService = lazy(() => 
+const TermsOfService = lazy(() =>
   import('@/pages/legal/TermsOfService').then(module => ({
     default: module.default
   }))
 );
 
-const CookiePolicy = lazy(() => 
+const CookiePolicy = lazy(() =>
   import('@/pages/legal/CookiePolicy').then(module => ({
     default: module.default
   }))
 );
 
-const LGPDPage = lazy(() => 
+const LGPDPage = lazy(() =>
   import('@/pages/legal/LGPD').then(module => ({
     default: module.default
   }))
 );
 
-const CentralAjuda = lazy(() => 
+const CentralAjuda = lazy(() =>
   import('@/pages/CentralAjuda').then(module => ({
     default: module.default
   }))
 );
 
-const Documentacao = lazy(() => 
+const Documentacao = lazy(() =>
   import('@/pages/Documentacao').then(module => ({
     default: module.default
   }))
 );
 
-const StatusPage = lazy(() => 
+const StatusPage = lazy(() =>
   import('@/pages/Status').then(module => ({
     default: module.default
   }))
 );
 
-const APIPage = lazy(() => 
+const APIPage = lazy(() =>
   import('@/pages/APIPage').then(module => ({
     default: module.default
   }))
 );
 
-const AdminDashboard = lazy(() => 
+const AdminDashboard = lazy(() =>
   import('@/pages/AdminDashboard').then(module => ({
     default: module.default
   }))
 );
 
-const Despesas = lazy(() => 
+const Despesas = lazy(() =>
   import('@/pages/Despesas').then(module => ({
     default: module.default
   }))
 );
 
-const Notificacoes = lazy(() => 
+const Notificacoes = lazy(() =>
   import('@/pages/Notificacoes').then(module => ({
     default: module.default
   }))
@@ -289,12 +291,12 @@ const Notificacoes = lazy(() =>
 // React Query configured inline for better module resolution
 
 // Componente memoizado para página protegida
-const ProtectedPage = memo(({ 
-  children, 
-  roles 
-}: { 
-  children: ReactNode; 
-  roles?: UserRole[] 
+const ProtectedPage = memo(({
+  children,
+  roles
+}: {
+  children: ReactNode;
+  roles?: UserRole[]
 }) => (
   <OptimizedLayout>
     <ProtectedRoute roles={roles}>
@@ -308,114 +310,118 @@ const ProtectedPage = memo(({
 ProtectedPage.displayName = 'ProtectedPage';
 
 export const PerformanceOptimizedApp = memo(() => (
-  <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-    <HelmetProvider>
-      <TooltipProvider>
-        <ServiceWorkerManager />
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <QueryClientProvider client={queryClient}>
-            <SidebarProvider>
+  <ErrorBoundary>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <HelmetProvider>
+        <TooltipProvider>
+          <ServiceWorkerManager />
+          <Toaster />
+          <Sonner />
+          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+
+
+
+            <QueryClientProvider client={queryClient}>
               <AuthWrapper>
+                <InteractionTracker />
                 <AuditProvider>
                   <SecurityHeaders />
-                <Routes>
-                  {/* Rota raiz redireciona para home */}
-                  <Route path="/" element={<Navigate to="/home" replace />} />
-                  {/* Rotas públicas sem layout */}
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/logout" element={<Logout />} />
-                  <Route path="/recuperar-senha" element={<RecuperarSenha />} />
-                  <Route path="/redefinir-senha" element={<RedefinirSenha />} />
-                  <Route path="/criar-conta" element={<CriarConta />} />
-                  <Route path="/mfa" element={<MFA />} />
-                  <Route path="/renovar-sessao" element={<RenovarSessao />} />
-                  <Route path="/home" element={<Index />} />
-                  <Route path="/preco" element={<Preco />} />
-                  <Route path="/sobre" element={<SafeSuspense><Sobre /></SafeSuspense>} />
-                  <Route path="/contato" element={<SafeSuspense><Contato /></SafeSuspense>} />
-                  {/* Rotas públicas do rodapé */}
-                  <Route path="/atualizacoes" element={<SafeSuspense><Atualizacoes /></SafeSuspense>} />
-                  <Route path="/carreiras" element={<SafeSuspense><Carreiras /></SafeSuspense>} />
-                  <Route path="/blog" element={<SafeSuspense><Blog /></SafeSuspense>} />
-                  <Route path="/legal/privacidade" element={<SafeSuspense><PrivacyPolicy /></SafeSuspense>} />
-                  <Route path="/legal/termos" element={<SafeSuspense><TermsOfService /></SafeSuspense>} />
-                  <Route path="/legal/cookies" element={<SafeSuspense><CookiePolicy /></SafeSuspense>} />
-                  <Route path="/legal/lgpd" element={<SafeSuspense><LGPDPage /></SafeSuspense>} />
-                  <Route path="/central-ajuda" element={<SafeSuspense><CentralAjuda /></SafeSuspense>} />
-                  <Route path="/documentacao" element={<SafeSuspense><Documentacao /></SafeSuspense>} />
-                  <Route path="/status" element={<SafeSuspense><StatusPage /></SafeSuspense>} />
-                  <Route path="/api" element={<SafeSuspense><APIPage /></SafeSuspense>} />
-                  {/* Rotas de Checkout */}
-                  <Route path="/checkout" element={<Checkout />} />
-                  <Route path="/checkout/success" element={<CheckoutSuccess />} />
-                  <Route path="/checkout/cancel" element={<CheckoutCancel />} />
-                  {/* Dashboard protegido */}
-                  <Route path="/dashboard" element={<ProtectedPage><Dashboard /></ProtectedPage>} />
-                  {/* Obras */}
-                  <Route path="/obras" element={<ProtectedPage><Obras /></ProtectedPage>} />
-                  <Route path="/obras/:id" element={<ProtectedPage><ObraDetalhes /></ProtectedPage>} />
-                  <Route path="/obras/:id/editar" element={<ProtectedPage roles={["Administrador", "Gerente"]}><Obras /></ProtectedPage>} />
-                  {/* RDO */}
-                  <Route path="/rdo" element={<ProtectedPage><RDO /></ProtectedPage>} />
-                  <Route path="/rdo/:id/visualizar" element={<ProtectedPage><RDOVisualizar /></ProtectedPage>} />
-                  <Route path="/rdo/:id/editar" element={<ProtectedPage><RDO /></ProtectedPage>} />
-                  {/* Atividades */}
-                  <Route path="/atividades" element={<ProtectedPage><Atividades /></ProtectedPage>} />
-                  {/* Checklist */}
-                  <Route path="/checklist" element={<ProtectedPage><Checklist /></ProtectedPage>} />
-                  <Route path="/checklist/:id" element={<ProtectedPage><ChecklistDetalhes /></ProtectedPage>} />
-                  {/* Equipes */}
-                  <Route path="/equipes" element={<ProtectedPage roles={["Administrador", "Gerente"]}><Equipes /></ProtectedPage>} />
-                  <Route path="/equipes/novo" element={<ProtectedPage roles={["Administrador", "Gerente"]}><Equipes /></ProtectedPage>} />
-                  <Route path="/equipes/:id/editar" element={<ProtectedPage roles={["Administrador", "Gerente"]}><Equipes /></ProtectedPage>} />
-                  {/* Colaboradores */}
-                  <Route path="/colaboradores" element={<ProtectedPage roles={["Administrador", "Gerente"]}><Equipes /></ProtectedPage>} />
-                  <Route path="/colaboradores/novo" element={<ProtectedPage roles={["Administrador", "Gerente"]}><Equipes /></ProtectedPage>} />
-                  <Route path="/colaboradores/:id/editar" element={<ProtectedPage roles={["Administrador", "Gerente"]}><Equipes /></ProtectedPage>} />
-                  {/* Equipamentos */}
-                  <Route path="/equipamentos" element={<ProtectedPage><Equipamentos /></ProtectedPage>} />
-                  {/* Mais - Menu PWA */}
-                  <Route path="/mais" element={<ProtectedPage><Mais /></ProtectedPage>} />
-                  {/* Documentos */}
-                  <Route path="/documentos" element={<ProtectedPage><Documentos /></ProtectedPage>} />
-                  {/* Fornecedores */}
-                  <Route path="/fornecedores" element={<ProtectedPage roles={["Administrador", "Gerente"]}><Fornecedores /></ProtectedPage>} />
-                  {/* Despesas */}
-                  <Route path="/despesas" element={<ProtectedPage><Despesas /></ProtectedPage>} />
-                  {/* Relatórios */}
-                  <Route path="/relatorios" element={<ProtectedPage roles={["Administrador", "Gerente"]}><Relatorios /></ProtectedPage>} />
-                  {/* Integrações */}
-                  <Route path="/integracoes" element={<ProtectedPage roles={["Administrador", "Gerente"]}><Integracoes /></ProtectedPage>} />
-                  <Route path="/integracoes/*" element={<ProtectedPage roles={["Administrador", "Gerente"]}><Integracoes /></ProtectedPage>} />
-                  {/* Configurações */}
-                  <Route path="/configuracoes" element={<ProtectedPage roles={["Administrador", "Gerente"]}><Configuracoes /></ProtectedPage>} />
-                  {/* Perfil */}
-                  <Route path="/perfil" element={<ProtectedPage><Perfil /></ProtectedPage>} />
-                  {/* Notificações */}
-                  <Route path="/notificacoes" element={<ProtectedPage><Notificacoes /></ProtectedPage>} />
-                  {/* Feedback e FAQ */}
-                  <Route path="/feedback" element={<ProtectedPage><Feedback /></ProtectedPage>} />
-                  <Route path="/faq" element={<ProtectedPage><FAQ /></ProtectedPage>} />
-                  {/* Segurança */}
-                  <Route path="/seguranca" element={<ProtectedPage roles={["Administrador", "Gerente"]}><Seguranca /></ProtectedPage>} />
-                  {/* Painel Administrativo */}
-                  <Route path="/admin/dashboard" element={<ProtectedPage roles={["Administrador"]}><AdminDashboard /></ProtectedPage>} />
-                  {/* Perfil Público e Configurações */}
-                  <Route path="/perfil/:slug" element={<PerfilPublico />} />
-                  <Route path="/configurar-perfil" element={<ProtectedPage><ConfigurarPerfil /></ProtectedPage>} />
-                  {/* 404 */}
-                  <Route path="*" element={<SafeSuspense><NotFound /></SafeSuspense>} />
-                </Routes>
-              </AuditProvider>
-            </AuthWrapper>
-          </SidebarProvider>
-        </QueryClientProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </HelmetProvider>
-  </ThemeProvider>
+                  <Routes>
+                    {/* Rota raiz redireciona para home */}
+                    <Route path="/" element={<Navigate to="/home" replace />} />
+                    {/* Rotas públicas sem layout */}
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/logout" element={<Logout />} />
+                    <Route path="/recuperar-senha" element={<RecuperarSenha />} />
+                    <Route path="/redefinir-senha" element={<RedefinirSenha />} />
+                    <Route path="/criar-conta" element={<CriarConta />} />
+                    <Route path="/mfa" element={<MFA />} />
+                    <Route path="/renovar-sessao" element={<RenovarSessao />} />
+                    <Route path="/home" element={<Index />} />
+                    <Route path="/preco" element={<Preco />} />
+                    <Route path="/sobre" element={<SafeSuspense><Sobre /></SafeSuspense>} />
+                    <Route path="/contato" element={<SafeSuspense><Contato /></SafeSuspense>} />
+                    {/* Rotas públicas do rodapé */}
+                    <Route path="/atualizacoes" element={<SafeSuspense><Atualizacoes /></SafeSuspense>} />
+                    <Route path="/carreiras" element={<SafeSuspense><Carreiras /></SafeSuspense>} />
+                    <Route path="/blog" element={<SafeSuspense><Blog /></SafeSuspense>} />
+                    <Route path="/legal/privacidade" element={<SafeSuspense><PrivacyPolicy /></SafeSuspense>} />
+                    <Route path="/legal/termos" element={<SafeSuspense><TermsOfService /></SafeSuspense>} />
+                    <Route path="/legal/cookies" element={<SafeSuspense><CookiePolicy /></SafeSuspense>} />
+                    <Route path="/legal/lgpd" element={<SafeSuspense><LGPDPage /></SafeSuspense>} />
+                    <Route path="/central-ajuda" element={<SafeSuspense><CentralAjuda /></SafeSuspense>} />
+                    <Route path="/documentacao" element={<SafeSuspense><Documentacao /></SafeSuspense>} />
+                    <Route path="/status" element={<SafeSuspense><StatusPage /></SafeSuspense>} />
+                    <Route path="/api" element={<SafeSuspense><APIPage /></SafeSuspense>} />
+                    {/* Rotas de Checkout */}
+                    <Route path="/checkout" element={<Checkout />} />
+                    <Route path="/checkout/success" element={<CheckoutSuccess />} />
+                    <Route path="/checkout/cancel" element={<CheckoutCancel />} />
+                    {/* Dashboard protegido */}
+                    <Route path="/dashboard" element={<ProtectedPage><Dashboard /></ProtectedPage>} />
+                    {/* Obras */}
+                    <Route path="/obras" element={<ProtectedPage><Obras /></ProtectedPage>} />
+                    <Route path="/obras/:id" element={<ProtectedPage><ObraDetalhes /></ProtectedPage>} />
+                    <Route path="/obras/:id/editar" element={<ProtectedPage roles={["Administrador", "Gerente"]}><Obras /></ProtectedPage>} />
+                    {/* RDO */}
+                    <Route path="/rdo" element={<ProtectedPage><RDO /></ProtectedPage>} />
+                    <Route path="/rdo/:id/visualizar" element={<ProtectedPage><RDOVisualizar /></ProtectedPage>} />
+                    <Route path="/rdo/:id/editar" element={<ProtectedPage><RDO /></ProtectedPage>} />
+                    {/* Atividades */}
+                    <Route path="/atividades" element={<ProtectedPage><Atividades /></ProtectedPage>} />
+                    {/* Checklist */}
+                    <Route path="/checklist" element={<ProtectedPage><Checklist /></ProtectedPage>} />
+                    <Route path="/checklist/:id" element={<ProtectedPage><ChecklistDetalhes /></ProtectedPage>} />
+                    {/* Equipes */}
+                    <Route path="/equipes" element={<ProtectedPage roles={["Administrador", "Gerente"]}><Equipes /></ProtectedPage>} />
+                    <Route path="/equipes/novo" element={<ProtectedPage roles={["Administrador", "Gerente"]}><Equipes /></ProtectedPage>} />
+                    <Route path="/equipes/:id/editar" element={<ProtectedPage roles={["Administrador", "Gerente"]}><Equipes /></ProtectedPage>} />
+                    {/* Colaboradores */}
+                    <Route path="/colaboradores" element={<ProtectedPage roles={["Administrador", "Gerente"]}><Equipes /></ProtectedPage>} />
+                    <Route path="/colaboradores/novo" element={<ProtectedPage roles={["Administrador", "Gerente"]}><Equipes /></ProtectedPage>} />
+                    <Route path="/colaboradores/:id/editar" element={<ProtectedPage roles={["Administrador", "Gerente"]}><Equipes /></ProtectedPage>} />
+                    {/* Equipamentos */}
+                    <Route path="/equipamentos" element={<ProtectedPage><Equipamentos /></ProtectedPage>} />
+                    {/* Mais - Menu PWA */}
+                    <Route path="/mais" element={<ProtectedPage><Mais /></ProtectedPage>} />
+                    {/* Documentos */}
+                    <Route path="/documentos" element={<ProtectedPage><Documentos /></ProtectedPage>} />
+                    {/* Fornecedores */}
+                    <Route path="/fornecedores" element={<ProtectedPage roles={["Administrador", "Gerente"]}><Fornecedores /></ProtectedPage>} />
+                    {/* Despesas */}
+                    <Route path="/despesas" element={<ProtectedPage><Despesas /></ProtectedPage>} />
+                    {/* Relatórios */}
+                    <Route path="/relatorios" element={<ProtectedPage roles={["Administrador", "Gerente"]}><Relatorios /></ProtectedPage>} />
+                    {/* Integrações */}
+                    <Route path="/integracoes" element={<ProtectedPage roles={["Administrador", "Gerente"]}><Integracoes /></ProtectedPage>} />
+                    <Route path="/integracoes/*" element={<ProtectedPage roles={["Administrador", "Gerente"]}><Integracoes /></ProtectedPage>} />
+                    {/* Configurações */}
+                    <Route path="/configuracoes" element={<ProtectedPage roles={["Administrador", "Gerente"]}><Configuracoes /></ProtectedPage>} />
+                    {/* Perfil */}
+                    <Route path="/perfil" element={<ProtectedPage><Perfil /></ProtectedPage>} />
+                    {/* Notificações */}
+                    <Route path="/notificacoes" element={<ProtectedPage><Notificacoes /></ProtectedPage>} />
+                    {/* Feedback e FAQ */}
+                    <Route path="/feedback" element={<ProtectedPage><Feedback /></ProtectedPage>} />
+                    <Route path="/faq" element={<ProtectedPage><FAQ /></ProtectedPage>} />
+                    {/* Segurança */}
+                    <Route path="/seguranca" element={<ProtectedPage roles={["Administrador", "Gerente"]}><Seguranca /></ProtectedPage>} />
+                    {/* Painel Administrativo */}
+                    <Route path="/admin/dashboard" element={<ProtectedPage roles={["Administrador"]}><AdminDashboard /></ProtectedPage>} />
+                    {/* Perfil Público e Configurações */}
+                    <Route path="/perfil/:slug" element={<PerfilPublico />} />
+                    <Route path="/configurar-perfil" element={<ProtectedPage><ConfigurarPerfil /></ProtectedPage>} />
+                    {/* 404 */}
+                    <Route path="*" element={<SafeSuspense><NotFound /></SafeSuspense>} />
+                  </Routes>
+                </AuditProvider>
+              </AuthWrapper>
+            </QueryClientProvider>
+          </BrowserRouter>
+        </TooltipProvider>
+      </HelmetProvider>
+    </ThemeProvider>
+  </ErrorBoundary>
 ));
 
 PerformanceOptimizedApp.displayName = 'PerformanceOptimizedApp';

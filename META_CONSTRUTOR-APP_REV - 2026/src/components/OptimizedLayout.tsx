@@ -1,5 +1,5 @@
 import React, { memo, useMemo, useEffect, useState } from "react";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarTrigger, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { NotificationPanel } from "./NotificationPanel";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -11,7 +11,7 @@ import Logo from "./Logo";
 import { useOptimizedCallback } from "@/hooks/useOptimizedCallback";
 import { Link, useLocation } from "react-router-dom";
 import { BottomNavigation } from "./BottomNavigation";
-import { useTranslation } from "react-i18next";
+import i18n from "@/lib/i18n"; // Import i18n instance directly
 import { trackActivity, ActivityEvent } from "@/utils/activityTracker";
 
 interface LayoutProps {
@@ -21,19 +21,19 @@ interface LayoutProps {
 // Componente de header memoizado para evitar re-renders desnecessários
 const Header = memo(() => {
   const isMobile = useIsMobile();
-  const { i18n } = useTranslation();
+  // const { i18n } = useTranslation(); // Removed to avoid error
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 w-full">
-      <div className="flex h-14 sm:h-16 items-center gap-2 px-3 sm:px-4 lg:px-6 w-full">
+    <header className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 w-full">
+      <div className="flex h-14 sm:h-16 items-center gap-2 px-3 sm:px-4 lg:px-6 w-full border-b border-border">
         {/* Left section - Sidebar trigger and logo */}
         <div className="flex items-center gap-2 min-w-0 shrink-0">
           <SidebarTrigger className="shrink-0" />
-          
+
           {/* Logo - Visível apenas no mobile quando sidebar está fechada */}
           {isMobile && (
-            <Link 
-              to="/dashboard" 
+            <Link
+              to="/dashboard"
               className="flex items-center gap-2 min-w-0 hover:opacity-80 transition-opacity"
               title="Dashboard"
             >
@@ -41,14 +41,14 @@ const Header = memo(() => {
             </Link>
           )}
         </div>
-        
+
         {/* Center section - Search */}
         <div className="flex-1 flex justify-center min-w-0">
           <div className="w-full max-w-md lg:max-w-lg">
             <GlobalSearch />
           </div>
         </div>
-        
+
         {/* Right section - Actions */}
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           <NotificationPanel />
@@ -76,14 +76,14 @@ MainContent.displayName = "MainContent";
 const OptimizedLayout = memo(({ children }: LayoutProps) => {
   const [isPWA, setIsPWA] = useState(false);
   const isMobile = useIsMobile();
-  const { i18n } = useTranslation();
+  // const { i18n } = useTranslation(); // Removed to avoid error
   const location = useLocation();
 
   useEffect(() => {
     // Detectar se está rodando como PWA
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
-                        (window.navigator as any).standalone ||
-                        document.referrer.includes('android-app://');
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as any).standalone ||
+      document.referrer.includes('android-app://');
     setIsPWA(isStandalone);
   }, []);
 
@@ -118,31 +118,33 @@ const OptimizedLayout = memo(({ children }: LayoutProps) => {
   const locale = i18n.language || 'pt-BR';
 
   return (
-    <I18nProvider locale={locale}>
-      <div className="flex min-h-screen w-full bg-background">
-        {/* Sidebar - oculta em PWA mobile, visível em desktop/tablet */}
-        {!useMobileLayout && (
-          <div className="hidden md:flex">
-            <AppSidebar />
+    <SidebarProvider>
+      <I18nProvider locale={locale}>
+        <div className="flex h-screen w-full bg-background overflow-hidden">
+          {/* Sidebar - oculta em PWA mobile, visível em desktop/tablet */}
+          {!useMobileLayout && (
+            <div className="hidden md:flex">
+              <AppSidebar />
+            </div>
+          )}
+
+          <div className="flex-1 flex flex-col min-w-0">
+            {/* Header - sempre visível exceto em PWA mobile */}
+            {!useMobileLayout && <Header />}
+
+            {/* Em PWA mobile, adicionar espaço no topo */}
+            {useMobileLayout && <div className="h-4 bg-background" />}
+
+            <MainContent>
+              {children}
+            </MainContent>
           </div>
-        )}
-        
-        <div className="flex-1 flex flex-col min-w-0">
-          {/* Header - sempre visível exceto em PWA mobile */}
-          {!useMobileLayout && <Header />}
-          
-          {/* Em PWA mobile, adicionar espaço no topo */}
-          {useMobileLayout && <div className="h-4 bg-background" />}
-          
-          <MainContent>
-            {children}
-          </MainContent>
+
+          {/* Bottom Navigation - visível apenas em PWA mobile */}
+          {useMobileLayout && <BottomNavigation />}
         </div>
-        
-        {/* Bottom Navigation - visível apenas em PWA mobile */}
-        {useMobileLayout && <BottomNavigation />}
-      </div>
-    </I18nProvider>
+      </I18nProvider>
+    </SidebarProvider>
   );
 });
 

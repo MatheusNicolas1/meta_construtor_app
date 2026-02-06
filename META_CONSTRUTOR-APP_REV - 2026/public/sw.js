@@ -79,12 +79,12 @@ self.addEventListener('fetch', (event) => {
   // NUNCA cachear requisições de autenticação, realtime ou métodos não-GET
   if (
     request.method !== 'GET' ||
-    url.pathname.startsWith('/api/') || 
+    url.pathname.startsWith('/api/') ||
     url.hostname.includes('supabase') ||
     url.pathname.includes('/auth/') ||
     url.pathname.includes('/realtime/')
   ) {
-    event.respondWith(fetch(request));
+    // Return sem chamar respondWith deixa o browser tratar naturalmente
     return;
   }
 

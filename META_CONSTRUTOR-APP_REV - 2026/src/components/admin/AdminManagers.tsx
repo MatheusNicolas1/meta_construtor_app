@@ -10,10 +10,14 @@ import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { Shield, Mail, UserPlus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useAuth } from "@/components/auth/AuthContext";
 
 const AdminManagers = () => {
   const [email, setEmail] = useState("");
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  const isSuperAdmin = user?.email === 'matheusnicolas.org@gmail.com';
 
   const { data: admins, isLoading } = useQuery({
     queryKey: ['admin-managers'],
@@ -22,21 +26,24 @@ const AdminManagers = () => {
         .from('user_roles')
         .select('user_id, profiles(id, name, email, avatar_url)')
         .eq('role', 'Administrador');
-      
+
       if (error) throw error;
+      // @ts-ignore
       return adminRoles.map(r => r.profiles).filter(Boolean);
     }
   });
 
   const addAdmin = useMutation({
     mutationFn: async (userEmail: string) => {
+      if (!isSuperAdmin) throw new Error('Acesso negado');
+
       // Buscar usuário pelo email
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('id')
         .eq('email', userEmail)
         .single();
-      
+
       if (profileError) throw new Error('Usuário não encontrado');
 
       // Adicionar role de Administrador
@@ -46,11 +53,10 @@ const AdminManagers = () => {
           user_id: profile.id,
           role: 'Administrador'
         });
-      
+
       if (roleError) throw roleError;
 
       // Log de auditoria
-      const { data: { user } } = await supabase.auth.getUser();
       await supabase.from('admin_audit_logs').insert({
         admin_id: user?.id,
         action: 'ADD_ADMIN',
@@ -70,16 +76,17 @@ const AdminManagers = () => {
 
   const removeAdmin = useMutation({
     mutationFn: async (userId: string) => {
+      if (!isSuperAdmin) throw new Error('Acesso negado');
+
       const { error } = await supabase
         .from('user_roles')
         .delete()
         .eq('user_id', userId)
         .eq('role', 'Administrador');
-      
+
       if (error) throw error;
 
       // Log de auditoria
-      const { data: { user } } = await supabase.auth.getUser();
       await supabase.from('admin_audit_logs').insert({
         admin_id: user?.id,
         action: 'REMOVE_ADMIN',
@@ -103,6 +110,15 @@ const AdminManagers = () => {
     );
   }
 
+  // Se não for super admin, nem mostra o componente (embora a aba já esteja escondida, dupla segurança)
+  if (!isSuperAdmin) {
+    return (
+      <div className="p-4 text-center ">
+        <p className="text-destructive font-medium">Você não tem permissão para acessar esta área.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Add Admin Form */}
@@ -121,8 +137,8 @@ const AdminManagers = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
-              <Button 
-                onClick={() => addAdmin.mutate(email)} 
+              <Button
+                onClick={() => addAdmin.mutate(email)}
                 disabled={!email || addAdmin.isPending}
               >
                 <UserPlus className="h-4 w-4 mr-2" />
@@ -161,7 +177,7 @@ const AdminManagers = () => {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Remover Administrador</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Tem certeza que deseja remover {admin.name} como administrador? 
+                        Tem certeza que deseja remover {admin.name} como administrador?
                         Esta ação não pode ser desfeita.
                       </AlertDialogDescription>
                     </AlertDialogHeader>

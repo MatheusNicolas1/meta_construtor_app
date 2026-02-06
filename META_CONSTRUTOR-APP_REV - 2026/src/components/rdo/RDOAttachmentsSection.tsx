@@ -4,14 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { 
-  Paperclip, 
-  Upload, 
-  Image, 
-  FileText, 
-  X, 
+import {
+  Paperclip,
+  Upload,
+  Image,
+  FileText,
+  X,
   Eye,
-  Download 
+  Download
 } from "lucide-react";
 import { RDOFormData } from "@/schemas/rdoSchema";
 import { Attachment, UploadProgress, isValidFileType, formatFileSize } from "@/types/attachment";
@@ -38,7 +38,7 @@ export function RDOAttachmentsSection({ form }: RDOAttachmentsSectionProps) {
         toast.error(`Arquivo muito grande: ${file.name} (máx. 20MB)`);
         return false;
       }
-      
+
       // Filtrar por tipo se especificado
       if (targetType) {
         const isImage = file.type.startsWith('image/');
@@ -51,14 +51,14 @@ export function RDOAttachmentsSection({ form }: RDOAttachmentsSectionProps) {
           return false;
         }
       }
-      
+
       return true;
     });
 
     // Simular upload
     for (const file of validFiles) {
       const progressId = `upload-${Date.now()}-${Math.random()}`;
-      
+
       // Adicionar à lista de progresso
       setUploadProgress(prev => [...prev, {
         id: progressId,
@@ -75,10 +75,10 @@ export function RDOAttachmentsSection({ form }: RDOAttachmentsSectionProps) {
           if (progress >= 100) {
             progress = 100;
             clearInterval(interval);
-            
+
             // Finalizar upload
-            setUploadProgress(prev => 
-              prev.map(p => p.id === progressId 
+            setUploadProgress(prev =>
+              prev.map(p => p.id === progressId
                 ? { ...p, progress: 100, status: 'completed' as const }
                 : p
               )
@@ -110,7 +110,7 @@ export function RDOAttachmentsSection({ form }: RDOAttachmentsSectionProps) {
 
             toast.success(`Arquivo enviado: ${file.name}`);
           } else {
-            setUploadProgress(prev => 
+            setUploadProgress(prev =>
               prev.map(p => p.id === progressId ? { ...p, progress } : p)
             );
           }
@@ -138,7 +138,7 @@ export function RDOAttachmentsSection({ form }: RDOAttachmentsSectionProps) {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     const files = e.dataTransfer.files;
     if (files.length > 0) {
       handleFileUpload(files);
@@ -146,7 +146,12 @@ export function RDOAttachmentsSection({ form }: RDOAttachmentsSectionProps) {
   };
 
   return (
-    <Card>
+    <Card className="opacity-70 pointer-events-none relative overflow-hidden">
+      <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10">
+        <Badge variant="secondary" className="text-lg py-2 px-4 shadow-sm border-primary/20 bg-primary/10 text-primary">
+          Em breve
+        </Badge>
+      </div>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Paperclip className="h-5 w-5" />
@@ -160,7 +165,7 @@ export function RDOAttachmentsSection({ form }: RDOAttachmentsSectionProps) {
             <Image className="h-5 w-5 text-blue-500" />
             Imagens
           </h3>
-          
+
           {/* Área de Upload para Imagens */}
           <div
             className="border-2 border-dashed border-blue-200 rounded-lg p-6 text-center hover:border-blue-300 transition-colors bg-blue-50/50"
@@ -211,7 +216,7 @@ export function RDOAttachmentsSection({ form }: RDOAttachmentsSectionProps) {
                   <div className="flex-shrink-0">
                     <Image className="h-8 w-8 text-blue-500" />
                   </div>
-                  
+
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{attachment.name}</p>
                     <p className="text-xs text-muted-foreground">
@@ -223,13 +228,13 @@ export function RDOAttachmentsSection({ form }: RDOAttachmentsSectionProps) {
                     <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
                       Imagem
                     </Badge>
-                    
+
                     <Button variant="ghost" size="sm">
                       <Eye className="h-4 w-4" />
                     </Button>
-                    
-                    <Button 
-                      variant="ghost" 
+
+                    <Button
+                      variant="ghost"
                       size="sm"
                       onClick={() => removeAttachment(attachment.id, 'image')}
                     >
@@ -248,7 +253,7 @@ export function RDOAttachmentsSection({ form }: RDOAttachmentsSectionProps) {
             <FileText className="h-5 w-5 text-green-500" />
             Documentos
           </h3>
-          
+
           {/* Área de Upload para Documentos */}
           <div
             className="border-2 border-dashed border-green-200 rounded-lg p-6 text-center hover:border-green-300 transition-colors bg-green-50/50"
@@ -299,7 +304,7 @@ export function RDOAttachmentsSection({ form }: RDOAttachmentsSectionProps) {
                   <div className="flex-shrink-0">
                     <FileText className="h-8 w-8 text-green-500" />
                   </div>
-                  
+
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{attachment.name}</p>
                     <p className="text-xs text-muted-foreground">
@@ -311,13 +316,13 @@ export function RDOAttachmentsSection({ form }: RDOAttachmentsSectionProps) {
                     <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">
                       Documento
                     </Badge>
-                    
+
                     <Button variant="ghost" size="sm">
                       <Eye className="h-4 w-4" />
                     </Button>
-                    
-                    <Button 
-                      variant="ghost" 
+
+                    <Button
+                      variant="ghost"
                       size="sm"
                       onClick={() => removeAttachment(attachment.id, 'document')}
                     >

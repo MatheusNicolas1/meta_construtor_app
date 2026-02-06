@@ -131,16 +131,16 @@ MILESTONE 3 — RLS TOTAL (ENFORCEMENT REAL NO BANCO) (P0)
 
 * Policies SELECT/INSERT/UPDATE/DELETE garantindo isolamento por org_id
   STATUS: PARTIAL
-  VALIDAÇÃO: Migration 20260206183000_rls_isolation.sql criada com policies completas. Scripts de validação (scripts/test-rls.js) criados.
-  BLOCKER: Comando `supabase migration up` falhou ao conectar com o banco local. O banco permanece protegido com "Deny All" (3.1).
-  EVIDÊNCIA: supabase/migrations/20260206183000_rls_isolation.sql.
+  VALIDAÇÃO: Migration 20260206183000_rls_isolation.sql criada. Scripts de validação (scripts/test-rls.js) prontos.
+  BLOCKER: Falta de `SUPABASE_SERVICE_ROLE_KEY` no arquivo .env. O ambiente aponta para um projeto remoto, sendo necessário essa chave para executar testes de RLS (criação de usuários). Sem validação, aplicar policies pode quebrar o acesso.
+  EVIDÊNCIA: Verificação de ambiente confirmou URL remota presente, mas ausência de SERVICE_KEY.
 
 3.3 Policies por role (Admin/Gerente/Colaborador)
 
 * Refinar policies para limitar ações por papel (ex.: colaborador não exclui obra)
   STATUS: PARTIAL
-  VALIDAÇÃO: Migration 20260206190000_rls_roles.sql criada implementando restrições de role (DELETE obras, Manage Members).
-  BLOCKER: Depende da aplicação da migração 3.2 e conectividade com banco local.
+  VALIDAÇÃO: Migration 20260206190000_rls_roles.sql criada. Teste de role incluído no script.
+  BLOCKER: Depende da aplicação e validação da 3.2.
   EVIDÊNCIA: supabase/migrations/20260206190000_rls_roles.sql.
 
 3.4 Teste de ataque (API direta)

@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { notifyObraChange } from '@/utils/notificationService';
+import { usePermissions } from './usePermissions';
 
 export interface CreateObraData {
   nome: string;
@@ -20,6 +21,7 @@ export interface CreateObraData {
 
 export const useObras = () => {
   const queryClient = useQueryClient();
+  const { obra: obraPerms } = usePermissions();
 
   // Realtime subscription for obras updates
   useEffect(() => {
@@ -65,6 +67,14 @@ export const useObras = () => {
 
   const createObra = useMutation({
     mutationFn: async (obraData: CreateObraData) => {
+      // Validar permissões e limites
+      if (!obraPerms.canCreate) {
+        if (obraPerms.isAtLimit) {
+          throw new Error('Limite de obras atingido para seu plano. Faça upgrade para continuar.');
+        }
+        throw new Error('Você não tem permissão para criar obras.');
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuário não autenticado');
 

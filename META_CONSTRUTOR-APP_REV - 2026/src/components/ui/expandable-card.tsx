@@ -42,7 +42,7 @@ import { useExpandable } from "@/hooks/use-expandable";
 import { SocialShare } from "@/components/SocialShare";
 
 interface ObraCardProps {
-  id: number;
+  id: string;
   nome: string;
   localizacao: string;
   responsavel: string;
@@ -145,7 +145,7 @@ export function ObraExpandableCard({
               <span className="truncate">{localizacao}</span>
             </div>
           </div>
-          
+
           <div className="ml-3 flex-shrink-0">
             {isExpanded ? (
               <ChevronUp className="h-4 w-4 text-muted-foreground" />
@@ -271,9 +271,9 @@ export function ObraExpandableCard({
         {/* Botões de ação */}
         <div className="mt-4 pt-3 border-t border-border/30 space-y-2">
           <div className="grid grid-cols-2 gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               className="h-8 text-xs font-medium"
               onClick={(e) => {
                 e.stopPropagation();
@@ -287,7 +287,7 @@ export function ObraExpandableCard({
               <SocialShare
                 title={`Obra: ${nome}`}
                 text={`🏗️ ${nome}\n\n📍 ${localizacao}\n👷 ${responsavel}\n📊 Progresso: ${progresso}%\n\n#MetaConstrutor #Construcao #Obra`}
-                obraId={id.toString()}
+                obraId={id}
               />
             </div>
           </div>

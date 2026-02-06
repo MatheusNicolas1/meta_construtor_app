@@ -2,15 +2,15 @@
 export type RDOStatus = 'Em elaboração' | 'Aguardando aprovação' | 'Aprovado' | 'Rejeitado';
 
 export interface RDO {
-  id: number;
+  id: number | string;
   data: string;
-  obraId: number;
+  obraId: number | string;
   obraNome: string;
   periodo: 'Manhã' | 'Tarde' | 'Noite';
   clima: string;
   equipeOciosa: boolean;
   tempoOcioso?: number; // em horas
-  
+
   // Campos de controle e aprovação
   status: RDOStatus;
   criadoPorId: string;

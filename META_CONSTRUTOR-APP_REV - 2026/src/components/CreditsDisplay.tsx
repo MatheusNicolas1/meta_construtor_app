@@ -14,6 +14,7 @@ interface UserCredits {
 
 export const CreditsDisplay = () => {
   const [credits, setCredits] = useState<UserCredits | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,7 +22,7 @@ export const CreditsDisplay = () => {
 
     // Configurar listener para mudanças em tempo real com tratamento de erros
     let channel: any = null;
-    
+
     try {
       channel = supabase
         .channel('credits-changes')
@@ -59,8 +60,9 @@ export const CreditsDisplay = () => {
   const loadCredits = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (!user) return;
+      setUserEmail(user.email || null);
 
       const { data, error } = await supabase
         .from('user_credits')
@@ -96,8 +98,9 @@ export const CreditsDisplay = () => {
 
   if (loading || !credits) return null;
 
-  // Não mostrar para planos premium
+  // Não mostrar para planos premium ou admin específico
   if (credits.plan_type !== 'free') return null;
+  if (userEmail === 'matheusnicolas.org@gmail.com') return null;
 
   return (
     <Card data-tour="credits" className="p-4 mb-4 bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
@@ -107,17 +110,14 @@ export const CreditsDisplay = () => {
             <Coins className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-medium">Seus Créditos</p>
-              <CreditsInfoDialog />
-            </div>
+            <p className="text-sm font-medium">Seus Créditos</p>
             <p className="text-xs text-muted-foreground">
-              Plano Free • {credits.total_shared} compartilhamentos realizados
+              Plano Free
             </p>
           </div>
         </div>
-        <Badge 
-          variant={credits.credits_balance <= 2 ? "destructive" : "secondary"} 
+        <Badge
+          variant={credits.credits_balance <= 2 ? "destructive" : "secondary"}
           className="text-lg font-bold px-4 py-2"
         >
           {credits.credits_balance}
@@ -130,16 +130,16 @@ export const CreditsDisplay = () => {
           <span>Créditos restantes</span>
           <span>{credits.credits_balance} / 7</span>
         </div>
-      <Progress 
-        value={(credits.credits_balance / 7) * 100} 
-        className="h-2"
-      />
+        <Progress
+          value={(credits.credits_balance / 7) * 100}
+          className="h-2"
+        />
       </div>
-      
+
       {credits.credits_balance < 3 && (
         <div className="mt-3 p-3 rounded-lg bg-warning/10 border border-warning/20">
           <p className="text-xs text-warning-foreground">
-            ⚠️ <strong>Atenção!</strong> Seus créditos estão acabando! Compartilhe suas obras ou RDOs nas redes sociais para ganhar mais créditos.
+            ⚠️ <strong>Atenção!</strong> Seus créditos estão acabando! Entre em contato para conhecer os planos ilimitados.
           </p>
         </div>
       )}

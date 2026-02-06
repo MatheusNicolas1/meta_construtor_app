@@ -9,6 +9,23 @@ interface TestimonialData {
   role: string;
 }
 
+
+const TestimonialImage = ({ src, name }: { src: string; name: string }) => {
+  const [imageError, setImageError] = useState(false);
+
+  return (
+    <img
+      width={32}
+      height={32}
+      src={imageError ? `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random` : src}
+      alt={`Foto de perfil de ${name}`}
+      className="h-6 w-6 sm:h-8 sm:w-8 rounded-lg object-cover flex-shrink-0 border border-border/30"
+      loading="lazy"
+      onError={() => setImageError(true)}
+    />
+  );
+};
+
 export const TestimonialsColumn = (props: {
   className?: string;
   testimonials: TestimonialData[];
@@ -17,7 +34,7 @@ export const TestimonialsColumn = (props: {
   const [isPaused, setIsPaused] = useState(false);
 
   return (
-    <div 
+    <div
       className={props.className}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
@@ -41,18 +58,11 @@ export const TestimonialsColumn = (props: {
           ...new Array(2).fill(0).map((_, index) => (
             <React.Fragment key={index}>
               {props.testimonials.map(({ text, image, name, role }, i) => (
-                <div 
-                  key={i} 
+                <div
+                  key={i}
                   className="flex items-start gap-2 sm:gap-3 rounded-xl bg-card/60 dark:bg-construction-blue/60 backdrop-blur-xl border border-white/20 p-2 sm:p-3 w-full shadow-lg shadow-primary/5 hover:shadow-primary/10 transition-shadow"
                 >
-                  <img
-                    width={32}
-                    height={32}
-                    src={image}
-                    alt={`Foto de perfil de ${name}`}
-                    className="h-6 w-6 sm:h-8 sm:w-8 rounded-lg object-cover flex-shrink-0 border border-border/30"
-                    loading="lazy"
-                  />
+                  <TestimonialImage src={image} name={name} />
                   <div className="text-xs sm:text-sm leading-tight min-w-0 flex-1">
                     <div className="font-medium tracking-tight leading-4 text-foreground truncate text-[10px] sm:text-xs">{name}</div>
                     <div className="leading-4 opacity-60 tracking-tight text-muted-foreground text-[8px] sm:text-[10px] truncate">{role}</div>

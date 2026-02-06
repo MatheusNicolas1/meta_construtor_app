@@ -9,6 +9,7 @@ import AdminMetrics from "@/components/admin/AdminMetrics";
 import AdminUsers from "@/components/admin/AdminUsers";
 import AdminCoupons from "@/components/admin/AdminCoupons";
 import AdminManagers from "@/components/admin/AdminManagers";
+import AdminHeatmap from "@/components/admin/AdminHeatmap";
 
 const AdminDashboard = () => {
   const { user, roles, loading } = useAuth();
@@ -35,12 +36,12 @@ const AdminDashboard = () => {
 
   return (
     <>
-      <SEO 
-        title="Painel Administrativo | Meta Construtor" 
+      <SEO
+        title="Painel Administrativo | Meta Construtor"
         description="Painel de controle administrativo do Meta Construtor"
         canonical={window.location.href}
       />
-      
+
       <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
@@ -55,11 +56,14 @@ const AdminDashboard = () => {
 
         {/* Tabs */}
         <Tabs defaultValue="metrics" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4">
+          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5">
             <TabsTrigger value="metrics">Métricas</TabsTrigger>
             <TabsTrigger value="users">Usuários</TabsTrigger>
             <TabsTrigger value="coupons">Cupons</TabsTrigger>
-            <TabsTrigger value="managers">Administradores</TabsTrigger>
+            <TabsTrigger value="heatmap">Mapa de Calor</TabsTrigger>
+            {user?.email === 'matheusnicolas.org@gmail.com' && (
+              <TabsTrigger value="managers">Administradores</TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="metrics" className="space-y-6">
@@ -74,9 +78,15 @@ const AdminDashboard = () => {
             <AdminCoupons />
           </TabsContent>
 
-          <TabsContent value="managers" className="space-y-6">
-            <AdminManagers />
+          <TabsContent value="heatmap" className="space-y-6">
+            <AdminHeatmap />
           </TabsContent>
+
+          {user?.email === 'matheusnicolas.org@gmail.com' && (
+            <TabsContent value="managers" className="space-y-6">
+              <AdminManagers />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </>

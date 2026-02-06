@@ -8,16 +8,35 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
-import { Plus, Percent, Calendar, TrendingUp } from "lucide-react";
+import { Plus, Percent, Calendar, TrendingUp, DollarSign, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const AdminCoupons = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [newCoupon, setNewCoupon] = useState({
     code: '',
-    discount_percentage: 10,
+    discount_type: 'percent' as 'percent' | 'fixed',
+    discount_value: 10,
     valid_until: '',
     usage_limit: null as number | null,
     is_active: true
@@ -32,7 +51,7 @@ const AdminCoupons = () => {
         .from('coupons')
         .select('*')
         .order('created_at', { ascending: false });
-      
+
       if (error) throw error;
       return data;
     }
@@ -45,12 +64,13 @@ const AdminCoupons = () => {
 
       const { error } = await supabase
         .from('coupons')
+        // @ts-ignore
         .insert({
           ...newCoupon,
-          created_by: user.id,
-          code: newCoupon.code.toUpperCase()
+          code: newCoupon.code.toUpperCase(),
+          created_by: user.id
         });
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -58,7 +78,8 @@ const AdminCoupons = () => {
       setIsCreating(false);
       setNewCoupon({
         code: '',
-        discount_percentage: 10,
+        discount_type: 'percent',
+        discount_value: 10,
         valid_until: '',
         usage_limit: null,
         is_active: true
@@ -76,7 +97,7 @@ const AdminCoupons = () => {
         .from('coupons')
         .update({ is_active })
         .eq('id', id);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -85,6 +106,24 @@ const AdminCoupons = () => {
     },
     onError: (error) => {
       toast.error('Erro ao atualizar cupom: ' + error.message);
+    }
+  });
+
+  const deleteCoupon = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('coupons')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-coupons'] });
+      toast.success('Cupom removido com sucesso!');
+    },
+    onError: (error) => {
+      toast.error('Erro ao remover cupom: ' + error.message);
     }
   });
 
@@ -124,17 +163,34 @@ const AdminCoupons = () => {
                   onChange={(e) => setNewCoupon({ ...newCoupon, code: e.target.value.toUpperCase() })}
                 />
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="discount">Desconto (%)</Label>
+                <Label htmlFor="discount_type">Tipo de Desconto</Label>
+                <Select
+                  value={newCoupon.discount_type}
+                  onValueChange={(value: 'percent' | 'fixed') => setNewCoupon({ ...newCoupon, discount_type: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="percent">Porcentagem (%)</SelectItem>
+                    <SelectItem value="fixed">Valor Fixo (R$)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="discount_value">Valor do Desconto</Label>
                 <Input
-                  id="discount"
+                  id="discount_value"
                   type="number"
-                  min="1"
-                  max="100"
-                  value={newCoupon.discount_percentage}
-                  onChange={(e) => setNewCoupon({ ...newCoupon, discount_percentage: parseInt(e.target.value) })}
+                  min="0"
+                  value={newCoupon.discount_value}
+                  onChange={(e) => setNewCoupon({ ...newCoupon, discount_value: parseFloat(e.target.value) })}
                 />
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="valid_until">Válido Até</Label>
                 <Input
@@ -144,6 +200,7 @@ const AdminCoupons = () => {
                   onChange={(e) => setNewCoupon({ ...newCoupon, valid_until: e.target.value })}
                 />
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="usage_limit">Limite de Uso (opcional)</Label>
                 <Input
@@ -156,7 +213,8 @@ const AdminCoupons = () => {
                 />
               </div>
             </div>
-            <div className="flex items-center justify-between">
+
+            <div className="flex items-center justify-between pt-4">
               <div className="flex items-center space-x-2">
                 <Switch
                   id="is_active"
@@ -170,7 +228,7 @@ const AdminCoupons = () => {
                   Cancelar
                 </Button>
                 <Button onClick={() => createCoupon.mutate()} disabled={!newCoupon.code || createCoupon.isPending}>
-                  Criar Cupom
+                  {createCoupon.isPending ? <LoadingSpinner size="sm" /> : 'Criar Cupom'}
                 </Button>
               </div>
             </div>
@@ -180,13 +238,19 @@ const AdminCoupons = () => {
 
       {/* Coupons List */}
       <div className="grid gap-4">
-        {coupons?.map((coupon) => (
+        {coupons?.map((coupon: any) => (
           <Card key={coupon.id}>
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div className="space-y-1">
-                  <CardTitle className="text-lg font-mono">{coupon.code}</CardTitle>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-lg font-mono">{coupon.code}</CardTitle>
+                    <Switch
+                      checked={coupon.is_active}
+                      onCheckedChange={(checked) => toggleCoupon.mutate({ id: coupon.id, is_active: checked })}
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-2 pt-1">
                     <Badge variant={coupon.is_active ? 'default' : 'secondary'}>
                       {coupon.is_active ? 'Ativo' : 'Inativo'}
                     </Badge>
@@ -195,18 +259,44 @@ const AdminCoupons = () => {
                     )}
                   </div>
                 </div>
-                <Switch
-                  checked={coupon.is_active}
-                  onCheckedChange={(checked) => toggleCoupon.mutate({ id: coupon.id, is_active: checked })}
-                />
+
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Excluir Cupom</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Tem certeza que deseja excluir este cupom? Esta ação não pode ser desfeita.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => deleteCoupon.mutate(coupon.id)} className="bg-red-500 hover:bg-red-600">
+                        Excluir
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-3">
                 <div className="flex items-center gap-2">
-                  <Percent className="h-4 w-4 text-muted-foreground" />
+                  {coupon.discount_type === 'percent' ? (
+                    <Percent className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  )}
                   <div>
-                    <p className="text-sm font-medium">{coupon.discount_percentage}% de desconto</p>
+                    <p className="text-sm font-medium">
+                      {coupon.discount_type === 'percent'
+                        ? `${coupon.discount_value}% de desconto`
+                        : `R$ ${coupon.discount_value} de desconto`}
+                    </p>
                   </div>
                 </div>
                 {coupon.valid_until && (
@@ -233,7 +323,7 @@ const AdminCoupons = () => {
         ))}
       </div>
 
-      {coupons?.length === 0 && (
+      {coupons?.length === 0 && !isCreating && (
         <Card>
           <CardContent className="py-12 text-center">
             <p className="text-muted-foreground">Nenhum cupom criado ainda</p>

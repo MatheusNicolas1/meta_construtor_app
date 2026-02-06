@@ -31,20 +31,27 @@ const Notificacoes = () => {
     loadNotifications();
 
     // Realtime subscription for new notifications
-    const channel = supabase
-      .channel('notifications-realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'notifications'
-        },
-        () => {
-          loadNotifications();
-        }
-      )
-      .subscribe();
+    let channel: any = null;
+
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+
+      channel = supabase
+        .channel('notifications-realtime')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`
+          },
+          () => {
+            loadNotifications();
+          }
+        )
+        .subscribe();
+    });
 
     return () => {
       supabase.removeChannel(channel);
@@ -79,7 +86,7 @@ const Notificacoes = () => {
         .eq('id', id);
 
       if (error) throw error;
-      setNotifications(prev => 
+      setNotifications(prev =>
         prev.map(n => n.id === id ? { ...n, is_read: true } : n)
       );
     } catch (error) {
@@ -140,7 +147,7 @@ const Notificacoes = () => {
     if (filterPeriod !== 'all') {
       const notificationDate = parseISO(notification.created_at);
       const now = new Date();
-      
+
       switch (filterPeriod) {
         case 'today':
           if (!isAfter(notificationDate, subDays(now, 1))) return false;
@@ -173,13 +180,13 @@ const Notificacoes = () => {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold">Notificações</h1>
           <p className="text-muted-foreground">
-            {unreadCount > 0 
+            {unreadCount > 0
               ? `${unreadCount} notificação(ões) não lida(s)`
               : 'Todas as notificações foram lidas'
             }
           </p>
         </div>
-        
+
         {unreadCount > 0 && (
           <Button variant="outline" onClick={markAllAsRead}>
             <CheckCheck className="h-4 w-4 mr-2" />
@@ -295,7 +302,7 @@ interface NotificationCardProps {
 
 const NotificationCard = ({ notification, onMarkAsRead, getIcon }: NotificationCardProps) => {
   return (
-    <Card 
+    <Card
       className={cn(
         "transition-all hover:shadow-md cursor-pointer",
         !notification.is_read && "border-l-4 border-l-primary bg-primary/5"

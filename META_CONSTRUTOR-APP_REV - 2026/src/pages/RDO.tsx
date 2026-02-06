@@ -10,11 +10,11 @@ import { CreditsDisplay } from "@/components/CreditsDisplay";
 import { useRDOs } from "@/hooks/useRDOs";
 import { useObras } from "@/hooks/useObras";
 import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  FileText, 
-  Search, 
-  Plus, 
-  Download, 
+import {
+  FileText,
+  Search,
+  Plus,
+  Download,
   Filter
 } from "lucide-react";
 
@@ -24,16 +24,16 @@ const RDOPage = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [isFormOpen, setIsFormOpen] = useState(false);
 
-  const { rdos, isLoading, deleteRDO } = useRDOs();
+  const { rdos, isLoading, deleteRDO, createRDO } = useRDOs();
   const { obras } = useObras();
 
   const filteredRDOs = rdos.filter(rdo => {
     const obraNome = (rdo as any).obras?.nome || '';
     const matchesSearch = obraNome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (rdo.observacoes || '').toLowerCase().includes(searchTerm.toLowerCase());
+      (rdo.observacoes || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesObra = !selectedObra || selectedObra === "all" || rdo.obra_id === selectedObra;
     const matchesDate = !selectedDate || rdo.data === selectedDate.toISOString().split('T')[0];
-    
+
     return matchesSearch && matchesObra && matchesDate;
   });
 
@@ -85,7 +85,7 @@ const RDOPage = () => {
             <Download className="mr-2 h-4 w-4" />
             Exportar
           </Button>
-          <Button 
+          <Button
             className="gradient-construction border-0 hover:opacity-90 w-full sm:w-auto"
             onClick={() => setIsFormOpen(true)}
           >
@@ -144,8 +144,8 @@ const RDOPage = () => {
               />
             </div>
             <div className="space-y-2 flex items-end">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => {
                   setSearchTerm("");
                   setSelectedObra("all");
@@ -172,7 +172,7 @@ const RDOPage = () => {
             <RDOExpandableCard
               key={rdo.id}
               rdo={mapRDOToComponent(rdo)}
-              onEdit={() => {}}
+              onEdit={() => { }}
               onDelete={handleDeleteRDO}
             />
           ))}
@@ -184,12 +184,12 @@ const RDOPage = () => {
           <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 className="mt-4 text-lg font-medium text-card-foreground">Nenhum RDO encontrado</h3>
           <p className="mt-2 text-muted-foreground">
-            {searchTerm || selectedObra !== "all" || selectedDate 
-              ? "Tente ajustar os filtros de busca" 
+            {searchTerm || selectedObra !== "all" || selectedDate
+              ? "Tente ajustar os filtros de busca"
               : "Comece criando seu primeiro RDO"}
           </p>
           <div className="mt-6">
-            <Button 
+            <Button
               className="gradient-construction border-0 hover:opacity-90"
               onClick={() => setIsFormOpen(true)}
             >
@@ -203,7 +203,20 @@ const RDOPage = () => {
       <RDONewForm
         isOpen={isFormOpen}
         onClose={() => setIsFormOpen(false)}
-        onSubmit={() => {}}
+        onSubmit={async (data) => {
+          try {
+            // Ensure correct types for createRDO
+            await createRDO.mutateAsync({
+              ...data,
+              obra_id: data.obraId.toString(),
+              // Add fallback for optional fields if needed by backend, though types should match
+            });
+            setIsFormOpen(false);
+          } catch (error) {
+            console.error("Error creating RDO:", error);
+            // Toast is handled in useRDOs
+          }
+        }}
         isEditing={false}
       />
     </div>

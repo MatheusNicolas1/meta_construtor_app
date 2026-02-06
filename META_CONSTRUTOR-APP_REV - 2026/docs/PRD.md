@@ -68,9 +68,9 @@ MILESTONE 1 — MODELO MULTI-TENANT E INTEGRIDADE DO BANCO (ORG FIRST)
 1.3 Padronizar org_id no domínio
 
 * Garantir org_id em todas as tabelas de domínio (obras, rdo, qualidade, recursos, financeiro, anexos)
-  STATUS:
-  VALIDAÇÃO:
-  EVIDÊNCIA:
+  STATUS: DONE
+  VALIDAÇÃO: Migration 20260206140000_add_org_id_to_domain.sql criada. Adiciona coluna org_id FK para public.orgs(id) nas tabelas principais: obras, rdos, atividades, expenses. Backfill inteligente implementado: obras vinculadas à org pessoal do owner; tabelas filhas (rdos, atividades, expenses) vinculadas via obra_id ou fallback para owner. Indíces criados (idx_obras_org_id, etc) para performance. Coluna org_id definida como NOT NULL em obras após backfill bem-sucedido.
+  EVIDÊNCIA: supabase/migrations/20260206140000_add_org_id_to_domain.sql, logs de backfill, indices criados no banco.
 
 1.4 Constraints e índices essenciais
 

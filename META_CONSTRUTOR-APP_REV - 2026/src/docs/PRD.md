@@ -1,0 +1,375 @@
+PRD — META CONSTRUTOR | MILESTONES EM ORDEM CRONOLÓGICA (COM CAMPOS DE VALIDAÇÃO VAZIOS)
+
+ANÁLISE (POR QUE ESTA ORDEM)
+
+* Primeiro: base técnica + modelo de dados multi-tenant (org/empresa) para evitar retrabalho estrutural.
+* Depois: autenticação e autorização server-side, porque RLS e auditoria dependem de identidade confiável.
+* Em seguida: RLS (enforcement real) antes de billing e antes de liberar acesso pago.
+* Depois: billing/assinaturas e sincronização de planos/preços (fonte única).
+* Então: auditoria imutável (incluindo eventos de billing e ações críticas do domínio).
+* Por fim: máquina de estados (domínio), observabilidade, hardening e analytics (camadas de produção).
+
+STACK/COMPONENTES CITADOS (REFERÊNCIA)
+
+* Banco/Edge/RLS: Supabase
+* Pagamentos: Stripe
+* Observabilidade: Sentry
+* Analytics: PostHog
+* Deploy (se aplicável): Vercel
+
+======================================================================
+
+MILESTONE 0 — BASE TÉCNICA E QUALIDADE (FUNDAÇÃO)
+0.1 Monorepo e padrões
+
+* Criar/validar monorepo e convenções (pastas, nomes, lint-staged, etc.)
+  STATUS: DONE
+  VALIDAÇÃO: Estrutura monorepo-lite validada com organização modular padrão. Possui src/, supabase/, stripe/, public/ com separação clara. Configurações padronizadas (.gitignore, eslint.config.js, tsconfig.json, vite.config.ts). Convenção de nomes consistente (kebab-case para arquivos, PascalCase para componentes).
+  EVIDÊNCIA: package.json (scripts lint/dev/build), tsconfig.json (paths alias @/*), .gitignore, eslint.config.js, estrutura de pastas /src/{components,pages,hooks,types,utils,integrations}, /supabase/migrations, /stripe/
+
+0.2 TypeScript strict e build
+
+* Garantir TypeScript strict + scripts dev/build/typecheck/lint
+  STATUS: PARTIAL - Scripts completos, strict mode pendente
+  VALIDAÇÃO: Todos os scripts necessários existem e funcionam (dev/build/build:dev/typecheck/lint/preview). Build passa com sucesso. Typecheck passa mas com strict:false. TypeScript configurado de forma permissiva (noImplicitAny:false, strict:false em tsconfig.app.json). Habilitar strict mode requer migração gradual para evitar quebrar código existente.
+  EVIDÊNCIA: package.json (adicionado "typecheck": "tsc --noEmit"), npm run build (exit 0), npm run typecheck (exit 0), npm run lint (exit 1 com 3 erros não-bloqueantes), tsconfig.app.json linha 18 (strict:false)
+
+0.3 Padronização de validação de input
+
+* Definir padrão único para validação (ex.: Zod) em endpoints/edge e formulários críticos
+  STATUS: PARTIAL - Zod padronizado no frontend, ausente nas edge functions
+  VALIDAÇÃO: Zod está implementado e sendo usado em formulários críticos (Checkout.tsx, ExpenseForm.tsx) com schemas robustos. Existe InputValidator.tsx centralizado com schemas seguros (secureEmailSchema, strongPasswordSchema, secureStringSchema) incluindo proteção contra XSS e SQL injection. PORÉM as edge functions (supabase/functions/*) NÃO utilizam Zod - fazem validação manual básica ou nenhuma validação.
+  EVIDÊNCIA: src/components/security/InputValidator.tsx (schemas Zod com validação de segurança), src/pages/Checkout.tsx linha 5 (import z from 'zod'), supabase/functions/create-checkout-session/index.ts linha 57 (validação manual sem Zod), sem import de Zod em nenhuma edge function
+
+0.4 Estratégia de migrations versionadas
+
+* Definir fluxo de migrations SQL (versionamento, review, rollback básico)
+  STATUS: DONE
+  VALIDAÇÃO: Sistema de migrations versionado está implementado usando Supabase migrations. Arquivos nomeados com timestamp (YYYYMMDDHHMMSS_uuid.sql ou YYYYMMDD_description.sql). Migrations ficam em /supabase/migrations/ com 28 arquivos organizados cronologicamente. Migrations incluem comentários e documentação (ex: COMMENT ON FUNCTION). Supabase CLI gerencia aplicação sequencial.
+  EVIDÊNCIA: supabase/migrations/ (28 arquivos .sql), formato de nomes (20260107_fix_default_role_admin.sql, 20251106143830_*.sql), exemplo de migration bem documentada em 20260107_fix_default_role_admin.sql com comentários e exception handling, supabase/config.toml (configuração do projeto)
+
+======================================================================
+
+MILESTONE 1 — MODELO MULTI-TENANT E INTEGRIDADE DO BANCO (ORG FIRST)
+1.1 Estrutura de organização (empresa)
+
+* Criar tabela orgs (empresa/organização)
+  STATUS: NOT IMPLEMENTED - Sistema atual é single-tenant (baseado em user_id)
+  VALIDAÇÃO: Não existe tabela orgs/organizations. Todas as tabelas de domínio (obras, profiles, rdos, etc) utilizam user_id diretamente, sem conceito de organização/empresa. Sistema atual permite 1 usuário = 1 conta isolada, mas não suporta múltiplos usuários em uma mesma empresa/organização.
+  EVIDÊNCIA: grep em supabase/migrations/* sem resultado para "CREATE TABLE orgs" ou "CREATE TABLE organizations", tabelas existentes usam user_id como chave de isolamento (ex: obras table com user_id NOT NULL REFERENCES auth.users), sem campo org_id em nenhuma tabela de domínio
+
+1.2 Vínculo de usuários por organização (membership)
+
+* Criar tabela org_members (user_id, org_id, role, status)
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+1.3 Padronizar org_id no domínio
+
+* Garantir org_id em todas as tabelas de domínio (obras, rdo, qualidade, recursos, financeiro, anexos)
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+1.4 Constraints e índices essenciais
+
+* Adicionar FKs, NOT NULL, UNIQUE (onde necessário) e índices por org_id
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+1.5 Seeds mínimos para dev
+
+* Criar seeds: org + admin + obra exemplo (mínimo reprodutível)
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+======================================================================
+
+MILESTONE 2 — AUTENTICAÇÃO E AUTORIZAÇÃO SERVER-SIDE (IDENTIDADE CONFIÁVEL)
+2.1 Autenticação (login e sessão)
+
+* Implementar auth real (tokens/sessão) e persistência do usuário no banco
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+2.2 Papéis (RBAC) como regra de backend
+
+* Definir roles (Admin/Gerente/Colaborador) no backend, não só no frontend
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+2.3 Guards server-side por rota/ação
+
+* Criar guards para ações críticas (criar/editar/excluir, financeiro, permissões, status)
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+2.4 Controle de acesso por organização
+
+* Validar que o usuário pertence à org antes de qualquer operação
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+======================================================================
+
+MILESTONE 3 — RLS TOTAL (ENFORCEMENT REAL NO BANCO) (P0)
+3.1 Ativar RLS em tabelas principais
+
+* Ativar RLS em todas as tabelas multi-tenant do domínio
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+3.2 Policies por org_id (isolamento)
+
+* Policies SELECT/INSERT/UPDATE/DELETE garantindo isolamento por org_id
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+3.3 Policies por role (Admin/Gerente/Colaborador)
+
+* Refinar policies para limitar ações por papel (ex.: colaborador não exclui obra)
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+3.4 Teste de ataque (API direta)
+
+* Testar acesso cruzado e transações proibidas via requisição manual (sem UI)
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+======================================================================
+
+MILESTONE 4 — PLANOS, PREÇOS E ASSINATURAS (BILLING) (P0)
+4.1 Fonte única de planos/preços (sem hardcode)
+
+* Remover preços fixos do frontend e buscar do backend/tabela pública controlada
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+4.2 Criar tabela plans e subscriptions (por org)
+
+* Criar plans (com stripe_price_id) e subscriptions (status, período, org_id)
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+4.3 Criar Checkout Session server-side
+
+* Endpoint/edge cria Checkout Session com stripe_price_id válido e metadados (org_id, user_id)
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+4.4 Webhook Stripe com validação e idempotência
+
+* Implementar stripe_events (idempotência), validar assinatura do webhook, processar eventos críticos
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+4.5 Atualização do status da assinatura como “truth”
+
+* Webhook atualiza subscriptions e o app lê apenas do banco (não do frontend)
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+4.6 Bloqueio por plano no backend (e só refletir no front)
+
+* Limitar recursos pelo status do plano via backend/RLS/guards
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+======================================================================
+
+MILESTONE 5 — AUDITORIA IMUTÁVEL E RASTREABILIDADE (P0)
+5.1 Criar tabela audit_logs
+
+* Criar audit_logs com org_id, actor_user_id, action, entity, metadata, timestamps
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+5.2 Auditoria server-side (não localStorage)
+
+* Substituir logger local do frontend por envio para backend/edge (imutável)
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+5.3 Cobertura de eventos críticos (domínio + billing)
+
+* Registrar: auth, permissões, obra, rdo, qualidade, financeiro, anexos, billing (checkout/webhook)
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+5.4 Consulta de logs (admin)
+
+* Endpoint/tela para filtrar logs por período, usuário, obra, ação
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+5.5 (Recomendado) Triggers no Postgres para mutações críticas
+
+* Triggers para INSERT/UPDATE/DELETE em tabelas críticas garantindo log mesmo sem frontend
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+======================================================================
+
+MILESTONE 6 — MÁQUINAS DE ESTADO DO DOMÍNIO (CONSISTÊNCIA OPERACIONAL) (P1)
+6.1 Estados de Obra (Project)
+
+* Implementar enum e regras de transição (DRAFT, ACTIVE, ON_HOLD, COMPLETED, CANCELED)
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+6.2 Timestamps por estado
+
+* Campos como activated_at, completed_at, canceled_at etc.
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+6.3 Estados de RDO (se aplicável)
+
+* Fluxo DRAFT, SUBMITTED, APPROVED, REJECTED com validação server-side
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+6.4 Estados de Checklist de Qualidade (itens)
+
+* PENDING, PASSED, FAILED, REWORK_REQUESTED, REWORK_DONE com regras e logs
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+6.5 Bloquear transições inválidas via API
+
+* Garantir que não exista “pulo de estado” por requisição direta
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+======================================================================
+
+MILESTONE 7 — OBSERVABILIDADE E MONITORAMENTO (PRODUÇÃO) (P1)
+7.1 Monitoramento de erros no frontend
+
+* Integrar Sentry (captura de exceptions, release tracking básico)
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+7.2 Logging estruturado no backend/edge
+
+* Logs com request_id, actor_user_id, org_id, endpoint, latência, resultado
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+7.3 Monitoramento de webhooks
+
+* Alertar falhas de webhook, reprocessamento e eventos duplicados
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+7.4 Painel mínimo de saúde
+
+* Métricas mínimas: erros, webhooks processados, falhas de permissão, latência
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+======================================================================
+
+MILESTONE 8 — SEGURANÇA E HARDENING (P1)
+8.1 Rate limiting em endpoints sensíveis
+
+* Limitar login, checkout, convites, ações massivas
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+8.2 Proteção contra acesso cruzado (reforço)
+
+* Revisão final de RLS + guards + testes de regressão
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+8.3 Soft delete onde aplicável + auditoria before/after
+
+* Implementar soft delete e registrar diffs (antes/depois) em audit_logs
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+8.4 Checklist de produção
+
+* Secrets, headers, backup/restore, retenção de logs, mínima conformidade operacional
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+======================================================================
+
+MILESTONE 9 — ANALYTICS (PRODUTO E OPERAÇÃO) (P2)
+9.1 Eventos frontend (produto)
+
+* Eventos de uso: criação de obra, submissão de RDO, checklist, anexos, etc.
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+9.2 Eventos backend (operacionais)
+
+* Eventos: webhook ok/falha, transição de estado aprovada/rejeitada, violações bloqueadas
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+9.3 Propriedades padrão em eventos
+
+* org_id, user_id, role, ambiente, versão do app
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+9.4 Documentação do catálogo de eventos
+
+* Lista de eventos, payloads, quando dispara, e como auditar
+  STATUS:
+  VALIDAÇÃO:
+  EVIDÊNCIA:
+
+======================================================================
+
+REGRA PARA A LLM / AI AGENT (EXECUÇÃO)
+
+1. Ler este PRD
+2. Identificar a próxima atividade com STATUS vazio
+3. Validar se já existe e se está funcionando
+4. Se não existir ou estiver quebrado: implementar correção mínima (sem alterar UX do frontend)
+5. Preencher STATUS/VALIDAÇÃO/EVIDÊNCIA da atividade
+6. Commit pequeno e objetivo
+7. Repetir até concluir todas as milestones

@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "Meta Construtor App",
+    "slug": "mt-construtor",
+    "version": "1.0.0",
+    "extra": {
+      "eas": {
+        "projectId": "65466d2c-0cbb-4d29-a39b-90875112e0c6"
+      }
+    }
+  }
+}

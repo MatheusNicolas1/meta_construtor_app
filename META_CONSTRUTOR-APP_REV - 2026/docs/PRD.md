@@ -234,6 +234,30 @@ MILESTONE 4 — PLANOS, PREÇOS E ASSINATURAS (BILLING) (P0)
   VALIDAÇÃO: SELECT tgname FROM pg_trigger WHERE tgname LIKE '%audit%'; (retorna 6+ triggers incluindo audit_obras_changes e audit_expenses_changes). Triggers escrevem audit_logs mesmo se PostgREST bypassa edge functions.
   EVIDÊNCIA: Migration 20260209183000_audit_domain_triggers.sql criada. Helper write_audit_from_trigger(org_id, action, entity, entity_id, metadata) SECURITY DEFINER: INSERT audit_logs com actor_user_id=auth.uid(). 2 trigger functions: audit_obras_changes() e audit_expenses_changes() para INSERT/UPDATE/DELETE → escrevem domain.obra_created/updated/deleted e domain.expense_created/updated/deleted com metadata incluindo nome/status/amount e changed_fields. 2 triggers: trigger_audit_obras_changes AFTER INSERT OR UPDATE OR DELETE ON obras, trigger_audit_expenses_changes AFTER INSERT OR UPDATE OR DELETE ON expenses. GRANT EXECUTE TO authenticated (SECURITY DEFINER bypassa RLS). Org isolation garantido por org_id em cada row. Audit non-bypassable mesmo via PostgREST.
 
+### M5 TEST GATE (Verification before Milestone 6)
+
+**STEP T1 - Database-level verification:**
+Commands executed:
+```sql
+SELECT to_regclass('public.audit_logs');  -- confirms table exists
+SELECT * FROM pg_policies WHERE tablename='audit_logs';  -- confirms 1 RLS policy (SELECT)
+UPDATE/DELETE audit_logs WHERE id='...';  -- both FAIL with "audit_logs are immutable"
+SELECT tgname FROM pg_trigger WHERE tgname ILIKE '%audit%';  -- confirms 6 triggers
+```
+Results: ✅ audit_logs table exists, ✅ 1 RLS policy (Org members can read), ✅ UPDATE/DELETE blocked by triggers (immutable), ✅ 6 audit triggers active (2 immutability, 2 org_members, 2 domain obras/expenses).
+
+**STEP T2 - Runtime verification:**
+Script: scripts/test-audit.sql (SQL-based trigger testing)
+Tests executed:
+- TEST A: INSERT obra → domain.obra_created (✅ PASS: audit row created)
+- TEST B: UPDATE obra → domain.obra_updated (✅ PASS: audit row created)
+- TEST C: DELETE obra → domain.obra_deleted (✅ PASS: audit row created)
+- TEST D: INSERT expense → domain.expense_created (✅ PASS: audit row created)
+All tests PASSED. Triggers fire correctly for critical domain mutations.
+
+**VALIDATION STATUS:** M5 VERIFIED BY TESTS — OK FOR MILESTONE 6
+Evidence artifacts: m5_test_t1_results.md, scripts/test-audit.sql
+
 ======================================================================
 
 MILESTONE 6 — MÁQUINAS DE ESTADO DO DOMÍNIO (CONSISTÊNCIA OPERACIONAL) (P1)

@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { notifyObraChange } from '@/utils/notificationService';
 import { usePermissions } from './usePermissions';
+import { useRequireOrg } from '@/hooks/requireOrg';
 
 export interface CreateObraData {
   nome: string;
@@ -22,22 +23,26 @@ export interface CreateObraData {
 export const useObras = () => {
   const queryClient = useQueryClient();
   const { obra: obraPerms } = usePermissions();
+  const { orgId, isLoading: orgLoading } = useRequireOrg();
 
   // Realtime subscription for obras updates
   useEffect(() => {
+    if (!orgId) return;
+
     const channel = supabase
-      .channel('obras-realtime')
+      .channel(`obras-realtime-${orgId}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'obras'
+          table: 'obras',
+          filter: `org_id=eq.${orgId}`
         },
         (payload) => {
           console.log('Obras realtime update:', payload);
-          queryClient.invalidateQueries({ queryKey: ['obras'] });
-          queryClient.invalidateQueries({ queryKey: ['recent-obras'] });
+          queryClient.invalidateQueries({ queryKey: ['obras', orgId] });
+          queryClient.invalidateQueries({ queryKey: ['recent-obras', orgId] });
         }
       )
       .subscribe();
@@ -45,10 +50,10 @@ export const useObras = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [queryClient]);
+  }, [queryClient, orgId]);
 
   const obrasQuery = useQuery({
-    queryKey: ['obras'],
+    queryKey: ['obras', orgId],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuário não autenticado');
@@ -56,13 +61,14 @@ export const useObras = () => {
       const { data, error } = await supabase
         .from('obras')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('org_id', orgId)
         .order('created_at', { ascending: false })
         .limit(20);
 
       if (error) throw error;
       return data || [];
     },
+    enabled: !orgLoading && !!orgId,
   });
 
   const createObra = useMutation({
@@ -82,6 +88,7 @@ export const useObras = () => {
         .from('obras')
         .insert({
           ...obraData,
+          org_id: orgId,
           user_id: user.id,
           progresso: 0,
           status: 'Iniciando',
@@ -92,13 +99,13 @@ export const useObras = () => {
       if (error) throw error;
 
       // Enviar notificação
-      await notifyObraChange(user.id, obraData.nome, 'created', data.id);
+      await notifyObraChange(user.id, obraData.nome, 'created', data.id, orgId);
 
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['obras'] });
-      queryClient.invalidateQueries({ queryKey: ['recent-obras'] });
+      queryClient.invalidateQueries({ queryKey: ['obras', orgId] });
+      queryClient.invalidateQueries({ queryKey: ['recent-obras', orgId] });
       toast.success('Obra criada com sucesso!');
     },
     onError: (error) => {
@@ -116,19 +123,20 @@ export const useObras = () => {
         .from('obras')
         .update(updateData)
         .eq('id', id)
+        .eq('org_id', orgId)
         .select()
         .single();
 
       if (error) throw error;
 
       // Enviar notificação
-      await notifyObraChange(user.id, data.nome, 'updated', id);
+      await notifyObraChange(user.id, data.nome, 'updated', id, orgId);
 
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['obras'] });
-      queryClient.invalidateQueries({ queryKey: ['recent-obras'] });
+      queryClient.invalidateQueries({ queryKey: ['obras', orgId] });
+      queryClient.invalidateQueries({ queryKey: ['recent-obras', orgId] });
       toast.success('Obra atualizada com sucesso!');
     },
     onError: (error) => {
@@ -147,23 +155,25 @@ export const useObras = () => {
         .from('obras')
         .select('nome')
         .eq('id', id)
+        .eq('org_id', orgId)
         .single();
 
       const { error } = await supabase
         .from('obras')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('org_id', orgId);
 
       if (error) throw error;
 
       // Enviar notificação
       if (obraData) {
-        await notifyObraChange(user.id, obraData.nome, 'deleted');
+        await notifyObraChange(user.id, obraData.nome, 'deleted', undefined, orgId);
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['obras'] });
-      queryClient.invalidateQueries({ queryKey: ['recent-obras'] });
+      queryClient.invalidateQueries({ queryKey: ['obras', orgId] });
+      queryClient.invalidateQueries({ queryKey: ['recent-obras', orgId] });
       toast.success('Obra excluída com sucesso!');
     },
     onError: (error) => {

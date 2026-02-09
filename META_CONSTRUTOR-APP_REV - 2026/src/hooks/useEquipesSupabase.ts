@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { usePermissions } from './usePermissions';
+import { useAuthUserId } from './useAuthUserId';
 
 export interface CreateEquipeData {
   nome: string;
@@ -14,9 +15,10 @@ export interface CreateEquipeData {
 export const useEquipesSupabase = () => {
   const queryClient = useQueryClient();
   const { equipe: equipePerms } = usePermissions();
+  const { userId, isLoading: userLoading } = useAuthUserId();
 
   const equipesQuery = useQuery({
-    queryKey: ['equipes'],
+    queryKey: ['equipes', userId],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuário não autenticado');
@@ -30,11 +32,12 @@ export const useEquipesSupabase = () => {
       if (error) throw error;
       return data || [];
     },
+    enabled: !!userId,
   });
 
   const createEquipe = useMutation({
     mutationFn: async (equipeData: CreateEquipeData) => {
-      // Validar permissões e limites
+      //Validar permissões e limites
       if (!equipePerms.canCreate) {
         if (equipePerms.isAtLimit) {
           throw new Error('Limite de colaboradores atingido para seu plano. Faça upgrade para continuar.');
@@ -59,7 +62,7 @@ export const useEquipesSupabase = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['equipes'] });
+      queryClient.invalidateQueries({ queryKey: ['equipes'], exact: false });
       toast.success('Colaborador cadastrado com sucesso!');
     },
     onError: (error) => {
@@ -81,7 +84,7 @@ export const useEquipesSupabase = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['equipes'] });
+      queryClient.invalidateQueries({ queryKey: ['equipes'], exact: false });
       toast.success('Colaborador atualizado com sucesso!');
     },
     onError: (error) => {
@@ -100,7 +103,7 @@ export const useEquipesSupabase = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['equipes'] });
+      queryClient.invalidateQueries({ queryKey: ['equipes'], exact: false });
       toast.success('Colaborador excluído com sucesso!');
     },
     onError: (error) => {
@@ -111,7 +114,7 @@ export const useEquipesSupabase = () => {
 
   return {
     equipes: equipesQuery.data || [],
-    isLoading: equipesQuery.isLoading,
+    isLoading: equipesQuery.isLoading || userLoading,
     error: equipesQuery.error,
     createEquipe,
     updateEquipe,

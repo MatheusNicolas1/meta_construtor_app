@@ -26,19 +26,16 @@ CREATE INDEX IF NOT EXISTS idx_orgs_slug ON public.orgs(slug);
 -- Habilitar RLS
 ALTER TABLE public.orgs ENABLE ROW LEVEL SECURITY;
 
--- Políticas de segurança
--- SELECT: owner pode ver, ou membros da org (future-proof para quando org_members existir)
+-- Limpar policies (idempotente)
+DROP POLICY IF EXISTS "orgs_select_policy" ON public.orgs;
+DROP POLICY IF EXISTS "orgs_insert_policy" ON public.orgs;
+DROP POLICY IF EXISTS "orgs_update_policy" ON public.orgs;
+DROP POLICY IF EXISTS "orgs_delete_policy" ON public.orgs;
+
+-- SELECT: por enquanto, só o owner (org_members ainda não existe neste ponto do deploy)
 CREATE POLICY "orgs_select_policy"
   ON public.orgs FOR SELECT
-  USING (
-    owner_user_id = auth.uid()
-    OR EXISTS (
-      SELECT 1 FROM public.org_members
-      WHERE org_members.org_id = orgs.id
-      AND org_members.user_id = auth.uid()
-      AND org_members.status = 'active'
-    )
-  );
+  USING (owner_user_id = auth.uid());
 
 -- INSERT: apenas o owner pode criar (e deve ser o dono)
 CREATE POLICY "orgs_insert_policy"
@@ -55,6 +52,7 @@ CREATE POLICY "orgs_update_policy"
 CREATE POLICY "orgs_delete_policy"
   ON public.orgs FOR DELETE
   USING (owner_user_id = auth.uid());
+
 
 -- Função para gerar slug único a partir do nome
 CREATE OR REPLACE FUNCTION public.generate_org_slug(org_name text, user_id uuid)

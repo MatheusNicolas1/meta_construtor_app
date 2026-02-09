@@ -5,39 +5,41 @@ import { getUserPermissions } from '@/types/user';
 import { usePlanLimits } from './usePlanLimits';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useRequireOrg } from '@/hooks/requireOrg';
 
 export const usePermissions = () => {
   const { user, roles } = useAuth();
   const { limits, isLoading: isPlanLoading } = usePlanLimits();
+  const { orgId, isLoading: orgLoading } = useRequireOrg();
 
   // Buscar contagem atual de obras
   const { data: obrasCount = 0, isLoading: isObrasLoading } = useQuery({
-    queryKey: ['obras-count', user?.id],
+    queryKey: ['obras-count', orgId],
     queryFn: async () => {
-      if (!user?.id) return 0;
+      if (!user?.id || !orgId) return 0;
       const { count, error } = await supabase
         .from('obras')
         .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id);
+        .eq('org_id', orgId);
       if (error) throw error;
       return count || 0;
     },
-    enabled: !!user?.id,
+    enabled: !!user?.id && !orgLoading && !!orgId,
   });
 
   // Buscar contagem atual de membros da equipe
   const { data: equipeCount = 0, isLoading: isEquipeLoading } = useQuery({
-    queryKey: ['equipe-count', user?.id],
+    queryKey: ['equipe-count', orgId],
     queryFn: async () => {
-      if (!user?.id) return 0;
+      if (!user?.id || !orgId) return 0;
       const { count, error } = await supabase
         .from('equipes')
         .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id);
+        .eq('org_id', orgId);
       if (error) throw error;
       return count || 0;
     },
-    enabled: !!user?.id,
+    enabled: !!user?.id && !orgLoading && !!orgId,
   });
 
   const userRole = roles[0] || 'Colaborador';

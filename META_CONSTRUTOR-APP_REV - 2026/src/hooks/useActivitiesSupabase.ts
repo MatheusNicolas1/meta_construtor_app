@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/components/auth/AuthContext';
 import { notifyActivityChange } from '@/utils/notificationService';
+import { useRequireOrg } from '@/hooks/requireOrg';
 
 export interface Activity {
   id: string;
@@ -35,10 +36,11 @@ export function useActivitiesSupabase() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuth();
+  const { orgId, isLoading: orgLoading } = useRequireOrg();
 
   // Carregar atividades do Supabase
   const loadActivities = useCallback(async () => {
-    if (!isAuthenticated || !user?.id) {
+    if (!isAuthenticated || !user?.id || orgLoading || !orgId) {
       setActivities([]);
       setIsLoading(false);
       return;
@@ -49,6 +51,7 @@ export function useActivitiesSupabase() {
       const { data, error } = await supabase
         .from('atividades')
         .select('*')
+        .eq('org_id', orgId)
         .order('data', { ascending: true })
         .order('hora', { ascending: true })
         .limit(50);
@@ -73,11 +76,11 @@ export function useActivitiesSupabase() {
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated, user?.id, toast]);
+  }, [isAuthenticated, user?.id, orgId, orgLoading, toast]);
 
   // Salvar ou atualizar atividade
   const saveActivity = useCallback(async (activity: Partial<Activity>) => {
-    if (!isAuthenticated || !user?.id) {
+    if (!isAuthenticated || !user?.id || !orgId) {
       toast({
         title: 'Erro',
         description: 'Você precisa estar logado para criar atividades.',
@@ -89,6 +92,7 @@ export function useActivitiesSupabase() {
     try {
       // Normalizar dados para o formato do banco
       const activityData = {
+        org_id: orgId,
         user_id: user.id,
         obra_id: activity.obra_id || null,
         titulo: activity.titulo || activity.title || '',
@@ -113,6 +117,7 @@ export function useActivitiesSupabase() {
           .from('atividades')
           .update(activityData)
           .eq('id', activity.id)
+          .eq('org_id', orgId)
           .select()
           .single();
 
@@ -158,11 +163,11 @@ export function useActivitiesSupabase() {
       });
       return null;
     }
-  }, [isAuthenticated, user?.id, toast, loadActivities]);
+  }, [isAuthenticated, user?.id, orgId, toast, loadActivities]);
 
   // Deletar atividade
   const deleteActivity = useCallback(async (activityId: string) => {
-    if (!isAuthenticated || !user?.id) return;
+    if (!isAuthenticated || !user?.id || !orgId) return;
 
     try {
       // Buscar dados da atividade antes de deletar
@@ -171,7 +176,8 @@ export function useActivitiesSupabase() {
       const { error } = await supabase
         .from('atividades')
         .delete()
-        .eq('id', activityId);
+        .eq('id', activityId)
+        .eq('org_id', orgId);
 
       if (error) throw error;
 
@@ -195,7 +201,7 @@ export function useActivitiesSupabase() {
         variant: 'destructive',
       });
     }
-  }, [isAuthenticated, user?.id, activities, toast, loadActivities]);
+  }, [isAuthenticated, user?.id, activities, orgId, toast, loadActivities]);
 
   // Obter atividades para uma data específica
   const getActivitiesForDate = useCallback((date: string): Activity[] => {
@@ -226,16 +232,17 @@ export function useActivitiesSupabase() {
 
   // Real-time subscription
   useEffect(() => {
-    if (!isAuthenticated || !user?.id) return;
+    if (!isAuthenticated || !user?.id || !orgId) return;
 
     const channel = supabase
-      .channel('atividades-changes')
+      .channel(`atividades-realtime-${orgId}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'atividades'
+          table: 'atividades',
+          filter: `org_id=eq.${orgId}`
         },
         () => {
           loadActivities();
@@ -246,7 +253,7 @@ export function useActivitiesSupabase() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [isAuthenticated, user?.id, loadActivities]);
+  }, [isAuthenticated, user?.id, orgId, loadActivities]);
 
   return {
     activities: activitiesByDate(),

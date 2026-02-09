@@ -11,26 +11,31 @@ import { Shield, Mail, UserPlus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/components/auth/AuthContext";
+import { useRequireOrg } from "@/hooks/requireOrg";
 
 const AdminManagers = () => {
   const [email, setEmail] = useState("");
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { orgId, isLoading: orgLoading } = useRequireOrg();
 
   const isSuperAdmin = user?.email === 'matheusnicolas.org@gmail.com';
 
   const { data: admins, isLoading } = useQuery({
-    queryKey: ['admin-managers'],
+    queryKey: ['admin-managers', orgId],
     queryFn: async () => {
-      const { data: adminRoles, error } = await supabase
-        .from('user_roles')
+      const { data: adminMembers, error } = await (supabase as any)
+        .from('org_members')
         .select('user_id, profiles(id, name, email, avatar_url)')
+        .eq('org_id', orgId)
+        .eq('status', 'active')
         .eq('role', 'Administrador');
 
       if (error) throw error;
       // @ts-ignore
-      return adminRoles.map(r => r.profiles).filter(Boolean);
-    }
+      return adminMembers.map(r => r.profiles).filter(Boolean);
+    },
+    enabled: !orgLoading && !!orgId,
   });
 
   const addAdmin = useMutation({
@@ -46,15 +51,39 @@ const AdminManagers = () => {
 
       if (profileError) throw new Error('Usuário não encontrado');
 
-      // Adicionar role de Administrador
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: profile.id,
-          role: 'Administrador'
-        });
+      // Verificar se já existe membership
+      const { data: existingMember, error: checkError } = await (supabase as any)
+        .from('org_members')
+        .select('*')
+        .eq('org_id', orgId)
+        .eq('user_id', profile.id)
+        .single();
 
-      if (roleError) throw roleError;
+      if (existingMember) {
+        // Atualizar role existente
+        const { error: updateError } = await (supabase as any)
+          .from('org_members')
+          .update({
+            role: 'Administrador',
+            status: 'active'
+          })
+          .eq('org_id', orgId)
+          .eq('user_id', profile.id);
+
+        if (updateError) throw updateError;
+      } else {
+        // Criar novo membership
+        const { error: insertError } = await (supabase as any)
+          .from('org_members')
+          .insert({
+            org_id: orgId,
+            user_id: profile.id,
+            role: 'Administrador',
+            status: 'active'
+          });
+
+        if (insertError) throw insertError;
+      }
 
       // Log de auditoria
       await supabase.from('admin_audit_logs').insert({
@@ -78,10 +107,12 @@ const AdminManagers = () => {
     mutationFn: async (userId: string) => {
       if (!isSuperAdmin) throw new Error('Acesso negado');
 
-      const { error } = await supabase
-        .from('user_roles')
-        .delete()
+      // Atualizar membership para Colaborador (ao invés de deletar)
+      const { error } = await (supabase as any)
+        .from('org_members')
+        .update({ role: 'Colaborador' })
         .eq('user_id', userId)
+        .eq('org_id', orgId)
         .eq('role', 'Administrador');
 
       if (error) throw error;

@@ -1,5 +1,8 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useRequireOrg } from '@/hooks/requireOrg';
+import { useAuthUserId } from './useAuthUserId';
 
 export interface Equipamento {
   id: string;
@@ -12,69 +15,75 @@ export interface Equipamento {
 }
 
 export function useEquipamentos() {
-  const [equipamentos, setEquipamentos] = useState<Equipamento[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { orgId, isLoading: orgLoading } = useRequireOrg();
+  const { userId, isLoading: userLoading } = useAuthUserId();
 
-  const loadEquipamentos = useCallback(async () => {
-    try {
-      setIsLoading(true);
+  const { data: equipamentos = [], isLoading } = useQuery({
+    queryKey: ['equipamentos', orgId, userId],
+    queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
-
-      if (!user) {
-        setEquipamentos([]);
-        return;
-      }
+      if (!user?.id) return [];
+      if (!orgId) return [];
 
       const { data, error } = await supabase
         .from('equipamentos')
         .select('*')
+        .eq('org_id', orgId)
         .eq('user_id', user.id)
-        .order('nome', { ascending: true })
-        .limit(50);
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
+      return data || [];
+    },
+    enabled: !orgLoading && !userLoading && !!orgId && !!userId,
+  });
 
-      // Map Supabase data to Equipamento interface
-      const mappedData: Equipamento[] = (data || []).map(item => ({
-        id: item.id,
-        nome: item.nome,
-        categoria: item.categoria,
-        modelo: item.observacoes || '', // Using observacoes as modelo fallback
-        status: (item.status as any) || 'Disponível',
-        tipo: 'Próprio' // Default to Próprio
-      }));
+  const searchEquipamentos = useCallback(
+    async (query: string) => {
+      if (!orgId || !userId) return [];
 
-      setEquipamentos(mappedData);
-    } catch (error) {
-      console.error('Erro ao carregar equipamentos:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.id) return [];
 
-  // Initial load
-  useEffect(() => {
-    loadEquipamentos();
-  }, [loadEquipamentos]);
+      const { data, error } = await supabase
+        .from('equipamentos')
+        .select('*')
+        .eq('org_id', orgId)
+        .eq('user_id', user.id)
+        .ilike('nome', `%${query}%`)
+        .limit(10);
 
-  const searchEquipamentos = useCallback((searchTerm: string): Equipamento[] => {
-    if (!searchTerm) return equipamentos;
+      if (error) throw error;
+      return data || [];
+    },
+    [orgId, userId]
+  );
 
-    return equipamentos.filter(eq =>
-      eq.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      eq.categoria.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      eq.modelo.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [equipamentos]);
+  const getEquipamentoById = useCallback(
+    async (id: string) => {
+      if (!orgId || !userId) return null;
 
-  const getEquipamentoById = useCallback((id: string): Equipamento | undefined => {
-    return equipamentos.find(eq => eq.id === id);
-  }, [equipamentos]);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.id) return null;
+
+      const { data, error } = await supabase
+        .from('equipamentos')
+        .select('*')
+        .eq('id', id)
+        .eq('org_id', orgId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    [orgId, userId]
+  );
 
   return {
     equipamentos,
+    isLoading: isLoading || orgLoading || userLoading,
     searchEquipamentos,
     getEquipamentoById,
-    isLoading
   };
 }

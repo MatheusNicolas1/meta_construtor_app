@@ -18,6 +18,8 @@ interface AuthContextValue {
   hasAnyRole: (roles: UserRole[]) => boolean;
   refreshSession: () => Promise<void>;
   loading: boolean;
+  // Novo método para atualizar roles externamente (usado pelo OrgContext)
+  updateRoles: (newRoles: UserRole[]) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -29,7 +31,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [roles, setRoles] = useState<UserRole[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Carregar dados do usuário e roles
+  // Carregar dados do usuário (SEM buscar roles - OrgContext fará isso)
   const loadUserData = useCallback(async (authUser: AuthUser) => {
     try {
       // Buscar perfil
@@ -41,32 +43,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (profileError) throw profileError;
 
-      // Buscar roles
-      const { data: userRoles, error: rolesError } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", authUser.id);
-
-      if (rolesError) throw rolesError;
-
-      const rolesList = (userRoles || []).map((r: any) => r.role as UserRole);
+      // NÃO buscar roles aqui - OrgContext já faz isso via org_members
+      // Role será atualizado pelo OrgContext através de updateRoles()
 
       setUser({
         id: authUser.id,
         name: profile?.name || authUser.email || "Usuário",
         email: authUser.email || "",
-        role: rolesList[0] || "Colaborador",
+        role: "Colaborador", // Default - será atualizado pelo OrgContext
         avatar_url: profile?.avatar_url || "",
         createdAt: authUser.created_at,
         updatedAt: profile?.updated_at || authUser.created_at,
       });
 
-      setRoles(rolesList.length > 0 ? rolesList : ["Colaborador"]);
+      // Roles default enquanto OrgContext carrega
+      setRoles(["Colaborador"]);
     } catch (error) {
       console.error("Erro ao carregar dados do usuário:", error);
       setUser(null);
       setRoles([]);
     }
+  }, []);
+
+  // Método para OrgContext atualizar roles
+  const updateRoles = useCallback((newRoles: UserRole[]) => {
+    setRoles(newRoles);
+    // Atualizar também o role principal do user
+    setUser((prev) => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        role: newRoles[0] || "Colaborador",
+      };
+    });
   }, []);
 
   // Configurar listener de autenticação
@@ -208,7 +217,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     hasAnyRole,
     refreshSession,
     loading,
-  }), [session, user, roles, signIn, signOut, hasRole, hasAnyRole, refreshSession, loading]);
+    updateRoles,
+  }), [session, user, roles, signIn, signOut, hasRole, hasAnyRole, refreshSession, loading, updateRoles]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

@@ -4,8 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, TrendingUp, UserPlus } from "lucide-react";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { useRequireOrg } from "@/hooks/requireOrg";
 
 const AdminAcquisitionMetrics = () => {
+  const { orgId, isLoading: orgLoading } = useRequireOrg();
   const { data: newUsersData, isLoading: loadingNewUsers } = useQuery({
     queryKey: ['admin-new-users-30d'],
     queryFn: async () => {
@@ -14,7 +16,7 @@ const AdminAcquisitionMetrics = () => {
         .select('created_at')
         .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
         .order('created_at', { ascending: true });
-      
+
       if (error) throw error;
 
       // Agrupar por dia
@@ -43,15 +45,16 @@ const AdminAcquisitionMetrics = () => {
       const { count: totalUsers, error: userError } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true });
-      
+
       if (userError) throw userError;
 
-      // Usuários que criaram pelo menos 1 RDO
+      // Usuários que criaram pelo menos 1 RDO na org ativa
       const { data: rdoUsers, error: rdoError } = await supabase
         .from('rdos')
         .select('criado_por_id')
+        .eq('org_id', orgId)
         .limit(1000);
-      
+
       if (rdoError) throw rdoError;
 
       const uniqueRdoUsers = new Set(rdoUsers?.map(r => r.criado_por_id)).size;
@@ -62,7 +65,8 @@ const AdminAcquisitionMetrics = () => {
         activeUsers: uniqueRdoUsers,
         conversionRate: Math.round(conversionRate * 10) / 10
       };
-    }
+    },
+    enabled: !orgLoading && !!orgId,
   });
 
   if (loadingNewUsers || loadingConversion) {
@@ -76,7 +80,7 @@ const AdminAcquisitionMetrics = () => {
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-foreground">📈 Aquisição e Crescimento</h2>
-      
+
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -132,26 +136,26 @@ const AdminAcquisitionMetrics = () => {
         <CardContent>
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={newUsersData?.dailyData || []}>
-              <XAxis 
-                dataKey="date" 
+              <XAxis
+                dataKey="date"
                 stroke="hsl(var(--muted-foreground))"
                 fontSize={12}
               />
-              <YAxis 
+              <YAxis
                 stroke="hsl(var(--muted-foreground))"
                 fontSize={12}
               />
-              <Tooltip 
+              <Tooltip
                 contentStyle={{
                   backgroundColor: 'hsl(var(--card))',
                   border: '1px solid hsl(var(--border))',
                   borderRadius: '8px'
                 }}
               />
-              <Line 
-                type="monotone" 
-                dataKey="users" 
-                stroke="hsl(var(--primary))" 
+              <Line
+                type="monotone"
+                dataKey="users"
+                stroke="hsl(var(--primary))"
                 strokeWidth={2}
                 dot={{ fill: 'hsl(var(--primary))' }}
               />

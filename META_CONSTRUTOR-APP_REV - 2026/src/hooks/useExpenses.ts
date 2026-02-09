@@ -2,16 +2,26 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Expense, CreateExpenseData, ApproveExpenseData } from '@/types/expense';
 import { toast } from 'sonner';
+import { useRequireOrg } from '@/hooks/requireOrg';
+import { useMemo } from 'react';
 
 export const useExpenses = (obraId?: string) => {
   const queryClient = useQueryClient();
+  const { orgId, isLoading: orgLoading } = useRequireOrg();
+
+  // Construct queryKey without undefined
+  const expensesQueryKey = useMemo(
+    () => obraId ? ['expenses', orgId, obraId] as const : ['expenses', orgId] as const,
+    [orgId, obraId]
+  );
 
   const { data: expenses, isLoading, error } = useQuery({
-    queryKey: ['expenses', obraId],
+    queryKey: expensesQueryKey,
     queryFn: async () => {
       let query = supabase
         .from('expenses')
         .select('*')
+        .eq('org_id', orgId)
         .order('created_at', { ascending: false });
 
       if (obraId) {
@@ -23,6 +33,7 @@ export const useExpenses = (obraId?: string) => {
       if (error) throw error;
       return data as Expense[];
     },
+    enabled: !orgLoading && !!orgId,
   });
 
   const createExpense = useMutation({
@@ -34,6 +45,7 @@ export const useExpenses = (obraId?: string) => {
         .from('expenses')
         .insert({
           ...expenseData,
+          org_id: orgId,
           user_submitting_id: user.id,
         })
         .select()
@@ -46,12 +58,15 @@ export const useExpenses = (obraId?: string) => {
         .from('obras')
         .select('nome')
         .eq('id', expenseData.obra_id)
+        .eq('org_id', orgId)
         .single();
 
-      // Buscar usuários com roles de Gerente ou Administrador
-      const { data: managers } = await supabase
-        .from('user_roles')
+      // Buscar usuários com roles de Gerente ou Administrador na org ativa
+      const { data: managers } = await (supabase as any)
+        .from('org_members')
         .select('user_id')
+        .eq('org_id', orgId)
+        .eq('status', 'active')
         .in('role', ['Gerente', 'Administrador']);
 
       if (managers && managers.length > 0) {
@@ -68,8 +83,14 @@ export const useExpenses = (obraId?: string) => {
 
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+    onSuccess: (_data, variables) => {
+      // Invalidate the specific query variant that was affected
+      const createdObraId = variables.obra_id;
+      if (createdObraId) {
+        queryClient.invalidateQueries({ queryKey: ['expenses', orgId, createdObraId] });
+      }
+      // Also invalidate the general query
+      queryClient.invalidateQueries({ queryKey: ['expenses', orgId] });
       toast.success('Despesa cadastrada com sucesso!');
     },
     onError: (error: any) => {
@@ -100,6 +121,7 @@ export const useExpenses = (obraId?: string) => {
         .from('expenses')
         .update(updateData)
         .eq('id', id)
+        .eq('org_id', orgId)
         .select('*, obra_id')
         .single();
 
@@ -110,20 +132,24 @@ export const useExpenses = (obraId?: string) => {
         .from('expenses')
         .select('*, obra_id')
         .eq('id', id)
+        .eq('org_id', orgId)
         .single();
 
       const { data: obra } = await supabase
         .from('obras')
         .select('nome, user_id')
         .eq('id', expense?.obra_id)
+        .eq('org_id', orgId)
         .single();
 
       // Criar notificações baseadas no status
       if (approval_status === 'Pending General Manager') {
-        // Notificar Gerente Geral/Administrador
-        const { data: admins } = await supabase
-          .from('user_roles')
+        // Notificar Gerente Geral/Administrador da org ativa
+        const { data: admins } = await (supabase as any)
+          .from('org_members')
           .select('user_id')
+          .eq('org_id', orgId)
+          .eq('status', 'active')
           .eq('role', 'Administrador');
 
         if (admins && admins.length > 0) {
@@ -152,7 +178,12 @@ export const useExpenses = (obraId?: string) => {
       return data;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const key = query.queryKey as unknown[];
+          return key?.[0] === 'expenses' && key?.[1] === orgId;
+        }
+      });
       const statusMap = {
         'Pending General Manager': 'aprovada para o Gerente Geral',
         'Approved': 'aprovada',

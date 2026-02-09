@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Expense, ApprovalStatus, CostCategory } from '@/types/expense';
 import SEO from '@/components/SEO';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useRequireOrg } from '@/hooks/requireOrg';
 
 export default function Despesas() {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -21,17 +22,20 @@ export default function Despesas() {
   const [filterCategory, setFilterCategory] = useState<CostCategory | 'all'>('all');
   const { expenses, isLoading } = useExpenses();
   const { rdo } = usePermissions();
+  const { orgId, isLoading: orgLoading } = useRequireOrg();
 
   const { data: obras } = useQuery({
-    queryKey: ['obras-list'],
+    queryKey: ['obras-list', orgId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('obras')
         .select('id, nome')
+        .eq('org_id', orgId)
         .order('nome');
       if (error) throw error;
       return data || [];
     },
+    enabled: !orgLoading && !!orgId,
   });
 
   const filteredExpenses = expenses?.filter((expense) => {

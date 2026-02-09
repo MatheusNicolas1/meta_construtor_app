@@ -63,27 +63,30 @@ export async function sendNotificationToMultiple(
   }
 }
 
-// Buscar usuários pertinentes a uma obra (Admins e Gerentes)
+// Buscar usuários pertinentes a uma obra (Admins e Gerentes da org ativa)
 export async function getRelevantUsersForObra(
   obraOwnerId: string,
+  orgId: string,
   excludeUserId?: string
 ): Promise<string[]> {
   try {
-    const { data: adminsAndManagers } = await supabase
-      .from('user_roles')
+    const { data: adminsAndManagers } = await (supabase as any)
+      .from('org_members')
       .select('user_id')
+      .eq('org_id', orgId)
+      .eq('status', 'active')
       .in('role', ['Administrador', 'Gerente']);
 
     const userIds = new Set<string>();
-    
+
     // Adicionar owner da obra
     userIds.add(obraOwnerId);
-    
+
     // Adicionar admins e gerentes
     if (adminsAndManagers) {
       adminsAndManagers.forEach(u => userIds.add(u.user_id));
     }
-    
+
     // Remover usuário atual se especificado
     if (excludeUserId) {
       userIds.delete(excludeUserId);
@@ -101,7 +104,8 @@ export async function notifyObraChange(
   currentUserId: string,
   obraName: string,
   action: 'created' | 'updated' | 'deleted',
-  obraId?: string
+  obraId?: string,
+  orgId?: string
 ): Promise<void> {
   const actionTexts = {
     created: { title: 'Nova obra criada', verb: 'foi criada' },
@@ -122,16 +126,18 @@ export async function notifyObraChange(
     route
   });
 
-  // Notificar admins e gerentes
-  const relevantUsers = await getRelevantUsersForObra(currentUserId, currentUserId);
-  if (relevantUsers.length > 0) {
-    await sendNotificationToMultiple(
-      relevantUsers,
-      title,
-      message,
-      'info',
-      route
-    );
+  // Notificar admins e gerentes (se orgId fornecido)
+  if (orgId) {
+    const relevantUsers = await getRelevantUsersForObra(currentUserId, orgId, currentUserId);
+    if (relevantUsers.length > 0) {
+      await sendNotificationToMultiple(
+        relevantUsers,
+        title,
+        message,
+        'info',
+        route
+      );
+    }
   }
 }
 
@@ -141,7 +147,8 @@ export async function notifyRDOChange(
   obraName: string,
   rdoDate: string,
   action: 'created' | 'updated' | 'submitted' | 'approved' | 'rejected' | 'deleted',
-  rdoId?: string
+  rdoId?: string,
+  orgId?: string
 ): Promise<void> {
   const actionTexts = {
     created: { title: 'Novo RDO criado', verb: 'foi criado' },
@@ -166,16 +173,18 @@ export async function notifyRDOChange(
     route
   });
 
-  // Notificar admins e gerentes (especialmente para submissão)
-  const relevantUsers = await getRelevantUsersForObra(currentUserId, currentUserId);
-  if (relevantUsers.length > 0) {
-    await sendNotificationToMultiple(
-      relevantUsers,
-      title,
-      message,
-      action === 'submitted' ? 'warning' : 'info',
-      route
-    );
+  // Notificar admins e gerentes (especialmente para submissão) (se orgId fornecido)
+  if (orgId) {
+    const relevantUsers = await getRelevantUsersForObra(currentUserId, orgId, currentUserId);
+    if (relevantUsers.length > 0) {
+      await sendNotificationToMultiple(
+        relevantUsers,
+        title,
+        message,
+        action === 'submitted' ? 'warning' : 'info',
+        route
+      );
+    }
   }
 }
 
@@ -184,7 +193,8 @@ export async function notifyActivityChange(
   currentUserId: string,
   activityTitle: string,
   action: 'created' | 'updated' | 'deleted',
-  obraId?: string
+  obraId?: string,
+  orgId?: string
 ): Promise<void> {
   const actionTexts = {
     created: { title: 'Nova atividade criada', verb: 'foi criada' },
@@ -204,9 +214,9 @@ export async function notifyActivityChange(
     route: '/dashboard'
   });
 
-  // Se houver obra associada, notificar usuários relevantes
-  if (obraId) {
-    const relevantUsers = await getRelevantUsersForObra(currentUserId, currentUserId);
+  // Se houver obra associada e orgId, notificar usuários relevantes
+  if (obraId && orgId) {
+    const relevantUsers = await getRelevantUsersForObra(currentUserId, orgId, currentUserId);
     if (relevantUsers.length > 0) {
       await sendNotificationToMultiple(
         relevantUsers,

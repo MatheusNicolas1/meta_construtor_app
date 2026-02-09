@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuthUserId } from './useAuthUserId';
 
 export interface CreateFornecedorData {
   nome: string;
@@ -16,9 +17,10 @@ export interface CreateFornecedorData {
 
 export const useFornecedores = () => {
   const queryClient = useQueryClient();
+  const { userId, isLoading: userLoading } = useAuthUserId();
 
   const fornecedoresQuery = useQuery({
-    queryKey: ['fornecedores'],
+    queryKey: ['fornecedores', userId],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuário não autenticado');
@@ -32,6 +34,7 @@ export const useFornecedores = () => {
       if (error) throw error;
       return data || [];
     },
+    enabled: !!userId,
   });
 
   const createFornecedor = useMutation({
@@ -53,7 +56,7 @@ export const useFornecedores = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['fornecedores'] });
+      queryClient.invalidateQueries({ queryKey: ['fornecedores'], exact: false });
       toast.success('Fornecedor cadastrado com sucesso!');
     },
     onError: (error) => {
@@ -75,7 +78,7 @@ export const useFornecedores = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['fornecedores'] });
+      queryClient.invalidateQueries({ queryKey: ['fornecedores'], exact: false });
       toast.success('Fornecedor atualizado com sucesso!');
     },
     onError: (error) => {
@@ -94,7 +97,7 @@ export const useFornecedores = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['fornecedores'] });
+      queryClient.invalidateQueries({ queryKey: ['fornecedores'], exact: false });
       toast.success('Fornecedor excluído com sucesso!');
     },
     onError: (error) => {
@@ -105,7 +108,7 @@ export const useFornecedores = () => {
 
   return {
     fornecedores: fornecedoresQuery.data || [],
-    isLoading: fornecedoresQuery.isLoading,
+    isLoading: fornecedoresQuery.isLoading || userLoading,
     error: fornecedoresQuery.error,
     createFornecedor,
     updateFornecedor,

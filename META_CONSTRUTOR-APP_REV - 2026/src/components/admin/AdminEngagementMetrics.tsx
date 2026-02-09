@@ -4,8 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity, Clock, UserX, CheckCircle } from "lucide-react";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { useRequireOrg } from "@/hooks/requireOrg";
 
 const AdminEngagementMetrics = () => {
+  const { orgId, isLoading: orgLoading } = useRequireOrg();
   const { data: menuData, isLoading: loadingMenu } = useQuery({
     queryKey: ['admin-menu-engagement'],
     queryFn: async () => {
@@ -14,7 +16,7 @@ const AdminEngagementMetrics = () => {
         .select('event_name')
         .like('event_name', 'view_%')
         .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
-      
+
       if (error) throw error;
 
       // Contar visualizações por menu
@@ -26,9 +28,9 @@ const AdminEngagementMetrics = () => {
 
       // Converter para array e ordenar
       const menuArray = Object.entries(menuCounts)
-        .map(([name, count]) => ({ 
-          name: name.charAt(0).toUpperCase() + name.slice(1), 
-          views: count as number 
+        .map(([name, count]) => ({
+          name: name.charAt(0).toUpperCase() + name.slice(1),
+          views: count as number
         }))
         .sort((a, b) => b.views - a.views);
 
@@ -43,22 +45,23 @@ const AdminEngagementMetrics = () => {
       const { data: credits, error } = await supabase
         .from('user_credits')
         .select('credits_balance, created_at, user_id');
-      
+
       if (error) throw error;
 
-      // Buscar RDOs para calcular tempo médio de consumo
+      // Buscar RDOs para calcular tempo médio de consumo (filtrado por org)
       const { data: rdos } = await supabase
         .from('rdos')
         .select('criado_por_id, created_at')
+        .eq('org_id', orgId)
         .limit(100);
 
       // Calcular média de dias para usar primeiro crédito
-      const avgDays = rdos && credits ? 
+      const avgDays = rdos && credits ?
         rdos.reduce((sum, rdo) => {
           const userCredit = credits.find(c => c.user_id === rdo.criado_por_id);
           if (userCredit) {
             const daysDiff = Math.floor(
-              (new Date(rdo.created_at).getTime() - new Date(userCredit.created_at).getTime()) 
+              (new Date(rdo.created_at).getTime() - new Date(userCredit.created_at).getTime())
               / (1000 * 60 * 60 * 24)
             );
             return sum + Math.max(0, daysDiff);
@@ -72,7 +75,8 @@ const AdminEngagementMetrics = () => {
         avgDaysToFirstUse: Math.round(avgDays * 10) / 10,
         activeUsers
       };
-    }
+    },
+    enabled: !orgLoading && !!orgId,
   });
 
   const { data: onboardingData, isLoading: loadingOnboarding } = useQuery({
@@ -81,7 +85,7 @@ const AdminEngagementMetrics = () => {
       const { data: profiles, error } = await supabase
         .from('profiles')
         .select('has_seen_onboarding');
-      
+
       if (error) throw error;
 
       const completed = profiles?.filter(p => p.has_seen_onboarding).length || 0;
@@ -107,7 +111,7 @@ const AdminEngagementMetrics = () => {
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-foreground">💡 Engajamento e Retenção</h2>
-      
+
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -167,24 +171,24 @@ const AdminEngagementMetrics = () => {
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={menuData?.slice(0, 8) || []}>
-              <XAxis 
-                dataKey="name" 
+              <XAxis
+                dataKey="name"
                 stroke="hsl(var(--muted-foreground))"
                 fontSize={12}
               />
-              <YAxis 
+              <YAxis
                 stroke="hsl(var(--muted-foreground))"
                 fontSize={12}
               />
-              <Tooltip 
+              <Tooltip
                 contentStyle={{
                   backgroundColor: 'hsl(var(--card))',
                   border: '1px solid hsl(var(--border))',
                   borderRadius: '8px'
                 }}
               />
-              <Bar 
-                dataKey="views" 
+              <Bar
+                dataKey="views"
                 fill="hsl(var(--primary))"
                 radius={[8, 8, 0, 0]}
               />

@@ -4,15 +4,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2, TrendingUp, DollarSign, Calendar, FileText, Users, Wrench } from "lucide-react";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { Progress } from "@/components/ui/progress";
+import { useRequireOrg } from "@/hooks/requireOrg";
 
 const AdminOperationalMetrics = () => {
+    const { orgId, isLoading: orgLoading } = useRequireOrg();
+
     const { data: metrics, isLoading } = useQuery({
-        queryKey: ['admin-operational-metrics'],
+        queryKey: ['admin-operational-metrics', orgId],
         queryFn: async () => {
             // 1. Obras (Total, Progresso Médio, Orçamento Previsto, Prazo Médio)
             const { data: obras, error: obrasError } = await supabase
                 .from('obras')
-                .select('*');
+                .select('*')
+                .eq('org_id', orgId);
 
             if (obrasError) throw obrasError;
 
@@ -46,11 +50,12 @@ const AdminOperationalMetrics = () => {
             const prazoMedio = obrasComPrazo > 0 ? Math.round(totalDiasRestantes / obrasComPrazo) : 0;
 
 
-            // 2. Orçamento Executado (Despesas Aprovadas)
+            // 2. Orçamento Executado (Despesas Aprovadas na org ativa)
             // @ts-ignore
             const { data: expenses, error: expenseError } = await supabase
-                .from('expenses') // Ensure table name matches schema, usually 'expenses' or check Despesas page
+                .from('expenses')
                 .select('amount')
+                .eq('org_id', orgId)
                 .eq('approval_status', 'Approved');
 
             // If chart/table doesn't exist, handle gracefully
@@ -59,9 +64,9 @@ const AdminOperationalMetrics = () => {
                 : 0;
 
             // 3. Totais (RDOs, Colaboradores, Equipamentos)
-            const { count: totalRDOs } = await supabase.from('rdos').select('*', { count: 'exact', head: true });
-            const { count: totalColaboradores } = await supabase.from('profiles').select('*', { count: 'exact', head: true }); // Assuming all profiles are cols
-            const { count: totalEquipamentos } = await supabase.from('equipamentos').select('*', { count: 'exact', head: true });
+            const { count: totalRDOs } = await supabase.from('rdos').select('*', { count: 'exact', head: true }).eq('org_id', orgId);
+            const { count: totalColaboradores } = await (supabase as any).from('org_members').select('*', { count: 'exact', head: true }).eq('org_id', orgId).eq('status', 'active');
+            const { count: totalEquipamentos } = await supabase.from('equipamentos').select('*', { count: 'exact', head: true }).eq('org_id', orgId);
 
             return {
                 totalObras,
@@ -73,7 +78,8 @@ const AdminOperationalMetrics = () => {
                 totalColaboradores: totalColaboradores || 0,
                 totalEquipamentos: totalEquipamentos || 0
             };
-        }
+        },
+        enabled: !orgLoading && !!orgId,
     });
 
     if (isLoading) {

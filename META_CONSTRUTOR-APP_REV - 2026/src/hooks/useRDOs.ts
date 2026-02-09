@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { notifyRDOChange } from '@/utils/notificationService';
+import { useRequireOrg } from '@/hooks/requireOrg';
 
 export interface CreateRDOData {
   obra_id: string;
@@ -16,22 +17,26 @@ export interface CreateRDOData {
 
 export const useRDOs = () => {
   const queryClient = useQueryClient();
+  const { orgId, isLoading: orgLoading } = useRequireOrg();
 
   // Realtime subscription for RDOs updates
   useEffect(() => {
+    if (!orgId) return;
+
     const channel = supabase
-      .channel('rdos-realtime')
+      .channel(`rdos-realtime-${orgId}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'rdos'
+          table: 'rdos',
+          filter: `org_id=eq.${orgId}`
         },
         (payload) => {
           console.log('RDOs realtime update:', payload);
-          queryClient.invalidateQueries({ queryKey: ['rdos'] });
-          queryClient.invalidateQueries({ queryKey: ['recent-rdos'] });
+          queryClient.invalidateQueries({ queryKey: ['rdos', orgId] });
+          queryClient.invalidateQueries({ queryKey: ['recent-rdos', orgId] });
         }
       )
       .subscribe();
@@ -39,10 +44,10 @@ export const useRDOs = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [queryClient]);
+  }, [queryClient, orgId]);
 
   const rdosQuery = useQuery({
-    queryKey: ['rdos'],
+    queryKey: ['rdos', orgId],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuário não autenticado');
@@ -53,13 +58,14 @@ export const useRDOs = () => {
           *,
           obras (nome)
         `)
-        .eq('criado_por_id', user.id)
+        .eq('org_id', orgId)
         .order('created_at', { ascending: false })
         .limit(20);
 
       if (error) throw error;
       return data || [];
     },
+    enabled: !orgLoading && !!orgId,
   });
 
   const createRDO = useMutation({
@@ -71,6 +77,7 @@ export const useRDOs = () => {
         .from('rdos')
         .insert({
           ...rdoData,
+          org_id: orgId,
           criado_por_id: user.id,
           status: 'Em elaboração',
         })
@@ -86,8 +93,8 @@ export const useRDOs = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rdos'] });
-      queryClient.invalidateQueries({ queryKey: ['recent-rdos'] });
+      queryClient.invalidateQueries({ queryKey: ['rdos', orgId] });
+      queryClient.invalidateQueries({ queryKey: ['recent-rdos', orgId] });
       toast.success('RDO criado com sucesso!');
     },
     onError: (error) => {
@@ -105,6 +112,7 @@ export const useRDOs = () => {
         .from('rdos')
         .update(updateData)
         .eq('id', id)
+        .eq('org_id', orgId)
         .select(`*, obras (nome)`)
         .single();
 
@@ -117,8 +125,8 @@ export const useRDOs = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rdos'] });
-      queryClient.invalidateQueries({ queryKey: ['recent-rdos'] });
+      queryClient.invalidateQueries({ queryKey: ['rdos', orgId] });
+      queryClient.invalidateQueries({ queryKey: ['recent-rdos', orgId] });
       toast.success('RDO atualizado com sucesso!');
     },
     onError: (error) => {
@@ -136,6 +144,7 @@ export const useRDOs = () => {
         .from('rdos')
         .update({ status: 'Aguardando aprovação' })
         .eq('id', id)
+        .eq('org_id', orgId)
         .select(`*, obras (nome)`)
         .single();
 
@@ -148,7 +157,7 @@ export const useRDOs = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rdos'] });
+      queryClient.invalidateQueries({ queryKey: ['rdos', orgId] });
       toast.success('RDO enviado para aprovação!');
     },
     onError: (error) => {
@@ -167,12 +176,14 @@ export const useRDOs = () => {
         .from('rdos')
         .select(`*, obras (nome)`)
         .eq('id', id)
+        .eq('org_id', orgId)
         .single();
 
       const { error } = await supabase
         .from('rdos')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('org_id', orgId);
 
       if (error) throw error;
 
@@ -183,8 +194,8 @@ export const useRDOs = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rdos'] });
-      queryClient.invalidateQueries({ queryKey: ['recent-rdos'] });
+      queryClient.invalidateQueries({ queryKey: ['rdos', orgId] });
+      queryClient.invalidateQueries({ queryKey: ['recent-rdos', orgId] });
       toast.success('RDO excluído com sucesso!');
     },
     onError: (error) => {

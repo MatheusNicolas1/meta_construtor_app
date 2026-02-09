@@ -154,9 +154,9 @@ MILESTONE 4 — PLANOS, PREÇOS E ASSINATURAS (BILLING) (P0)
 4.1 Fonte única de planos/preços (sem hardcode)
 
 * Remover preços fixos do frontend e buscar do backend/tabela pública controlada
-  STATUS:
-  VALIDAÇÃO:
-  EVIDÊNCIA:
+  STATUS: DONE (2026-02-08)
+  VALIDAÇÃO: SELECT slug, name, monthly_price_cents/100.0 as monthly_brl FROM public.plans ORDER BY display_order; (retorna 6 planos: free, basic, professional, master, premium, business). RLS verificado: SELECT relrowsecurity, relforcerowsecurity FROM pg_class WHERE relname='plans' (t, f = RLS enabled, FORCE disabled).
+  EVIDÊNCIA: Migration supabase/migrations/20260208220000_create_plans_table.sql criada. Tabela public.plans com 13 colunas (id, slug, name, monthly_price_cents, yearly_price_cents, stripe_price_id_monthly, stripe_price_id_yearly, description, features JSONB, is_active, is_popular, display_order, max_users, max_obras, trial_days). Preços armazenados como INTEGER cents (12990 = R$ 129,90). RLS policy "Plans são públicos para leitura" (SELECT permitido para is_active=true). Indexes: idx_plans_slug, idx_plans_active, idx_plans_order. Seed de 6 planos realizado. Frontend ainda não conectado (próximo passo: edge function ou view pública).
 
 4.2 Criar tabela plans e subscriptions (por org)
 

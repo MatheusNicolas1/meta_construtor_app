@@ -92,9 +92,9 @@ MILESTONE 2 — AUTENTICAÇÃO E AUTORIZAÇÃO SERVER-SIDE (IDENTIDADE CONFIÁVE
 2.1 Autenticação (login e sessão)
 
 * Implementar auth real (tokens/sessão) e persistência do usuário no banco
-  STATUS: DONE
-  VALIDAÇÃO: Migration 20260206160000_update_handle_new_user.sql criada. Trigger handle_new_user atualizado para criar automaticamente: 1) Profile, 2) Organização Pessoal (tb orgs), 3) Membership Admin (tb org_members), 4) Records legados (user_roles, credits). Garante que novos usuários nasçam com estrutura multi-tenant pronta. Frontend já utiliza AuthWrapper/AuthContext com persistência de sessão do Supabase (localStorage padrao). Typecheck e Build aprovados.
-  EVIDÊNCIA: supabase/migrations/20260206160000_update_handle_new_user.sql, src/components/auth/AuthContext.tsx revisado.
+  STATUS: DONE (2026-02-08)
+  VALIDAÇÃO: Trigger handle_new_user corrigido após falha de signup (erro 500). Root cause: user_roles.user_id sem constraint UNIQUE, causando erro "no unique or exclusion constraint matching ON CONFLICT specification 42P10". Migrations criadas: 1) user_settings/user_credits tables + RLS, 2) profiles columns (cpf_cnpj, plan_type, referral_code), 3) user_roles UNIQUE constraint. Signup testado end-to-end via scripts/test-signup.js com sucesso - todas 5 tabelas (profiles, orgs, org_members, user_settings, user_credits) populadas corretamente.
+  EVIDÊNCIA: Migrations 20260208210000_add_missing_user_tables.sql, 20260208211000_add_missing_profile_columns.sql, 20260208212000_fix_user_roles_constraint.sql. Teste automated: scripts/test-signup.js (count=1 em todas tabelas). Commit: fix(auth): restore handle_new_user signup path (b95487c)
 
 2.2 Papéis (RBAC) como regra de backend
 
@@ -130,25 +130,23 @@ MILESTONE 3 — RLS TOTAL (ENFORCEMENT REAL NO BANCO) (P0)
 3.2 Policies por org_id (isolamento)
 
 * Policies SELECT/INSERT/UPDATE/DELETE garantindo isolamento por org_id
-  STATUS: PARTIAL
-  VALIDAÇÃO: Migration 20260206183000_rls_isolation.sql criada. Script de teste (scripts/test-rls.js) atualizado com validações de isolamento e role.
-  BLOCKER: Docker Desktop não disponível no ambiente (necessário para `npx supabase start`). Sem ambiente local funcional, não é possível validar RLS antes de aplicar no ambiente remoto (regra de segurança). Aplicação remota bloqueada por falta de SERVICE_ROLE_KEY.
-  EVIDÊNCIA: Comando `npx supabase start` falhou com "Docker Desktop is a prerequisite".
+  STATUS: DONE (2026-02-08)
+  VALIDAÇÃO: Migration 20260206183000_rls_isolation.sql aplicada. Teste automatizado via scripts/test-rls.js usando real user JWT sessions (signUp). 4 testes executados: (1) Cross-org SELECT retorna 0 rows, (2) Same-org SELECT sucesso, (3) Cross-org UPDATE bloqueado (0 rows affected), (4) Cross-org DELETE bloqueado (row exists). Todas policies funcionando corretamente. 31 RLS policies ativas em 7 tabelas (obras, rdos, atividades, expenses, orgs, org_members, profiles).
+  EVIDÊNCIA: scripts/test-rls.js (Tests 3.2.1-3.2.4 PASS), pg_policies query (31 policies), Commit: test(rls): validate org isolation + roles (5a2116b)
 
 3.3 Policies por role (Admin/Gerente/Colaborador)
 
 * Refinar policies para limitar ações por papel (ex.: colaborador não exclui obra)
-  STATUS: PARTIAL
-  VALIDAÇÃO: Migration 20260206190000_rls_roles.sql criada. Testes de role incluídos em scripts/test-rls.js.
-  BLOCKER: Depende da 3.2 (ambiente de teste funcional).
-  EVIDÊNCIA: supabase/migrations/20260206190000_rls_roles.sql, scripts/test-rls.js (linhas 60-75 testam delete de Colaborador vs Admin).
+  STATUS: DONE (2026-02-08)
+  VALIDAÇÃO: Migration 20260206190000_rls_roles.sql aplicada. Teste automatizado via scripts/test-rls.js com 3 testes: (1) Colaborador pode ler org data (SELECT allowed), (2) Colaborador NÃO pode deletar obra (Admin-only blocked), (3) Admin pode deletar com sucesso. Role enforcement via has_org_role() helper em RLS policies DELETE verificado.
+  EVIDÊNCIA: scripts/test-rls.js (Tests 3.3.1-3.3.3 PASS), Commit: test(rls): validate org isolation + roles (5a2116b)
 
 3.4 Teste de ataque (API direta)
 
 * Testar acesso cruzado e transações proibidas via requisição manual (sem UI)
-  STATUS:
-  VALIDAÇÃO:
-  EVIDÊNCIA:
+  STATUS: DONE (2026-02-08)
+  VALIDAÇÃO: Script attack-rls.js criado com 5 vetores de ataque usando real user JWT + direct API calls: (1) Cross-org read by ID → BLOCKED (null), (2) Cross-org read by filter → BLOCKED (0 rows), (3) Cross-org update → BLOCKED (no change), (4) Cross-org delete → BLOCKED (row exists), (5) Role-restricted delete (Colaborador) → BLOCKED (Admin-only). Resultado: 5/5 ataques bloqueados - RLS secure.
+  EVIDÊNCIA: scripts/attack-rls.js (ALL ATTACKS BLOCKED), Commit: test(security): add direct RLS attack script (commit hash pending)
 
 ======================================================================
 

@@ -161,9 +161,9 @@ MILESTONE 4 — PLANOS, PREÇOS E ASSINATURAS (BILLING) (P0)
 4.2 Criar tabela plans e subscriptions (por org)
 
 * Criar plans (com stripe_price_id) e subscriptions (status, período, org_id)
-  STATUS:
-  VALIDAÇÃO:
-  EVIDÊNCIA:
+  STATUS: DONE (2026-02-08)
+  VALIDAÇÃO: \d public.subscriptions (mostra 14 colunas + FKs para orgs/plans). SELECT policyname FROM pg_policies WHERE tablename='subscriptions' (retorna 2 policies: read + admin manage).
+  EVIDÊNCIA: Migration supabase/migrations/20260208230000_create_subscriptions_table.sql criada. Tabela subscriptions com org_id FK CASCADE, plan_id FK RESTRICT, stripe_subscription_id UNIQUE, stripe_customer_id, status (ENUM: active/trialing/canceled/etc), current_period_start/end, trial_end, canceled_at, billing_cycle (monthly/yearly). EXCLUDE constraint garante apenas 1 subscription ativa por org. RLS policies: "Users can read org subscriptions" (SELECT via org_members), "Org admins can manage subscriptions" (ALL para Administrador). Indexes: idx_subscriptions_org_id, idx_subscriptions_plan_id, idx_subscriptions_status, idx_subscriptions_stripe_sub, idx_subscriptions_stripe_cust.
 
 4.3 Criar Checkout Session server-side
 

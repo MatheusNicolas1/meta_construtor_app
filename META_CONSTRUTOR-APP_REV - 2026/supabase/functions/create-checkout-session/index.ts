@@ -9,21 +9,7 @@ const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
   httpClient: Stripe.createFetchHttpClient(),
 })
 
-// Price ID mapping
-const PRICE_IDS: Record<string, Record<string, string>> = {
-  basic: {
-    monthly: 'price_1Spd6ICHfNdO9jxNRYj10lkA',
-    yearly: 'price_1SpdABCHfNdO9jxNzVu49NDP',
-  },
-  professional: {
-    monthly: 'price_1Spd7HCHfNdO9jxN3PKJJdyv',
-    yearly: 'price_1Spd9UCHfNdO9jxNMXy1MQs4',
-  },
-  master: {
-    monthly: 'price_1Spd7xCHfNdO9jxNiUbb0PKG',
-    yearly: 'price_1Spd8ZCHfNdO9jxNIcxjZJBm',
-  },
-}
+// M4.3: Price IDs now come from database (plans table)
 
 serve(async (req) => {
   const requestId = crypto.randomUUID();
@@ -42,12 +28,41 @@ serve(async (req) => {
     const user = await requireAuth(supabaseClient)
     user_id = user.id;
 
-    const { plan, billing = 'monthly' } = await req.json()
+    const { plan, billing = 'monthly', org_id } = await req.json()
 
-    // Get or validate price ID
-    const priceId = PRICE_IDS[plan]?.[billing]
+    // M4.3: Get price ID from plans table
+    const priceField = billing === 'monthly' ? 'stripe_price_id_monthly' : 'stripe_price_id_yearly'
+    const { data: planData, error: planError } = await supabaseClient
+      .from('plans')
+      .select(`id, ${priceField}`)
+      .eq('slug', plan)
+      .eq('is_active', true)
+      .single()
+
+    if (planError || !planData) {
+      throw new Error(`Plan not found or inactive: ${plan}`)
+    }
+
+    const priceId = planData[priceField as keyof typeof planData] as string
     if (!priceId) {
-      throw new Error(`Invalid plan: ${plan} or billing: ${billing}`)
+      throw new Error(`Stripe price ID not configured for plan ${plan} (${billing})`)
+    }
+
+    // M4.3: Get user's org_id (use provided org_id or fallback to personal org)
+    let targetOrgId = org_id
+    if (!targetOrgId) {
+      // Get user's personal org (where they are owner)
+      const { data: personalOrg } = await supabaseClient
+        .from('orgs')
+        .select('id')
+        .eq('owner_user_id', user.id)
+        .single()
+
+      if (personalOrg) {
+        targetOrgId = personalOrg.id
+      } else {
+        throw new Error('No org found for user')
+      }
     }
 
     // Get user profile
@@ -95,6 +110,8 @@ serve(async (req) => {
       metadata: {
         request_id: requestId,
         user_id: user.id,
+        org_id: targetOrgId,
+        plan_id: planData.id,
         plan: plan,
         billing: billing,
       },

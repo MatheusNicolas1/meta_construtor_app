@@ -168,9 +168,9 @@ MILESTONE 4 — PLANOS, PREÇOS E ASSINATURAS (BILLING) (P0)
 4.3 Criar Checkout Session server-side
 
 * Endpoint/edge cria Checkout Session com stripe_price_id válido e metadados (org_id, user_id)
-  STATUS:
-  VALIDAÇÃO:
-  EVIDÊNCIA:
+  STATUS: DONE (2026-02-09)
+  VALIDAÇÃO: Code review da edge function create-checkout-session/index.ts. Busca stripe_price_id da tabela plans (eliminou hardcode). Metadata inclui: user_id, org_id, plan_id, plan, billing, request_id.
+  EVIDÊNCIA: Edge function supabase/functions/create-checkout-session/index.ts atualizada. Removido PRICE_IDS hardcode (linhas 12-26). Agora busca plans table: SELECT id, stripe_price_id_monthly/yearly FROM plans WHERE slug=? AND is_active=true. Obtém org_id do payload ou fallback para personal org (owner_user_id). Metadata da Stripe Checkout Session inclui: user_id, org_id, plan_id (UUID do plans), plan (slug), billing (monthly/yearly), request_id (UUID tracking). Guards: requireAuth aplicado. Error handling para plan not found, inactive, ou missing price_id.
 
 4.4 Webhook Stripe com validação e idempotência
 

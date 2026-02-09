@@ -76,10 +76,9 @@ serve(async (req) => {
                     const session = event.data.object as Stripe.Checkout.Session
                     const userId = session.client_reference_id || session.metadata?.user_id
                     const orgId = session.metadata?.org_id
-                    const planId = session.metadata?.plan_id
 
-                    if (!userId || !orgId || !planId) {
-                        console.error('Missing metadata in checkout session')
+                    if (!userId || !orgId) {
+                        console.error('Missing user_id or org_id in checkout session metadata')
                         break
                     }
 
@@ -87,19 +86,51 @@ serve(async (req) => {
                         session.subscription as string
                     )
 
+                    // M4 STEP 2: Map Stripe price_id to plan_id (do not trust metadata alone)
+                    const priceId = subscription.items.data[0]?.price.id
+                    if (!priceId) {
+                        console.error('No price_id found in subscription items')
+                        break
+                    }
+
+                    // Find plan by matching stripe_price_id_monthly or stripe_price_id_yearly
+                    const { data: monthlyPlan } = await supabaseAdmin
+                        .from('plans')
+                        .select('id, slug, stripe_price_id_monthly, stripe_price_id_yearly')
+                        .eq('stripe_price_id_monthly', priceId)
+                        .eq('is_active', true)
+                        .single()
+
+                    const { data: yearlyPlan } = await supabaseAdmin
+                        .from('plans')
+                        .select('id, slug, stripe_price_id_monthly, stripe_price_id_yearly')
+                        .eq('stripe_price_id_yearly', priceId)
+                        .eq('is_active', true)
+                        .single()
+
+                    const plan = monthlyPlan || yearlyPlan
+                    const billingCycle = monthlyPlan ? 'monthly' : 'yearly'
+
+                    if (!plan) {
+                        console.error(`Plan not found for price_id: ${priceId}`)
+                        break
+                    }
+
+                    console.log(`✓ Mapped price_id ${priceId} → plan ${plan.slug} (${plan.id}) [${billingCycle}]`)
+
                     // M4.5: Write subscription truth to DB
                     const { error: subError } = await supabaseAdmin
                         .from('subscriptions')
                         .upsert({
                             org_id: orgId,
-                            plan_id: planId,
+                            plan_id: plan.id, // from price_id mapping, not metadata
                             stripe_subscription_id: subscription.id,
                             stripe_customer_id: session.customer as string,
                             status: subscription.status as any,
                             current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
                             current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
                             trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
-                            billing_cycle: session.metadata?.billing || 'monthly',
+                            billing_cycle: billingCycle,
                         }, { onConflict: 'stripe_subscription_id' })
 
                     if (subError) {
@@ -114,7 +145,7 @@ serve(async (req) => {
                             stripe_customer_id: session.customer as string,
                             stripe_subscription_id: subscription.id,
                             subscription_status: subscription.status,
-                            plan_type: session.metadata?.plan || 'basic',
+                            plan_type: plan.slug, // from mapping, not metadata
                         })
                         .eq('id', userId)
 

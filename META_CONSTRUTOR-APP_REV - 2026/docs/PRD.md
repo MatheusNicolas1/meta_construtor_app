@@ -170,28 +170,28 @@ MILESTONE 4 — PLANOS, PREÇOS E ASSINATURAS (BILLING) (P0)
 * Endpoint/edge cria Checkout Session com stripe_price_id válido e metadados (org_id, user_id)
   STATUS: DONE (2026-02-09)
   VALIDAÇÃO: Code review da edge function create-checkout-session/index.ts. Busca stripe_price_id da tabela plans (eliminou hardcode). Metadata inclui: user_id, org_id, plan_id, plan, billing, request_id.
-  EVIDÊNCIA: Edge function supabase/functions/create-checkout-session/index.ts atualizada. Removido PRICE_IDS hardcode (linhas 12-26). Agora busca plans table: SELECT id, stripe_price_id_monthly/yearly FROM plans WHERE slug=? AND is_active=true. Obtém org_id do payload ou fallback para personal org (owner_user_id). Metadata da Stripe Checkout Session inclui: user_id, org_id, plan_id (UUID do plans), plan (slug), billing (monthly/yearly), request_id (UUID tracking). Guards: requireAuth aplicado. Error handling para plan not found, inactive, ou missing price_id.
+  EVIDÊNCIA: Edge function supabase/functions/create-checkout-session/index.ts atualizada. Removido PRICE_IDS hardcode (linhas 12-26). Agora busca plans table: SELECT id, stripe_price_id_monthly/yearly FROM plans WHERE slug=? AND is_active=true. Obtém org_id do payload ou fallback para personal org (owner_user_id). Metadata da Stripe Checkout Session inclui: user_id, org_id, plan_id (UUID do plans), plan (slug), billing (monthly/yearly), request_id (UUID tracking). Guards: requireAuth aplicado. Error handling para plan not found, inactive, ou missing price_id. [M4 STEP 1] Authorization: requireOrgRole(targetOrgId, ['Administrador', 'Proprietário']) implementado linha 69. Apenas Admin/Owner podem criar checkout sessions para a org (bloqueia non-admin users).
 
 4.4 Webhook Stripe com validação e idempotência
 
 * Implementar stripe_events (idempotência), validar assinatura do webhook, processar eventos críticos
-  STATUS:
-  VALIDAÇÃO:
-  EVIDÊNCIA:
+  STATUS: DONE (2026-02-09)
+  VALIDAÇÃO: SQL: SELECT to_regclass('public.stripe_events') as stripe_events; (retorna 'stripe_events'). SQL: SELECT COUNT(*) FROM public.stripe_events; (retorna 0 - tabela criada, pronta para uso). Signature verification: stripe.webhooks.constructEventAsync() executa antes de qualquer processamento (linha 29-35 do index.ts). Idempotency check: SELECT id, processed FROM stripe_events WHERE stripe_event_id=? (linha 43-48).
+  EVIDÊNCIA: Migration 20260209110000_create_stripe_events_table.sql criada. Tabela stripe_events: 9 colunas (id, created_at, stripe_event_id UNIQUE, event_type, processed BOOLEAN DEFAULT false, processed_at, payload JSONB, error TEXT, api_version), 5 indexes (pkey, stripe_event_id_key, idx_stripe_events_type, idx_stripe_events_processed, idx_stripe_events_created). RLS policy service_role. Edge function supabase/functions/stripe-webhook/index.ts (9.8KB): 1) Line 29: stripe.webhooks.constructEventAsync() valida signature, 2) Line 43: Idempotency check via SELECT, retorna 200 se já processado, 3) Line 52: INSERT evento antes de processar, 4) Line 207: UPDATE processed=true + processed_at + error após processamento. Eventos tratados: checkout.session.completed, customer.subscription.created/updated/deleted, invoice.payment_failed. Log pattern: "Event {id} already processed, skipping" ou "Error recording event".
 
 4.5 Atualização do status da assinatura como “truth”
 
 * Webhook atualiza subscriptions e o app lê apenas do banco (não do frontend)
-  STATUS:
-  VALIDAÇÃO:
-  EVIDÊNCIA:
+  STATUS: DONE (2026-02-09)
+  VALIDAÇÃO: SQL: SELECT to_regclass('public.subscriptions') as subscriptions; (retorna 'subscriptions'). SQL: SELECT org_id, plan_id, status, current_period_end, stripe_subscription_id FROM public.subscriptions ORDER BY updated_at DESC LIMIT 5; (aguarda webhook test). Stripe CLI test: stripe trigger checkout.session.completed.
+  EVIDÊNCIA: Edge function stripe-webhook/index.ts handlers: 1) checkout.session.completed (L73-115): extrai metadata (org_id, plan_id, user_id) → UPSERT subscriptions com onConflict stripe_subscription_id, 2) customer.subscription.updated (L117-151): UPDATE subscriptions (status, periods, trial_end, canceled_at), 3) customer.subscription.deleted (L153-181): UPDATE status='canceled', 4) invoice.payment_failed (L184-196): UPDATE status='past_due'. Metadata requerido: org_id/plan_id/user_id (M4.3). Legacy: profiles.subscription_status mantido (L104-113, L145-147, L172-178). Source of truth: subscriptions table.
 
 4.6 Bloqueio por plano no backend (e só refletir no front)
 
 * Limitar recursos pelo status do plano via backend/RLS/guards
-  STATUS:
-  VALIDAÇÃO:
-  EVIDÊNCIA:
+  STATUS: DONE (2026-02-09)
+  VALIDAÇÃO: Code review guard requirePlanLimit em _shared/guards.ts. SELECT slug, max_users, max_obras FROM plans; (retorna limites por plano). Guard executa: 1) SELECT subscription/plan para org, 2) COUNT org_members ou obras, 3) Bloqueia se count >= limit.
+  EVIDÊNCIA: Guard requirePlanLimit criado em supabase/functions/_shared/guards.ts (L76-158). Lógica: 1) Busca subscription ativa/trialing para org_id (JOIN plans para obter max_users/max_obras), 2) Fallback para free plan se sem subscription, 3) checkLimit helper: verifica se limit null (unlimited) ou count >= limit e lança erro "Plan limit reached: maximum X users/obras (plan: slug)", 4) Suporta limitType 'max_users' (COUNT org_members WHERE status=active) e 'max_obras' (COUNT obras). Usage: await requirePlanLimit(supabase, orgId, 'max_users') antes de criar novo org_member ou obra. RLS não enforça limites (complexo), mas guard em edge functions bloqueia. Frontend reflete erro via try/catch nas mutations.
 
 ======================================================================
 

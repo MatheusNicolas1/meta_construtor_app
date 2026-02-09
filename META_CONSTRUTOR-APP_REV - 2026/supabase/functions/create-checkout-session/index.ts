@@ -2,7 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import Stripe from 'https://esm.sh/stripe@14.21.0?target=deno'
 import { corsHeaders } from '../_shared/cors.ts'
 import { createScopedClient } from '../_shared/supabase-client.ts'
-import { requireAuth, logRequest } from '../_shared/guards.ts'
+import { requireAuth, requireOrgRole, logRequest } from '../_shared/guards.ts'
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
   apiVersion: '2023-10-16',
@@ -64,6 +64,9 @@ serve(async (req) => {
         throw new Error('No org found for user')
       }
     }
+
+    // M4 STEP 1: Require Admin or Owner role for the target org
+    await requireOrgRole(supabaseClient, targetOrgId, ['Administrador', 'Proprietário'])
 
     // Get user profile
     const { data: profile, error: profileError } = await supabaseClient

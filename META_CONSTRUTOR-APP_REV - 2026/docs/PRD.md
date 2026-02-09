@@ -220,6 +220,20 @@ MILESTONE 4 — PLANOS, PREÇOS E ASSINATURAS (BILLING) (P0)
   VALIDAÇÃO: Code review create-checkout-session/index.ts e stripe-webhook/index.ts. Audit logs escritos via writeAuditLog após eventos críticos. Migration audit_org_members_triggers.sql aplicada (2 triggers AFTER INSERT/DELETE).
   EVIDÊNCIA: create-checkout-session/index.ts: import writeAuditLog (L6), após stripe.checkout.sessions.create chama writeAuditLog(supabaseClient, { org_id: targetOrgId, actor_user_id: user.id, action: 'billing.checkout_created', entity: 'checkout_session', entity_id: session.id, metadata: {plan, billing, stripe_session_id, amount}, request_id }) (L125-139). stripe-webhook/index.ts: import writeAuditLog (L4), após subscription UPSERT chama writeAuditLog(supabaseAdmin, { org_id, actor_user_id: userId, action: 'billing.subscription_created', entity: 'subscription', entity_id: subscription.id, metadata: {plan_slug, billing_cycle, status, stripe_event_id} }) (L153-167). Migration 20260209181000_audit_org_members_triggers.sql: 2 funções SECURITY DEFINER (audit_org_member_insert/delete) + 2 triggers AFTER INSERT/DELETE em org_members, escrevem audit_logs com action='membership.member_added/removed', entity='org_member', metadata={user_id, role, status}. Billing events logados via edge functions, membership via DB triggers (non-bypassable).
 
+5.4 Query audit logs (admin-only)
+
+* Postgres function get_audit_logs() com RLS-safe access e admin check
+  STATUS: DONE (2026-02-09)
+  VALIDAÇÃO: \df get_audit_logs; (retorna function signature). Function executa admin role check before query. Filters por action/entity pattern com pagination.
+  EVIDÊNCIA: Migration 20260209182000_get_audit_logs_function.sql criada. Function get_audit_logs(p_org_id, p_limit DEFAULT 100, p_offset DEFAULT 0, p_action_filter TEXT DEFAULT NULL, p_entity_filter TEXT DEFAULT NULL) RETURNS TABLE (id, created_at, actor_user_id, action, entity, entity_id, metadata, request_id). SECURITY DEFINER. Lógica: 1) Check EXISTS org_members WHERE user_id=auth.uid() AND role IN ('Administrador', 'Proprietário') AND status='active' → RAISE EXCEPTION 'Forbidden' se not exists, 2) RETURN QUERY audit_logs WHERE org_id=p_org_id filtered by action LIKE/entity = patterns ORDER BY created_at DESC LIMIT/OFFSET. GRANT EXECUTE TO authenticated. Usage: SELECT * FROM get_audit_logs('org-uuid', 50, 0, 'billing.%', NULL);
+
+5.5 DB triggers para critical domain mutations
+
+* Triggers AFTER INSERT/UPDATE/DELETE em obras e expenses para audit non-bypassable
+  STATUS: DONE (2026-02-09)
+  VALIDAÇÃO: SELECT tgname FROM pg_trigger WHERE tgname LIKE '%audit%'; (retorna 6+ triggers incluindo audit_obras_changes e audit_expenses_changes). Triggers escrevem audit_logs mesmo se PostgREST bypassa edge functions.
+  EVIDÊNCIA: Migration 20260209183000_audit_domain_triggers.sql criada. Helper write_audit_from_trigger(org_id, action, entity, entity_id, metadata) SECURITY DEFINER: INSERT audit_logs com actor_user_id=auth.uid(). 2 trigger functions: audit_obras_changes() e audit_expenses_changes() para INSERT/UPDATE/DELETE → escrevem domain.obra_created/updated/deleted e domain.expense_created/updated/deleted com metadata incluindo nome/status/amount e changed_fields. 2 triggers: trigger_audit_obras_changes AFTER INSERT OR UPDATE OR DELETE ON obras, trigger_audit_expenses_changes AFTER INSERT OR UPDATE OR DELETE ON expenses. GRANT EXECUTE TO authenticated (SECURITY DEFINER bypassa RLS). Org isolation garantido por org_id em cada row. Audit non-bypassable mesmo via PostgREST.
+
 ======================================================================
 
 MILESTONE 5 — AUDITORIA IMUTÁVEL E RASTREABILIDADE (P0)

@@ -206,6 +206,13 @@ MILESTONE 4 — PLANOS, PREÇOS E ASSINATURAS (BILLING) (P0)
   VALIDAÇÃO: SELECT to_regclass('public.audit_logs'); (retorna 'audit_logs'). SELECT policyname FROM pg_policies WHERE tablename='audit_logs'; (retorna 1 policy SELECT). Tentativa UPDATE falha com ERROR "audit_logs are immutable: UPDATE and DELETE operations are not allowed".
   EVIDÊNCIA: Migration 20260209180000_create_audit_logs.sql criada. Tabela audit_logs: 12 colunas (id, created_at, org_id FK orgs CASCADE, actor_user_id FK auth.users SET NULL, action TEXT, entity TEXT, entity_id UUID, metadata JSONB default '{}', request_id UUID, ip INET, user_agent TEXT, CONSTRAINT audit_logs_immutable). 4 indexes: idx_audit_logs_org_created (org_id, created_at DESC), idx_audit_logs_actor_created (actor_user_id, created_at DESC WHERE actor_user_id IS NOT NULL), idx_audit_logs_entity (entity, entity_id WHERE entity_id IS NOT NULL), idx_audit_logs_action (action). RLS enabled. Policy "Org members can read audit logs" (SELECT via org_members.status=active). INSERT: apenas service_role (sem policy authenticated). REVOKE UPDATE, DELETE de authenticated/anon/service_role. Triggers: trigger_prevent_audit_update + trigger_prevent_audit_delete BEFORE UPDATE/DELETE executam prevent_audit_log_modification() que RAISE EXCEPTION. GRANT SELECT TO authenticated (filtrado por RLS), GRANT INSERT TO service_role.
 
+5.2 Criar helper server-side para audit logs
+
+* Implementar writeAuditLog() em _shared/audit.ts para edge functions
+  STATUS: DONE (2026-02-09)
+  VALIDAÇÃO: Code review audit.ts. Helper valida org_id/action/entity required, inserta via adminClient (service_role). Retorna {id, created_at, action} ou lança erro.
+  EVIDÊNCIA: Helper supabase/functions/_shared/audit.ts criado. Interface AuditLogPayload (org_id, action, entity required; entity_id, actor_user_id, metadata, request_id, ip, user_agent optional). Function writeAuditLog(adminClient, payload): valida required fields, INSERT audit_logs via service_role (bypassa RLS), SELECT inserted row, retorna {id, created_at, action} ou throw error. Log pattern: "✓ Audit log written: {action} ({id}) at {created_at}". Usage: await writeAuditLog(supabaseAdmin, { org_id, action, entity, ... }).
+
 ======================================================================
 
 MILESTONE 5 — AUDITORIA IMUTÁVEL E RASTREABILIDADE (P0)

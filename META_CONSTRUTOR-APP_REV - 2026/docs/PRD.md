@@ -236,44 +236,6 @@ MILESTONE 4 — PLANOS, PREÇOS E ASSINATURAS (BILLING) (P0)
 
 ======================================================================
 
-MILESTONE 5 — AUDITORIA IMUTÁVEL E RASTREABILIDADE (P0)
-5.1 Criar tabela audit_logs
-
-* Criar audit_logs com org_id, actor_user_id, action, entity, metadata, timestamps
-  STATUS:
-  VALIDAÇÃO:
-  EVIDÊNCIA:
-
-5.2 Auditoria server-side (não localStorage)
-
-* Substituir logger local do frontend por envio para backend/edge (imutável)
-  STATUS:
-  VALIDAÇÃO:
-  EVIDÊNCIA:
-
-5.3 Cobertura de eventos críticos (domínio + billing)
-
-* Registrar: auth, permissões, obra, rdo, qualidade, financeiro, anexos, billing (checkout/webhook)
-  STATUS:
-  VALIDAÇÃO:
-  EVIDÊNCIA:
-
-5.4 Consulta de logs (admin)
-
-* Endpoint/tela para filtrar logs por período, usuário, obra, ação
-  STATUS:
-  VALIDAÇÃO:
-  EVIDÊNCIA:
-
-5.5 (Recomendado) Triggers no Postgres para mutações críticas
-
-* Triggers para INSERT/UPDATE/DELETE em tabelas críticas garantindo log mesmo sem frontend
-  STATUS:
-  VALIDAÇÃO:
-  EVIDÊNCIA:
-
-======================================================================
-
 MILESTONE 6 — MÁQUINAS DE ESTADO DO DOMÍNIO (CONSISTÊNCIA OPERACIONAL) (P1)
 6.1 Estados de Obra (Project)
 

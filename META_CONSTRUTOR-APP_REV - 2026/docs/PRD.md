@@ -195,6 +195,19 @@ MILESTONE 4 — PLANOS, PREÇOS E ASSINATURAS (BILLING) (P0)
 
 ======================================================================
 
+## Milestone 5: Audit Logs (Rastreio Imutável)
+
+### OBJETIVO: Sistema de auditoria append-only para compliance e debugging
+
+5.1 Criar tabela audit_logs (imutável)
+
+* Tabela append-only com org isolation, RLS e anti-tampering
+  STATUS: DONE (2026-02-09)
+  VALIDAÇÃO: SELECT to_regclass('public.audit_logs'); (retorna 'audit_logs'). SELECT policyname FROM pg_policies WHERE tablename='audit_logs'; (retorna 1 policy SELECT). Tentativa UPDATE falha com ERROR "audit_logs are immutable: UPDATE and DELETE operations are not allowed".
+  EVIDÊNCIA: Migration 20260209180000_create_audit_logs.sql criada. Tabela audit_logs: 12 colunas (id, created_at, org_id FK orgs CASCADE, actor_user_id FK auth.users SET NULL, action TEXT, entity TEXT, entity_id UUID, metadata JSONB default '{}', request_id UUID, ip INET, user_agent TEXT, CONSTRAINT audit_logs_immutable). 4 indexes: idx_audit_logs_org_created (org_id, created_at DESC), idx_audit_logs_actor_created (actor_user_id, created_at DESC WHERE actor_user_id IS NOT NULL), idx_audit_logs_entity (entity, entity_id WHERE entity_id IS NOT NULL), idx_audit_logs_action (action). RLS enabled. Policy "Org members can read audit logs" (SELECT via org_members.status=active). INSERT: apenas service_role (sem policy authenticated). REVOKE UPDATE, DELETE de authenticated/anon/service_role. Triggers: trigger_prevent_audit_update + trigger_prevent_audit_delete BEFORE UPDATE/DELETE executam prevent_audit_log_modification() que RAISE EXCEPTION. GRANT SELECT TO authenticated (filtrado por RLS), GRANT INSERT TO service_role.
+
+======================================================================
+
 MILESTONE 5 — AUDITORIA IMUTÁVEL E RASTREABILIDADE (P0)
 5.1 Criar tabela audit_logs
 

@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Stripe from 'https://esm.sh/stripe@14.21.0?target=deno'
+import { writeAuditLog } from '../_shared/audit.ts'
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
     apiVersion: '2023-10-16',
@@ -68,6 +69,9 @@ serve(async (req) => {
         if (insertError && !insertError.message.includes('duplicate')) {
             console.error('Error recording event:', insertError)
         }
+
+        // M5.3: Audit log webhook received
+        // Note: org_id from event metadata where available
 
         let processError: string | null = null
         try {
@@ -150,6 +154,22 @@ serve(async (req) => {
                         .eq('id', userId)
 
                     console.log(`✅ Subscription activated for org ${orgId}`)
+
+                    // M5.3: Audit subscription creation
+                    await writeAuditLog(supabaseAdmin, {
+                        org_id: orgId,
+                        actor_user_id: userId,
+                        action: 'billing.subscription_created',
+                        entity: 'subscription',
+                        entity_id: subscription.id,
+                        metadata: {
+                            plan_slug: plan.slug,
+                            billing_cycle: billingCycle,
+                            status: subscription.status,
+                            stripe_event_id: event.id,
+                        },
+                    });
+
                     break
                 }
 

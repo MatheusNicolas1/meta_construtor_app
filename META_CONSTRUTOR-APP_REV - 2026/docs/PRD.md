@@ -213,6 +213,13 @@ MILESTONE 4 — PLANOS, PREÇOS E ASSINATURAS (BILLING) (P0)
   VALIDAÇÃO: Code review audit.ts. Helper valida org_id/action/entity required, inserta via adminClient (service_role). Retorna {id, created_at, action} ou lança erro.
   EVIDÊNCIA: Helper supabase/functions/_shared/audit.ts criado. Interface AuditLogPayload (org_id, action, entity required; entity_id, actor_user_id, metadata, request_id, ip, user_agent optional). Function writeAuditLog(adminClient, payload): valida required fields, INSERT audit_logs via service_role (bypassa RLS), SELECT inserted row, retorna {id, created_at, action} ou throw error. Log pattern: "✓ Audit log written: {action} ({id}) at {created_at}". Usage: await writeAuditLog(supabaseAdmin, { org_id, action, entity, ... }).
 
+5.3 Auditar eventos críticos (billing + membership)
+
+* Integrar writeAuditLog em billing (checkout, webhook) e membership (org_members)
+  STATUS: DONE (2026-02-09)
+  VALIDAÇÃO: Code review create-checkout-session/index.ts e stripe-webhook/index.ts. Audit logs escritos via writeAuditLog após eventos críticos. Migration audit_org_members_triggers.sql aplicada (2 triggers AFTER INSERT/DELETE).
+  EVIDÊNCIA: create-checkout-session/index.ts: import writeAuditLog (L6), após stripe.checkout.sessions.create chama writeAuditLog(supabaseClient, { org_id: targetOrgId, actor_user_id: user.id, action: 'billing.checkout_created', entity: 'checkout_session', entity_id: session.id, metadata: {plan, billing, stripe_session_id, amount}, request_id }) (L125-139). stripe-webhook/index.ts: import writeAuditLog (L4), após subscription UPSERT chama writeAuditLog(supabaseAdmin, { org_id, actor_user_id: userId, action: 'billing.subscription_created', entity: 'subscription', entity_id: subscription.id, metadata: {plan_slug, billing_cycle, status, stripe_event_id} }) (L153-167). Migration 20260209181000_audit_org_members_triggers.sql: 2 funções SECURITY DEFINER (audit_org_member_insert/delete) + 2 triggers AFTER INSERT/DELETE em org_members, escrevem audit_logs com action='membership.member_added/removed', entity='org_member', metadata={user_id, role, status}. Billing events logados via edge functions, membership via DB triggers (non-bypassable).
+
 ======================================================================
 
 MILESTONE 5 — AUDITORIA IMUTÁVEL E RASTREABILIDADE (P0)

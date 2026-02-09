@@ -3,6 +3,7 @@ import Stripe from 'https://esm.sh/stripe@14.21.0?target=deno'
 import { corsHeaders } from '../_shared/cors.ts'
 import { createScopedClient } from '../_shared/supabase-client.ts'
 import { requireAuth, requireOrgRole, logRequest } from '../_shared/guards.ts'
+import { writeAuditLog } from '../_shared/audit.ts'
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
   apiVersion: '2023-10-16',
@@ -121,6 +122,22 @@ serve(async (req) => {
     })
 
     logRequest(requestId, user_id, null, 'create-checkout-session', 'success', `Session created: ${session.id}`);
+
+    // M5.3: Audit log billing event
+    await writeAuditLog(supabaseClient, {
+      org_id: targetOrgId,
+      actor_user_id: user.id,
+      action: 'billing.checkout_created',
+      entity: 'checkout_session',
+      entity_id: session.id,
+      metadata: {
+        plan,
+        billing,
+        stripe_session_id: session.id,
+        amount: priceId ? 'paid' : 'unknown',
+      },
+      request_id: requestId,
+    });
 
     return new Response(
       JSON.stringify({ sessionId: session.id, url: session.url }),

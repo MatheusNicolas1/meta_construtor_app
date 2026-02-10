@@ -363,11 +363,11 @@ MILESTONE 7 — OBSERVABILIDADE E MONITORAMENTO (PRODUÇÃO) (P1)
 7.2 Logging estruturado no backend/edge
 * Padronizar logs (JSON, request_id, latency)
   STATUS: DONE (2026-02-10)
-  VALIDAÇÃO: Code refactor aplicado em `create-checkout-session` e `stripe-webhook`.
+  VALIDAÇÃO: Code review em `supabase/functions`. Todos handlers usam `logger.ts` com `request_id` gerado via `crypto.randomUUID()` e `latency_ms` via `performance.now()`.
   EVIDÊNCIA:
-  - **Logger**: Criado `supabase/functions/_shared/logger.ts` com suporte a JSON e sanitização.
-  - **Handlers**: Adicionado `request_id` (UUID) e cálculo de `latency_ms` em todas as requisições.
-  - **Context**: Logs incluem `user_id`, `org_id` e `function_name` consistentemente.
+  - **Logger**: `supabase/functions/_shared/logger.ts` (JSON format + sanitization).
+  - **Uso (Stripe Webhook)**: `supabase/functions/stripe-webhook/index.ts` gera `requestId` (L23) e loga latency (L333).
+  - **Uso (Checkout)**: `supabase/functions/create-checkout-session/index.ts` usa `logger.info` (L126) com context completo.
 
 7.3 Monitoramento de webhooks
 * Alertar falhas de webhook, reprocessamento e eventos duplicados

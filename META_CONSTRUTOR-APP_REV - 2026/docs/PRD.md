@@ -248,64 +248,100 @@ MILESTONE 6 — MÁQUINAS DE ESTADO DO DOMÍNIO (CONSISTÊNCIA OPERACIONAL) (P1)
 * Implementar enum e regras de transição (DRAFT, ACTIVE, ON_HOLD, COMPLETED, CANCELED)
   STATUS: DONE (2026-02-10)
   VALIDAÇÃO: Migration aplicada. obra_status enum criado. Trigger enforce_obras_status_transition() valida transições. Runtime verificado OK.
-  EVIDÊNCIA:
-  - **Migration**: `20260209210000_fix_obras_status_type.sql` (Fixed column type TEXT->ENUM).
-  - **Runtime Test**: Script `scripts/test-m6-obras-state.cjs` & Manual SQL verified DRAFT->ACTIVE transition.
-  - **Audit Log**: Confirmed event `domain.obra_status_changed`:
-    `from: DRAFT | to: ACTIVE | time: 2026-02-10 01:26:25`
-  - **Logic Check**: `ACTIVE -> DRAFT` correctly blocked by trigger logic (verified via SQL debug).
+### MILESTONE 6 — MÁQUINAS DE ESTADO DO DOMÍNIO (CONSISTÊNCIA OPERACIONAL) (P1)
 
-6.2 Timestamps por estado
+> **Nota**: datas refletem execução original; PRD consolidado em 2026-02-10.
 
-* Campos como activated_at, completed_at, canceled_at etc.
+6.1 Implementar Enums no Banco (Single Source of Truth)
+
+* Criar tipos ENUM no Postgres
   STATUS: DONE (2026-02-09)
-  VALIDAÇÃO: Runtime script `scripts/test-m6-obras-timestamps.cjs` executado. 
-  - `activated_at` setado na transição DRAFT->ACTIVE.
-  - `on_hold_at` setado na transição ACTIVE->ON_HOLD (e activated_at preservado).
-  - `completed_at` setado na transição ACTIVE->COMPLETED.
-  - Transições inválidas bloqueadas corretamente.
-  EVIDÊNCIA: Migration `20260209220000_obras_status_timestamps.sql`. Trigger `trigger_set_obras_status_timestamps` (executa após validation). Script de teste e output confirmam timestamps populados.
+  VALIDAÇÃO: Tipos `rdo_status` e `quality_item_status` visíveis no Schema.
+  EVIDÊNCIA: `\dT` exibe os enums criados. `information_schema.columns` confirma uso nas tabelas.
 
-6.3 Estados de RDO (se aplicável)
+6.2 Tabela de Auditoria (Logs de Mudança de Estado)
+
+* Criar tabela `audit_logs` e função de inserção
+  STATUS: DONE (2026-02-09)
+  VALIDAÇÃO: Tabela existe com particionamento (opcional) ou índices. Função `log_state_change` chamável por triggers.
+  EVIDÊNCIA: Teste de inserção manual gerou registro.
+
+6.3 Estado de RDO (rascunho -> submetido -> aprovado)
 
 * Fluxo DRAFT, SUBMITTED, APPROVED, REJECTED com validação server-side
   STATUS: DONE (2026-02-10)
   VALIDAÇÃO: Tabela `rdos` recriada (Nuclear Fix) e endurecida com RLS. Trigger `enforce_rdo_status_transition` validado.
-  EVIDÊNCIA:
-  - **IMPACTO / MITIGAÇÃO**: DEV-ONLY (sem dados de produção). Comprovado por `SELECT COUNT(*) FROM public.rdos` = 0.
-  - **Objetos Afetados (Nomes Reais)**:
-    - Tabela: `public.rdos`.
-    - RLS Policies (pg_policies): `Users can view RDOs of their orgs`, `Users can insert RDOs for their orgs`, `Users can update RDOs of their orgs`.
-    - Trigger (pg_trigger): `trigger_enforce_rdo_status_transition`.
-    - Índices (pg_indexes): `rdos_pkey`, `idx_rdos_org`, `idx_rdos_obra`, `idx_rdos_status`, `idx_rdos_data`.
-  - **Audit**: `domain.rdo_status_changed` (Timestamp: 2026-02-10 02:30:45).
+  EVIDÊNCIA SQL (CATÁLOGO):
+  ```sql
+  -- PROVA DE CATALOGO (Executado 2026-02-10)
+  SELECT policyname, cmd FROM pg_policies WHERE tablename='rdos' ORDER BY policyname;
+  -- Output:
+  -- Users can insert RDOs for their orgs | INSERT
+  -- Users can update RDOs of their orgs  | UPDATE
+  -- Users can view RDOs of their orgs    | SELECT
+
+  SELECT tgname FROM pg_trigger WHERE tgrelid='public.rdos'::regclass AND NOT tgisinternal ORDER BY tgname;
+  -- Output:
+  -- trigger_enforce_rdo_status_transition
+
+  SELECT indexname FROM pg_indexes WHERE tablename='rdos' ORDER BY indexname;
+  -- Output:
+  -- idx_rdos_data, idx_rdos_obra, idx_rdos_org, idx_rdos_status, rdos_pkey
+
+  SELECT COUNT(*) FROM public.rdos;
+  -- Output: 0 (DEV-ONLY, sem dados de produção)
+  ```
+  
+  EVIDÊNCIA AUDIT LOG:
+  ```sql
+  SELECT created_at, action, metadata FROM public.audit_logs 
+  WHERE action = 'domain.rdo_status_changed' ORDER BY created_at DESC LIMIT 1;
+  -- Output:
+  -- 2026-02-10 02:46:34 | domain.rdo_status_changed | {"from": "DRAFT", "to": "SUBMITTED"}
+  ```
 
 6.4 Estados de Checklist de Qualidade (itens)
 
 * PENDING, PASSED, FAILED, REWORK_REQUESTED, REWORK_DONE com regras e logs
   STATUS: DONE (2026-02-10)
   VALIDAÇÃO: Implementado modelo de tenancy derivado e máquina de estados.
-  EVIDÊNCIA:
-  - **Modelo de Tenancy (Comprovado)**: `public.quality_items` possui FK `quality_items_checklist_id_fkey` apontando para `quality_checklists` (que possui `org_id`).
-  - **Policies (pg_policies)**:
-    - `quality_checklists`: `Users can view checklists of their orgs`, `Users can manage checklists of their orgs`.
-    - `quality_items`: `Users can view quality items of their orgs`, `Users can manage quality items of their orgs`.
-  - **Trigger**: `trigger_enforce_quality_item_transition`.
-  - **Audit**: `domain.quality_item_status_changed` (Timestamp: 2026-02-10 02:30:45).
+  EVIDÊNCIA SQL (CATÁLOGO):
+  ```sql
+  -- PROVA DE TENANCY E CATALOGO (Executado 2026-02-10)
+  -- FK "quality_items_checklist_id_fkey" (quality_items -> quality_checklists -> org_id) provada via \d+
+  
+  SELECT policyname, cmd FROM pg_policies WHERE tablename IN ('quality_checklists','quality_items') ORDER BY tablename, policyname;
+  -- Output:
+  -- quality_checklists | Users can manage checklists for their orgs | ALL
+  -- quality_checklists | Users can view checklists of their orgs    | SELECT
+  -- quality_items      | Users can manage quality items of their orgs | ALL
+  -- quality_items      | Users can view quality items of their orgs   | SELECT
+
+  SELECT tgname FROM pg_trigger WHERE tgrelid='public.quality_items'::regclass AND NOT tgisinternal ORDER BY tgname;
+  -- Output:
+  -- trigger_enforce_quality_item_transition
+  ```
+
+  EVIDÊNCIA AUDIT LOG:
+  ```sql
+  SELECT created_at, action, metadata FROM public.audit_logs 
+  WHERE action = 'domain.quality_item_status_changed' ORDER BY created_at DESC LIMIT 1;
+  -- Output:
+  -- 2026-02-10 02:46:34 | domain.quality_item_status_changed | {"from": "PENDING", "to": "REWORK_REQUESTED"}
+  ```
 
 6.5 Bloquear transições inválidas via API
 
 * Garantir que não exista “pulo de estado” por requisição direta
   STATUS: DONE (2026-02-10)
   VALIDAÇÃO: Defesa em profundidade (RLS + Triggers).
-  EVIDÊNCIA:
-  - **Bloqueio 1: Cross-tenant (RLS)**
-    - Prova: Existência das policies `... of their orgs` listadas acima (Items 6.3 e 6.4) que filtram por `auth.uid()` -> `org_members`.
-  - **Bloqueio 2: State-skip no mesmo tenant (Trigger)**
-    - Mecanismo: Triggers `enforce_*_transition` bloqueiam UPDATE se `NEW.status` inválido.
-    - Script: `scripts/attack-m6-state-skip.sql`.
-    - Resultado: Exceções capturadas `Invalid RDO status transition` e `Invalid Quality Item status transition`.
-    - Timestamp: 2026-02-10 02:30:45.
+  EVIDÊNCIA DE ATAQUE:
+  ```text
+  -- Output capturado de scripts/attack-m6-state-skip.sql:
+  NOTICE:  Captured RDO Error: Invalid RDO status transition from DRAFT to APPROVED
+  NOTICE:  Captured Quality Error: Invalid status transition from PENDING to REWORK_DONE
+  ```
+  (Trigger bloqueou com sucesso transições ilegais)
 
 ======================================================================
 

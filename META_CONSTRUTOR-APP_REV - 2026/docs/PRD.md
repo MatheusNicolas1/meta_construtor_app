@@ -270,22 +270,45 @@ MILESTONE 6 — MÁQUINAS DE ESTADO DO DOMÍNIO (CONSISTÊNCIA OPERACIONAL) (P1)
 
 * Fluxo DRAFT, SUBMITTED, APPROVED, REJECTED com validação server-side
   STATUS: DONE (2026-02-10)
-  VALIDAÇÃO: Tabela `rdos` recriada com schema corrigido e ENUM `rdo_status`. Trigger `enforce_rdo_status_transition` garante fluxo linear. Teste SQL validou DRAFT->SUBMITTED->APPROVED e bloqueou APPROVED->DRAFT.
-  EVIDÊNCIA: Migration `20260209231000_recreate_rdos.sql` (Nuclear Fix). Script `scripts/test-m6-rdos-state.sql` (Pass). Audit logs confirmados.
+  VALIDAÇÃO: Tabela `rdos` recriada (Nuclear Fix) e endurecida com RLS. Trigger `enforce_rdo_status_transition` validado.
+  EVIDÊNCIA:
+  - **IMPACTO / MITIGAÇÃO**: DEV-ONLY (sem dados de produção). O comando `DROP TABLE ... CASCADE` foi executado para corrigir inconsistências de schema irreversíveis em ambiente de desenvolvimento. Não houve perda de dados de clientes.
+  - **Objetos Afetados**:
+    - Tabela: `public.rdos` (recriada com colunas corretas).
+    - Policies (RLS): `Users can view RDOs of their orgs` (SELECT), `Users can insert RDOs for their orgs` (INSERT), `Users can update RDOs of their orgs` (UPDATE).
+    - Trigger: `trigger_enforce_rdo_status_transition` (BEFORE UPDATE).
+    - Índices: `idx_rdos_org`, `idx_rdos_obra`, `idx_rdos_status`.
+  - **Teste**: `scripts/test-m6-rdos-state.sql` (Pass).
+  - **Audit**: `domain.rdo_status_changed` (Timestamp: 2026-02-10 02:30:45).
 
 6.4 Estados de Checklist de Qualidade (itens)
 
 * PENDING, PASSED, FAILED, REWORK_REQUESTED, REWORK_DONE com regras e logs
   STATUS: DONE (2026-02-10)
-  VALIDAÇÃO: Tabelas `quality_checklists` e `quality_items` criadas. Trigger enforce_quality_item_transition valida ciclo de rework. Teste SQL validou fluxo completo e bloqueio de saltos inválidos.
-  EVIDÊNCIA: Migration `20260209240000_quality_state_machine.sql`. Script `scripts/test-m6-quality-state.sql` (Pass).
+  VALIDAÇÃO: Implementado modelo de tenancy derivado e máquina de estados.
+  EVIDÊNCIA:
+  - **Modelo de Tenancy**: `quality_items` -> `checklist_id` -> `quality_checklists` -> `org_id` -> `orgs`. Suportado por FKs e Policies com subqueries.
+  - **Policies (RLS)**:
+    - `quality_checklists`: `Users can view checklists of their orgs`, `Users can manage checklists for their orgs`.
+    - `quality_items`: `Users can view quality items of their orgs`, `Users can manage quality items of their orgs` (Checklist-based).
+  - **Trigger**: `enforce_quality_item_transition` (valida ciclo PENDING->REWORK->DONE->PASSED).
+  - **Teste**: `scripts/test-m6-quality-state.sql` (Pass).
+  - **Audit**: `domain.quality_item_status_changed`.
 
 6.5 Bloquear transições inválidas via API
 
 * Garantir que não exista “pulo de estado” por requisição direta
   STATUS: DONE (2026-02-10)
-  VALIDAÇÃO: Script de ataque simula bypass SQL direto (DRAFT->APPROVED, PENDING->REWORK_DONE). Ambos bloqueados com sucesso pelo banco de dados.
-  EVIDÊNCIA: Script `scripts/attack-m6-state-skip.sql`. Logs confirmam: `✅ RDO Attack Blocked`, `✅ Quality Attack Blocked`.
+  VALIDAÇÃO: Defesa em profundidade (RLS + Triggers).
+  EVIDÊNCIA:
+  - **Bloqueio 1: Cross-tenant (RLS)**
+    - Mecanismo: Policies `... of their orgs` impedem leitura/escrita em objetos de outra organização.
+    - Validação: `scripts/attack-rls.js` (M3 Validation) + Policies ativas verificadas em M6.3/6.4.
+  - **Bloqueio 2: State-skip no mesmo tenant (Trigger)**
+    - Mecanismo: Triggers `enforce_*_transition` bloqueiam UPDATE se `NEW.status` inválido a partir de `OLD.status`.
+    - Script: `scripts/attack-m6-state-skip.sql`.
+    - Resultado: Exceção `Invalid RDO status transition` e `Invalid Quality Item status transition` capturadas.
+    - Timestamp: 2026-02-10 02:30:45 (Tentativas bloqueadas).
 
 ======================================================================
 

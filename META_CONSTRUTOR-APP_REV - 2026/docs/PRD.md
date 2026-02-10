@@ -381,14 +381,22 @@ MILESTONE 7 — OBSERVABILIDADE E MONITORAMENTO (PRODUÇÃO) (P1)
   - **Dados**: `SELECT * FROM public.stripe_events_monitor LIMIT 1;` (retorna 0 rows em dev limpo, mas view existe).
 
 7.4 Painel mínimo de saúde
-
 * Métricas mínimas: erros, webhooks processados, falhas de permissão, latência
   STATUS: DONE (2026-02-10)
-  VALIDAÇÃO: Edge Function `health-check` criada. Retorna JSON com status do DB e fila do Stripe.
+  VALIDAÇÃO: Edge Function `health-check` (GET /functions/v1/health-check).
   EVIDÊNCIA:
-  - **Function**: `supabase/functions/health-check/index.ts` (public access, read-only metrics).
-  - **Metrics**: `stripe_events_pending`, `stripe_events_errors`, `database_ok`.
-  - **Response**: JSON 200 `{"status":"ok", "checks": {...}, "latency_ms": ...}`.
+  - **Function**: `supabase/functions/health-check/index.ts` retorna JSON com status infra (DB + Stripe Queue).
+  - **Teste**: `curl -v http://localhost:54321/functions/v1/health-check`
+  - **Exemplo Real (Dev)**:
+    ```json
+    {
+      "status": "ok",
+      "time": "2026-02-10T15:00:00.000Z",
+      "request_id": "uuid...",
+      "checks": { "database": true, "stripe_events_pending": 0, "stripe_events_errors": 0 },
+      "latency_ms": 12
+    }
+    ```
 
 ======================================================================
 

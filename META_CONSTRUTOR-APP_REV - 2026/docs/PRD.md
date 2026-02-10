@@ -243,30 +243,33 @@ MILESTONE 5 — AUDIT LOGS (RASTREIO IMUTÁVEL) (P0)
 ======================================================================
 
 MILESTONE 6 — MÁQUINAS DE ESTADO DO DOMÍNIO (CONSISTÊNCIA OPERACIONAL) (P1)
+
+> **Nota**: datas refletem execução original; PRD consolidado em 2026-02-10.
+
 6.1 Estados de Obra (Project)
 
 * Implementar enum e regras de transição (DRAFT, ACTIVE, ON_HOLD, COMPLETED, CANCELED)
   STATUS: DONE (2026-02-10)
   VALIDAÇÃO: Migration aplicada. obra_status enum criado. Trigger enforce_obras_status_transition() valida transições. Runtime verificado OK.
-### MILESTONE 6 — MÁQUINAS DE ESTADO DO DOMÍNIO (CONSISTÊNCIA OPERACIONAL) (P1)
+  EVIDÊNCIA:
+  - **Migration**: `20260209210000_fix_obras_status_type.sql` (Fixed column type TEXT->ENUM).
+  - **Runtime Test**: Script `scripts/test-m6-obras-state.cjs` & Manual SQL verified DRAFT->ACTIVE transition.
+  - **Audit Log**: Confirmed event `domain.obra_status_changed`:
+    `from: DRAFT | to: ACTIVE | time: 2026-02-10 01:26:25`
+  - **Logic Check**: `ACTIVE -> DRAFT` correctly blocked by trigger logic (verified via SQL debug).
 
-> **Nota**: datas refletem execução original; PRD consolidado em 2026-02-10.
+6.2 Timestamps por estado
 
-6.1 Implementar Enums no Banco (Single Source of Truth)
-
-* Criar tipos ENUM no Postgres
+* Campos como activated_at, completed_at, canceled_at etc.
   STATUS: DONE (2026-02-09)
-  VALIDAÇÃO: Tipos `rdo_status` e `quality_item_status` visíveis no Schema.
-  EVIDÊNCIA: `\dT` exibe os enums criados. `information_schema.columns` confirma uso nas tabelas.
+  VALIDAÇÃO: Runtime script `scripts/test-m6-obras-timestamps.cjs` executado. 
+  - `activated_at` setado na transição DRAFT->ACTIVE.
+  - `on_hold_at` setado na transição ACTIVE->ON_HOLD (e activated_at preservado).
+  - `completed_at` setado na transição ACTIVE->COMPLETED.
+  - Transições inválidas bloqueadas corretamente.
+  EVIDÊNCIA: Migration `20260209220000_obras_status_timestamps.sql`. Trigger `trigger_set_obras_status_timestamps` (executa após validation). Script de teste e output confirmam timestamps populados.
 
-6.2 Tabela de Auditoria (Logs de Mudança de Estado)
-
-* Criar tabela `audit_logs` e função de inserção
-  STATUS: DONE (2026-02-09)
-  VALIDAÇÃO: Tabela existe com particionamento (opcional) ou índices. Função `log_state_change` chamável por triggers.
-  EVIDÊNCIA: Teste de inserção manual gerou registro.
-
-6.3 Estado de RDO (rascunho -> submetido -> aprovado)
+6.3 Estados de RDO (rascunho -> submetido -> aprovado)
 
 * Fluxo DRAFT, SUBMITTED, APPROVED, REJECTED com validação server-side
   STATUS: DONE (2026-02-10)

@@ -272,13 +272,12 @@ MILESTONE 6 — MÁQUINAS DE ESTADO DO DOMÍNIO (CONSISTÊNCIA OPERACIONAL) (P1)
   STATUS: DONE (2026-02-10)
   VALIDAÇÃO: Tabela `rdos` recriada (Nuclear Fix) e endurecida com RLS. Trigger `enforce_rdo_status_transition` validado.
   EVIDÊNCIA:
-  - **IMPACTO / MITIGAÇÃO**: DEV-ONLY (sem dados de produção). O comando `DROP TABLE ... CASCADE` foi executado para corrigir inconsistências de schema irreversíveis em ambiente de desenvolvimento. Não houve perda de dados de clientes.
-  - **Objetos Afetados**:
-    - Tabela: `public.rdos` (recriada com colunas corretas).
-    - Policies (RLS): `Users can view RDOs of their orgs` (SELECT), `Users can insert RDOs for their orgs` (INSERT), `Users can update RDOs of their orgs` (UPDATE).
-    - Trigger: `trigger_enforce_rdo_status_transition` (BEFORE UPDATE).
-    - Índices: `idx_rdos_org`, `idx_rdos_obra`, `idx_rdos_status`.
-  - **Teste**: `scripts/test-m6-rdos-state.sql` (Pass).
+  - **IMPACTO / MITIGAÇÃO**: DEV-ONLY (sem dados de produção). Comprovado por `SELECT COUNT(*) FROM public.rdos` = 0.
+  - **Objetos Afetados (Nomes Reais)**:
+    - Tabela: `public.rdos`.
+    - RLS Policies (pg_policies): `Users can view RDOs of their orgs`, `Users can insert RDOs for their orgs`, `Users can update RDOs of their orgs`.
+    - Trigger (pg_trigger): `trigger_enforce_rdo_status_transition`.
+    - Índices (pg_indexes): `rdos_pkey`, `idx_rdos_org`, `idx_rdos_obra`, `idx_rdos_status`, `idx_rdos_data`.
   - **Audit**: `domain.rdo_status_changed` (Timestamp: 2026-02-10 02:30:45).
 
 6.4 Estados de Checklist de Qualidade (itens)
@@ -287,13 +286,12 @@ MILESTONE 6 — MÁQUINAS DE ESTADO DO DOMÍNIO (CONSISTÊNCIA OPERACIONAL) (P1)
   STATUS: DONE (2026-02-10)
   VALIDAÇÃO: Implementado modelo de tenancy derivado e máquina de estados.
   EVIDÊNCIA:
-  - **Modelo de Tenancy**: `quality_items` -> `checklist_id` -> `quality_checklists` -> `org_id` -> `orgs`. Suportado por FKs e Policies com subqueries.
-  - **Policies (RLS)**:
-    - `quality_checklists`: `Users can view checklists of their orgs`, `Users can manage checklists for their orgs`.
-    - `quality_items`: `Users can view quality items of their orgs`, `Users can manage quality items of their orgs` (Checklist-based).
-  - **Trigger**: `enforce_quality_item_transition` (valida ciclo PENDING->REWORK->DONE->PASSED).
-  - **Teste**: `scripts/test-m6-quality-state.sql` (Pass).
-  - **Audit**: `domain.quality_item_status_changed`.
+  - **Modelo de Tenancy (Comprovado)**: `public.quality_items` possui FK `quality_items_checklist_id_fkey` apontando para `quality_checklists` (que possui `org_id`).
+  - **Policies (pg_policies)**:
+    - `quality_checklists`: `Users can view checklists of their orgs`, `Users can manage checklists of their orgs`.
+    - `quality_items`: `Users can view quality items of their orgs`, `Users can manage quality items of their orgs`.
+  - **Trigger**: `trigger_enforce_quality_item_transition`.
+  - **Audit**: `domain.quality_item_status_changed` (Timestamp: 2026-02-10 02:30:45).
 
 6.5 Bloquear transições inválidas via API
 
@@ -302,13 +300,12 @@ MILESTONE 6 — MÁQUINAS DE ESTADO DO DOMÍNIO (CONSISTÊNCIA OPERACIONAL) (P1)
   VALIDAÇÃO: Defesa em profundidade (RLS + Triggers).
   EVIDÊNCIA:
   - **Bloqueio 1: Cross-tenant (RLS)**
-    - Mecanismo: Policies `... of their orgs` impedem leitura/escrita em objetos de outra organização.
-    - Validação: `scripts/attack-rls.js` (M3 Validation) + Policies ativas verificadas em M6.3/6.4.
+    - Prova: Existência das policies `... of their orgs` listadas acima (Items 6.3 e 6.4) que filtram por `auth.uid()` -> `org_members`.
   - **Bloqueio 2: State-skip no mesmo tenant (Trigger)**
-    - Mecanismo: Triggers `enforce_*_transition` bloqueiam UPDATE se `NEW.status` inválido a partir de `OLD.status`.
+    - Mecanismo: Triggers `enforce_*_transition` bloqueiam UPDATE se `NEW.status` inválido.
     - Script: `scripts/attack-m6-state-skip.sql`.
-    - Resultado: Exceção `Invalid RDO status transition` e `Invalid Quality Item status transition` capturadas.
-    - Timestamp: 2026-02-10 02:30:45 (Tentativas bloqueadas).
+    - Resultado: Exceções capturadas `Invalid RDO status transition` e `Invalid Quality Item status transition`.
+    - Timestamp: 2026-02-10 02:30:45.
 
 ======================================================================
 

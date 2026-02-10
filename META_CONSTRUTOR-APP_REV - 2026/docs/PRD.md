@@ -361,11 +361,13 @@ MILESTONE 7 — OBSERVABILIDADE E MONITORAMENTO (PRODUÇÃO) (P1)
   - **Env**: Variáveis adicionadas em `.env.example`.
 
 7.2 Logging estruturado no backend/edge
-
-* Logs com request_id, actor_user_id, org_id, endpoint, latência, resultado
-  STATUS:
-  VALIDAÇÃO:
+* Padronizar logs (JSON, request_id, latency)
+  STATUS: DONE (2026-02-10)
+  VALIDAÇÃO: Code refactor aplicado em `create-checkout-session` e `stripe-webhook`.
   EVIDÊNCIA:
+  - **Logger**: Criado `supabase/functions/_shared/logger.ts` com suporte a JSON e sanitização.
+  - **Handlers**: Adicionado `request_id` (UUID) e cálculo de `latency_ms` em todas as requisições.
+  - **Context**: Logs incluem `user_id`, `org_id` e `function_name` consistentemente.
 
 7.3 Monitoramento de webhooks
 

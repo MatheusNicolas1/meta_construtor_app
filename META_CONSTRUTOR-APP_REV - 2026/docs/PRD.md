@@ -351,10 +351,14 @@ MILESTONE 6 — MÁQUINAS DE ESTADO DO DOMÍNIO (CONSISTÊNCIA OPERACIONAL) (P1)
 MILESTONE 7 — OBSERVABILIDADE E MONITORAMENTO (PRODUÇÃO) (P1)
 7.1 Monitoramento de erros no frontend
 
+7.1 Monitoramento de erros no frontend
 * Integrar Sentry (captura de exceptions, release tracking básico)
-  STATUS:
-  VALIDAÇÃO:
+  STATUS: DONE (2026-02-10)
+  VALIDAÇÃO: Build ok (`npm run build`). Inicializa em `src/main.tsx` condicionalmente (`if VITE_SENTRY_DSN`). Sem UI de fallback visível.
   EVIDÊNCIA:
+  - **Dependencies**: `@sentry/react` adicionado ao package.json.
+  - **Config**: Sentry.init() em `src/main.tsx` com `tracesSampleRate: 0.1` e `release: VITE_APP_VERSION`.
+  - **Env**: Variáveis adicionadas em `.env.example`.
 
 7.2 Logging estruturado no backend/edge
 

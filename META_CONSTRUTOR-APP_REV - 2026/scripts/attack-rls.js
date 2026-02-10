@@ -88,7 +88,7 @@ async function run() {
         responsavel: 'Victim',
         cliente: 'Secret Client',
         tipo: 'Comercial',
-        status: 'Em andamento',
+        status: 'ACTIVE', // M6: Enum required
         data_inicio: new Date().toISOString().split('T')[0],
         previsao_termino: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     }).select().single();

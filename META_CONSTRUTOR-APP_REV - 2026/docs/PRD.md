@@ -422,14 +422,25 @@ MILESTONE 8 — SEGURANÇA E HARDENING (P1)
   VALIDAÇÃO: Suíte de regressão `scripts/test-rls-regression.cjs` executando:
   1. `test-rls.js` (Isolamento de Org, Role Access).
   2. `attack-rls.js` (Vetores de ataque direto).
-  EVIDÊNCIA: Execução limpa "ALL TESTS PASSED".
+  EVIDÊNCIA: Execução limpa "ALL ATTACKS BLOCKED - RLS SECURE" (Verified 5/5 Vectors).
 
-8.3 Soft delete onde aplicável (P2)
+8.3 Soft delete onde aplicável (P2 -> DONE)
 * Adicionar `deleted_at` para recuperação
-  STATUS: PENDING (Repriorizado para P2/M9 por não ser blocker de segurança crítica agora, foco em Auditabilidade).
-  
-8.4 Checklist de produção
+  STATUS: DONE (2026-02-10)
+  VALIDAÇÃO: `scripts/test-soft-delete.cjs`
   EVIDÊNCIA:
+  - Columns `deleted_at`, `deleted_by` added to `obras`, `expenses`.
+  - Triggers log to `audit_logs` (action: `domain.*_soft_deleted`).
+  - RLS policies filter `deleted_at IS NULL`.
+  - Verification script confirm row persists but is hidden from default view.
+
+8.4 Checklist de produção
+* Documentar hardening
+  STATUS: DONE (2026-02-10)
+  VALIDAÇÃO:
+  - `docs/SECURITY_CHECKLIST.md` verified.
+  - `scripts/maintenance-prune.sql` created.
+  - Legacy code removed.
 
 ======================================================================
 

@@ -1,5 +1,5 @@
 {
-  "name": "mt-construtor",
+  "name": "meta-construtor-app-rev-2026",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,7 +9,8 @@
     "build:dev": "vite build --mode development",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "dev:smoke": "node scripts/dev-smoke.cjs"
   },
   "dependencies": {
     "@google-cloud/local-auth": "^3.0.1",
@@ -51,6 +52,7 @@
     "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
+    "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react": "^5.1.0",
     "canvas-confetti": "^1.9.3",
     "class-variance-authority": "^0.7.1",
@@ -58,6 +60,7 @@
     "cmdk": "^1.1.1",
     "cpf-cnpj-validator": "^1.0.3",
     "date-fns": "^3.6.0",
+    "dotenv": "^17.2.4",
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.23.12",
     "i18next": "^25.6.1",
@@ -67,6 +70,8 @@
     "libphonenumber-js": "^1.11.11",
     "lucide-react": "^0.462.0",
     "motion": "^12.23.12",
+    "pg": "^8.18.0",
+    "posthog-js": "^1.345.2",
     "react": "^18.3.1",
     "react-aria-components": "^1.11.0",
     "react-day-picker": "^8.10.1",
@@ -82,6 +87,7 @@
     "stripe": "^20.1.2",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
+    "uuid": "^13.0.0",
     "vaul": "^0.9.9",
     "vitest": "^3.2.4",
     "zod": "^4.1.3"

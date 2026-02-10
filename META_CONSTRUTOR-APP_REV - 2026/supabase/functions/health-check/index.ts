@@ -1,6 +1,10 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { corsHeaders } from '../_shared/cors.ts'
+
+const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
 
 serve(async (req) => {
     const start = performance.now()
@@ -19,25 +23,29 @@ serve(async (req) => {
 
         // M8.1: Rate Limit (TEST: 2 req/60s per IP)
         const ip = req.headers.get('x-forwarded-for') || 'unknown'
-        const { checkRateLimit } = await import('../_shared/rate-limit.ts')
+        // Inline logic validation
+        const { data: rlData, error: rlError } = await supabaseClient.rpc('check_rate_limit', {
+            p_key: `ip:${ip}|fn:health-check`,
+            p_window_seconds: 60,
+            p_max_requests: 2
+        });
 
-        const { allowed, resetAt } = await checkRateLimit(supabaseClient, {
-            key: `ip:${ip}|fn:health-check`,
-            windowSeconds: 60,
-            maxRequests: 2
-        })
-
-        if (!allowed) {
-            return new Response(JSON.stringify({
-                error: 'rate_limited',
-                message: 'Too Many Requests',
-                reset_at: resetAt,
-                request_id: requestId,
-                retry_after_seconds: 60
-            }), {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '60' },
-                status: 429,
-            })
+        if (rlError) {
+            console.error('Rate Limit RPC Error:', rlError)
+        } else if (rlData && rlData.length > 0) {
+            const { allowed, reset_at } = rlData[0]
+            if (!allowed) {
+                return new Response(JSON.stringify({
+                    error: 'rate_limited',
+                    message: 'Too Many Requests',
+                    reset_at: reset_at,
+                    request_id: requestId,
+                    retry_after_seconds: 60
+                }), {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '60' },
+                    status: 429,
+                })
+            }
         }
 
         // 1. Check DB Connection

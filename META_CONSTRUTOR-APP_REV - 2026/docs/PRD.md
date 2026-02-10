@@ -403,38 +403,42 @@ MILESTONE 7 — OBSERVABILIDADE E MONITORAMENTO (PRODUÇÃO) (P1)
 MILESTONE 8 — SEGURANÇA E HARDENING (P1)
 8.1 Rate limiting em endpoints sensíveis
 * Limitar login, checkout, convites, ações massivas
-  STATUS: DONE (Code Implemented - Runtime Verification Pending Restart) (2026-02-10)
+  STATUS: PARTIAL (SQL Logic Verified. HTTP Code 429 requires manual verification)
   VALIDAÇÃO:
-  - **Catalog**: `node scripts/verify-catalog.cjs` confirmed `rate_limits` table and `check_rate_limit` RPC.
-  - **Logic**: Updated `health-check` to use inline RPC logic and return 429.
-  - **HTTP Test**: `scripts/test-rate-limit.cjs` returns 500 due to stale `supabase functions serve` process required restart. Code logic verified valid via inspection and SQL RPC tests.
+  - **Code**: `supabase/functions/health-check/index.ts` verified to return 429 JSON.
+  - **SQL Evidence**: `scripts/verify-catalog.cjs` confirmed RPC logic works:
+    ```
+    Req 1: { allowed: true }
+    Req 2: { allowed: true }
+    Req 3: { allowed: false }
+    ```
+  - **HTTP Verification**: Automated test failed (environment/port issues). 
+    - See `scripts/m8-manual-steps.md` for manual curl proof.
+    - **BLOCKED**: Requires running manual steps and updating this doc with curl output.
 
 8.2 Proteção contra acesso cruzado (reforço)
 * Garantir que falhas de RLS sejam impossíveis
   STATUS: DONE (2026-02-10)
-  VALIDAÇÃO: Suíte de regressão `scripts/test-rls-regression.cjs` executando:
-  1. `test-rls.js` (Isolamento de Org, Role Access).
-  2. `attack-rls.js` (Vetores de ataque direto).
-  EVIDÊNCIA: Execução limpa "ALL SUITE PASSED".
+  VALIDAÇÃO: Suíte `scripts/test-rls-regression.cjs` passed.
+  EVIDÊNCIA:
+  - `attack-rls.js`: 5/5 vectors blocked.
+  - `test-rls.js`: Valid flows allowed.
 
 8.3 Soft delete onde aplicável (P2 -> DONE)
 * Adicionar `deleted_at` para recuperação
   STATUS: DONE (2026-02-10)
-  VALIDAÇÃO: `scripts/test-soft-delete.cjs`
+  VALIDAÇÃO: `scripts/test-soft-delete.cjs` + Migration `20260210140000_soft_delete.sql`.
   EVIDÊNCIA:
-  - **Catalog**: `scripts/verify-catalog.cjs` confirmed policies/triggers.
-  - **Runtime**: `test-soft-delete.cjs` confirmed:
-    - Row valid in DB.
-    - Row hidden from RLS view.
-    - Audit log entry created.
+  - **Catalog**: Columns `deleted_at` present. Triggers `audit_soft_delete` active.
+  - **Runtime**: Validated row hiding and audit logging.
 
 8.4 Checklist de produção
 * Documentar hardening
   STATUS: DONE (2026-02-10)
   VALIDAÇÃO:
-  - `docs/SECURITY_CHECKLIST.md` created/verified.
-  - `scripts/maintenance-prune.sql` created for `rate_limits`.
-  - Legacy code removed (implicit via file review).
+  - **Checklist**: `docs/SECURITY_CHECKLIST.md` created & verified.
+  - **Maintenance**: `scripts/maintenance-prune.sql` created.
+  - **Cleanup**: Verified removal of `supabase/functions/webhook-stripe` (Folder does not exist).
 
 ======================================================================
 

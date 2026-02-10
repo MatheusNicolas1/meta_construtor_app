@@ -37,6 +37,17 @@ async function run() {
         const res2 = await client.query("SELECT proname FROM pg_proc WHERE proname = 'check_rate_limit'");
         console.log(res2.rows);
 
+        console.log('\n-- 3. Execute RPC logic test (Simulate 3 requests, limit 2) --');
+        // Req 1
+        const r1 = await client.query("SELECT * FROM public.check_rate_limit('m8:test', 60, 2)");
+        console.log('Req 1:', r1.rows[0]);
+        // Req 2
+        const r2 = await client.query("SELECT * FROM public.check_rate_limit('m8:test', 60, 2)");
+        console.log('Req 2:', r2.rows[0]);
+        // Req 3
+        const r3 = await client.query("SELECT * FROM public.check_rate_limit('m8:test', 60, 2)");
+        console.log('Req 3:', r3.rows[0]);
+
         console.log('\n=== 8.3.2 Catalog Evidence ===');
         console.log('-- Policies (Obras/Expenses) --');
         const res3 = await client.query("SELECT policyname, cmd FROM pg_policies WHERE tablename IN ('obras','expenses') ORDER BY tablename, policyname");

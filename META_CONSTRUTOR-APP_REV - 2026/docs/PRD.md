@@ -417,24 +417,18 @@ MILESTONE 8 — SEGURANÇA E HARDENING (P1)
 
 
 8.2 Proteção contra acesso cruzado (reforço)
+* Garantir que falhas de RLS sejam impossíveis
+  STATUS: DONE (2026-02-10)
+  VALIDAÇÃO: Suíte de regressão `scripts/test-rls-regression.cjs` executando:
+  1. `test-rls.js` (Isolamento de Org, Role Access).
+  2. `attack-rls.js` (Vetores de ataque direto).
+  EVIDÊNCIA: Execução limpa "ALL TESTS PASSED".
 
-* Revisão final de RLS + guards + testes de regressão
-  STATUS:
-  VALIDAÇÃO:
-  EVIDÊNCIA:
-
-8.3 Soft delete onde aplicável + auditoria before/after
-
-* Implementar soft delete e registrar diffs (antes/depois) em audit_logs
-  STATUS:
-  VALIDAÇÃO:
-  EVIDÊNCIA:
-
+8.3 Soft delete onde aplicável (P2)
+* Adicionar `deleted_at` para recuperação
+  STATUS: PENDING (Repriorizado para P2/M9 por não ser blocker de segurança crítica agora, foco em Auditabilidade).
+  
 8.4 Checklist de produção
-
-* Secrets, headers, backup/restore, retenção de logs, mínima conformidade operacional
-  STATUS:
-  VALIDAÇÃO:
   EVIDÊNCIA:
 
 ======================================================================

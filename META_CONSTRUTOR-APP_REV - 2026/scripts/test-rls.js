@@ -53,6 +53,24 @@ async function run() {
     log(`Org A: ${orgIdA}`);
     log(`Org B: ${orgIdB}\n`);
 
+    // FIX: Upgrade Org A to 'master' plan to allow adding members (M4 limits enforcement)
+    const { data: masterPlan } = await adminClient.from('plans').select('id').eq('slug', 'master').single();
+    if (masterPlan) {
+        await adminClient.from('subscriptions').insert({
+            org_id: orgIdA,
+            plan_id: masterPlan.id,
+            status: 'active',
+            stripe_subscription_id: `sub_test_${Date.now()}`,
+            stripe_customer_id: `cus_test_${Date.now()}`,
+            current_period_start: new Date().toISOString(),
+            current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            billing_cycle: 'monthly'
+        });
+        log('Upgraded Org A to MASTER plan for testing');
+    } else {
+        log('WARNING: Master plan not found, test might fail due to limits');
+    }
+
     // Add User C as Colaborador to Org A
     const { error: errAddC } = await adminClient.from('org_members').insert({
         org_id: orgIdA,

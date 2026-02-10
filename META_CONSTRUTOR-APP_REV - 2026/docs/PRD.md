@@ -372,10 +372,10 @@ MILESTONE 7 — OBSERVABILIDADE E MONITORAMENTO (PRODUÇÃO) (P1)
 7.3 Monitoramento de webhooks
 * Alertar falhas de webhook, reprocessamento e eventos duplicados
   STATUS: DONE (2026-02-10)
-  VALIDAÇÃO: Script SQL criado para view de monitoramento (`scripts/m7-monitor-webhooks.sql`). Refatoração do `stripe-webhook` (7.2) já garante gravação robusta de error/processed.
+  VALIDAÇÃO: View `public.stripe_events_monitor` criada via migration. Query: `SELECT to_regclass('public.stripe_events_monitor')`.
   EVIDÊNCIA:
-  - **View**: `public.stripe_events_monitor` filtra `processed=false` ou `error IS NOT NULL`.
-  - **Robustez**: `stripe-webhook` agora usa `try/catch` global para garantir UPDATE no `stripe_events` mesmo em crash.
+  - **Migration**: `supabase/migrations/20260210120000_create_stripe_events_monitor_view.sql` (garante versionamento).
+  - **Robustez**: Handler `stripe-webhook` (L93-L320) usa try/catch global e grava error/processed no DB.
 
 7.4 Painel mínimo de saúde
 

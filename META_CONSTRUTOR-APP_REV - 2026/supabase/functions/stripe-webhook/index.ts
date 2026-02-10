@@ -49,6 +49,15 @@ serve(async (req) => {
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         )
 
+        // M8.1: Rate Limit (120 req/60s per IP)
+        const ip = req.headers.get('x-forwarded-for') || 'unknown'
+        const { rateLimitOrThrow } = await import('../_shared/rate-limit.ts')
+        await rateLimitOrThrow(supabaseAdmin, {
+            key: `ip:${ip}|fn:stripe-webhook`,
+            windowSeconds: 60,
+            maxRequests: 120
+        })
+
         // M4.4: Check idempotency via stripe_events table
         const { data: existingEvent } = await supabaseAdmin
             .from('stripe_events')

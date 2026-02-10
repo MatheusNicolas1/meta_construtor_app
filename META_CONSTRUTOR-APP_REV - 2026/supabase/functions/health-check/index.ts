@@ -17,6 +17,15 @@ serve(async (req) => {
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         )
 
+        // M8.1: Rate Limit (60 req/60s per IP)
+        const ip = req.headers.get('x-forwarded-for') || 'unknown'
+        const { rateLimitOrThrow } = await import('../_shared/rate-limit.ts')
+        await rateLimitOrThrow(supabaseClient, {
+            key: `ip:${ip}|fn:health-check`,
+            windowSeconds: 60,
+            maxRequests: 60
+        })
+
         // 1. Check DB Connection
         const { error: dbError } = await supabaseClient.from('orgs').select('id').limit(1).single()
         const dbOk = !dbError

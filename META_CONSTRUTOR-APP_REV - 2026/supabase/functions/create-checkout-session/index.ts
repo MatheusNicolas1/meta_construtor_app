@@ -30,6 +30,14 @@ serve(async (req) => {
     const user = await requireAuth(supabaseClient)
     user_id = user.id;
 
+    // M8.1: Rate Limit (10 req/60s per user)
+    const { rateLimitOrThrow } = await import('../_shared/rate-limit.ts')
+    await rateLimitOrThrow(supabaseClient, {
+      key: `user:${user.id}|fn:create-checkout-session`,
+      windowSeconds: 60,
+      maxRequests: 10
+    })
+
     const { plan, billing = 'monthly', org_id } = await req.json()
 
     // M4.3: Get price ID from plans table

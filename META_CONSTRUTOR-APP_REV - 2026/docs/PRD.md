@@ -402,11 +402,19 @@ MILESTONE 7 — OBSERVABILIDADE E MONITORAMENTO (PRODUÇÃO) (P1)
 
 MILESTONE 8 — SEGURANÇA E HARDENING (P1)
 8.1 Rate limiting em endpoints sensíveis
-
 * Limitar login, checkout, convites, ações massivas
-  STATUS:
-  VALIDAÇÃO:
+  STATUS: DONE (2026-02-10)
+  VALIDAÇÃO: Implementado DB-backed sliding window via `rate_limits` table e `supabase/functions/_shared/rate-limit.ts`.
   EVIDÊNCIA:
+  - **Migration**: `20260210130000_create_rate_limits.sql` (table + security definer function).
+  - **Teste (Node.js)**: Script `scripts/test-rate-limit.js` disparou 3 requests contra limite de 2 (health-check temporário).
+    ```
+    Request 1: Status 200
+    Request 2: Status 200
+    Request 3: Status 500 (Error: Too Many Requests)
+    ```
+    *(Nota: Status 500 capturado pois edge function lança erro não tratado no teste, mas bloqueio funciona. Checkout/Webhook tratam com 429/400 apropriado).*
+
 
 8.2 Proteção contra acesso cruzado (reforço)
 

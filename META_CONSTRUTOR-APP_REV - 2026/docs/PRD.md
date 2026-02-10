@@ -260,6 +260,19 @@ Evidence artifacts: m5_test_t1_results.md, scripts/test-audit.sql
 
 ======================================================================
 
+## Milestone 6: Domain State Machines (Consistência Operacional)
+
+### OBJETIVO: Enforce business logic and prevent invalid state transitions at DB level
+
+6.1 Obra status enum + transition enforcement (DB-level)
+
+* Add obra_status enum + obras.status column + DB trigger validation
+  STATUS: DONE (2026-02-09)
+  VALIDAÇÃO: Migration aplicada. obra_status enum criado com 5 estados (DRAFT, ACTIVE, ON_HOLD, COMPLETED, CANCELED). Trigger enforce_obras_status_transition() valida transições: DRAFT→ACTIVE|CANCELED, ACTIVE→ON_HOLD|COMPLETED|CANCELED, ON_HOLD→ACTIVE|CANCELED, COMPLETED→(terminal), CANCELED→(terminal). Invalid transitions raise exception. Audit logs escritos com action='domain.obra_status_changed', metadata={from,to,obra_nome}.
+  EVIDÊNCIA: Migration 20260209190000_obras_status_state_machine.sql. CREATE TYPE obra_status AS ENUM ('DRAFT', 'ACTIVE', 'ON_HOLD', 'COMPLETED', 'CANCELED'). ALTER TABLE obras ADD COLUMN status obra_status NOT NULL DEFAULT 'DRAFT'. CREATE INDEX idx_obras_status (status). Function enforce_obras_status_transition(): CASE statement validates old_status→new_status transitions, RAISE EXCEPTION on invalid, INSERT audit_logs for valid transitions (org_id, action='domain.obra_status_changed', metadata=jsonb_build_object('from', old, 'to', new, 'obra_nome')). Trigger BEFORE UPDATE OF status on obras executes function. GRANT EXECUTE TO authenticated. Estado terminal: COMPLETED e CANCELED não permitem transições.
+
+======================================================================
+
 MILESTONE 6 — MÁQUINAS DE ESTADO DO DOMÍNIO (CONSISTÊNCIA OPERACIONAL) (P1)
 6.1 Estados de Obra (Project)
 

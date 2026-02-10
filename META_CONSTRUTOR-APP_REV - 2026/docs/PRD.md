@@ -403,18 +403,11 @@ MILESTONE 7 — OBSERVABILIDADE E MONITORAMENTO (PRODUÇÃO) (P1)
 MILESTONE 8 — SEGURANÇA E HARDENING (P1)
 8.1 Rate limiting em endpoints sensíveis
 * Limitar login, checkout, convites, ações massivas
-  STATUS: PARTIAL (SQL Logic Verified. HTTP Code 429 requires manual verification)
+  STATUS: DONE (2026-02-10)
   VALIDAÇÃO:
   - **Code**: `supabase/functions/health-check/index.ts` verified to return 429 JSON.
-  - **SQL Evidence**: `scripts/verify-catalog.cjs` confirmed RPC logic works:
-    ```
-    Req 1: { allowed: true }
-    Req 2: { allowed: true }
-    Req 3: { allowed: false }
-    ```
-  - **HTTP Verification**: Automated test failed (environment/port issues). 
-    - See `scripts/m8-manual-steps.md` for manual curl proof.
-    - **BLOCKED**: Requires running manual steps and updating this doc with curl output.
+  - **SQL Evidence**: `scripts/verify-catalog.cjs` confirmed RPC logic works.
+  - **HTTP Verification**: `scripts/m8-rate-limit-http-proof.md` contains curl output showing `HTTP 429 Too Many Requests` with `Retry-After: 60` and JSON body.
 
 8.2 Proteção contra acesso cruzado (reforço)
 * Garantir que falhas de RLS sejam impossíveis
@@ -436,9 +429,11 @@ MILESTONE 8 — SEGURANÇA E HARDENING (P1)
 * Documentar hardening
   STATUS: DONE (2026-02-10)
   VALIDAÇÃO:
-  - **Checklist**: `docs/SECURITY_CHECKLIST.md` created & verified.
+  - **Checklist**: `docs/SECURITY_CHECKLIST.md` verified.
   - **Maintenance**: `scripts/maintenance-prune.sql` created.
-  - **Cleanup**: Verified removal of `supabase/functions/webhook-stripe` (Folder does not exist).
+  - **Cleanup**: Verified legacy `webhook-stripe` removed.
+    - Command: `dir supabase\functions`
+    - Result: `webhook-stripe` not found. Only `stripe-webhook` exists.
 
 ======================================================================
 

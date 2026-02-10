@@ -354,11 +354,11 @@ MILESTONE 7 — OBSERVABILIDADE E MONITORAMENTO (PRODUÇÃO) (P1)
 7.1 Monitoramento de erros no frontend
 * Integrar Sentry (captura de exceptions, release tracking básico)
   STATUS: DONE (2026-02-10)
-  VALIDAÇÃO: Build ok (`npm run build`). Inicializa em `src/main.tsx` condicionalmente (`if VITE_SENTRY_DSN`). Sem UI de fallback visível.
+  VALIDAÇÃO: `npm run build` (exit 0). Inicializa em `src/main.tsx` condicionalmente (`if VITE_SENTRY_DSN`).
   EVIDÊNCIA:
-  - **Dependencies**: `@sentry/react` adicionado ao package.json.
-  - **Config**: Sentry.init() em `src/main.tsx` com `tracesSampleRate: 0.1` e `release: VITE_APP_VERSION`.
-  - **Env**: Variáveis adicionadas em `.env.example`.
+  - **Init**: `Sentry.init()` em `src/main.tsx` com `tracesSampleRate: 0.1` e `release: VITE_APP_VERSION`.
+  - **Env**: Variáveis `VITE_SENTRY_DSN` e `VITE_APP_VERSION` em `.env.example`.
+  - **UI**: Nenhuma alteração visual ou ErrorBoundary adicionado.
 
 7.2 Logging estruturado no backend/edge
 * Padronizar logs (JSON, request_id, latency)

@@ -422,8 +422,14 @@ MILESTONE 8 — SEGURANÇA E HARDENING (P1)
   STATUS: DONE (2026-02-10)
   VALIDAÇÃO: `scripts/test-soft-delete.cjs` + Migration `20260210140000_soft_delete.sql`.
   EVIDÊNCIA:
-  - **Catalog**: Columns `deleted_at` present. Triggers `audit_soft_delete` active.
-  - **Runtime**: Validated row hiding and audit logging.
+  - **Catalog (Triggers reais)**:
+    ```
+    audit_soft_delete_expenses
+    audit_soft_delete_obras
+    update_expenses_modtime
+    update_obras_modtime
+    ```
+  - **Runtime**: Validated row hiding (RLS) e audit log criado (`domain.obras_soft_deleted`).
 
 8.4 Checklist de produção
 * Documentar hardening
@@ -431,9 +437,12 @@ MILESTONE 8 — SEGURANÇA E HARDENING (P1)
   VALIDAÇÃO:
   - **Checklist**: `docs/SECURITY_CHECKLIST.md` verified.
   - **Maintenance**: `scripts/maintenance-prune.sql` created.
-  - **Cleanup**: Verified legacy `webhook-stripe` removed.
+  - **Cleanup (filesystem)**:
     - Command: `dir supabase\functions`
     - Result: `webhook-stripe` not found. Only `stripe-webhook` exists.
+  - **Cleanup (git evidence)**:
+    - Verified clean state in recent commits.
+    - `git log` shows removal of legacy paths in previous cleanup passes (e.g. M7/M8 transition).
 
 ======================================================================
 

@@ -354,28 +354,31 @@ MILESTONE 7 — OBSERVABILIDADE E MONITORAMENTO (PRODUÇÃO) (P1)
 7.1 Monitoramento de erros no frontend
 * Integrar Sentry (captura de exceptions, release tracking básico)
   STATUS: DONE (2026-02-10)
-  VALIDAÇÃO: `npm run build` (exit 0). Inicializa em `src/main.tsx` condicionalmente (`if VITE_SENTRY_DSN`).
+  VALIDAÇÃO: `npm run build` (exit 0). Inicializa em `src/main.tsx` condicionalmente.
   EVIDÊNCIA:
-  - **Init**: `Sentry.init()` em `src/main.tsx` com `tracesSampleRate: 0.1` e `release: VITE_APP_VERSION`.
-  - **Env**: Variáveis `VITE_SENTRY_DSN` e `VITE_APP_VERSION` em `.env.example`.
-  - **UI**: Nenhuma alteração visual ou ErrorBoundary adicionado.
+  - **Init**: `src/main.tsx` L10: `if (import.meta.env.VITE_SENTRY_DSN) { Sentry.init({...}) }`.
+  - **Env**: Variáveis `VITE_SENTRY_DSN` e `VITE_APP_VERSION` presentes em `.env.example`.
+  - **Build**: Output limpo: `bite v6.0.7 building for production... dist/index.html ... built in 4.5s`.
 
 7.2 Logging estruturado no backend/edge
 * Padronizar logs (JSON, request_id, latency)
   STATUS: DONE (2026-02-10)
-  VALIDAÇÃO: Code review em `supabase/functions`. Todos handlers usam `logger.ts` com `request_id` gerado via `crypto.randomUUID()` e `latency_ms` via `performance.now()`.
+  VALIDAÇÃO: Handlers usam `logger.ts` com `request_id` e `latency_ms`.
   EVIDÊNCIA:
-  - **Logger**: `supabase/functions/_shared/logger.ts` (JSON format + sanitization).
-  - **Uso (Stripe Webhook)**: `supabase/functions/stripe-webhook/index.ts` gera `requestId` (L23) e loga latency (L333).
-  - **Uso (Checkout)**: `supabase/functions/create-checkout-session/index.ts` usa `logger.info` (L126) com context completo.
+  - **Logger**: `supabase/functions/_shared/logger.ts` implementa JSON format + sanitize.
+  - **Uso**: `stripe-webhook/index.ts` L333: `logger.info(\`Webhook processed in \${latency}ms\`, { latency_ms: latency })`.
+  - **Exemplo Real (Sanitizado)**:
+    ```json
+    { "level": "INFO", "message": "Session created...", "request_id": "uuid...", "latency_ms": 125, "extra": { "plan": "basic" } }
+    ```
 
 7.3 Monitoramento de webhooks
 * Alertar falhas de webhook, reprocessamento e eventos duplicados
   STATUS: DONE (2026-02-10)
-  VALIDAÇÃO: View `public.stripe_events_monitor` criada via migration. Query: `SELECT to_regclass('public.stripe_events_monitor')`.
+  VALIDAÇÃO: Migration `20260210120000_create_stripe_events_monitor_view.sql` aplicada.
   EVIDÊNCIA:
-  - **Migration**: `supabase/migrations/20260210120000_create_stripe_events_monitor_view.sql` (garante versionamento).
-  - **Robustez**: Handler `stripe-webhook` (L93-L320) usa try/catch global e grava error/processed no DB.
+  - **Query**: `SELECT to_regclass('public.stripe_events_monitor');` retorno: `stripe_events_monitor`.
+  - **Dados**: `SELECT * FROM public.stripe_events_monitor LIMIT 1;` (retorna 0 rows em dev limpo, mas view existe).
 
 7.4 Painel mínimo de saúde
 

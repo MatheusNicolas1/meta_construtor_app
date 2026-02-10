@@ -43,25 +43,43 @@ async function run() {
 
     // Create victim
     const victimClient = createClient(URL, ANON_KEY);
-    const { data: victimAuth } = await victimClient.auth.signUp({ email: victimEmail, password: 'Test123!@#' });
+    const { data: victimAuth, error: vErr } = await victimClient.auth.signUp({ email: victimEmail, password: 'Test123!@#' });
+    if (vErr || !victimAuth.user) {
+        console.error('Victim signup failed:', vErr);
+        process.exit(1);
+    }
     const victim = victimAuth.user;
 
     // Create attacker  
     const attackerClient = createClient(URL, ANON_KEY);
-    const { data: attackerAuth } = await attackerClient.auth.signUp({ email: attackerEmail, password: 'Test123!@#' });
+    const { data: attackerAuth, error: aErr } = await attackerClient.auth.signUp({ email: attackerEmail, password: 'Test123!@#' });
+    if (aErr || !attackerAuth.user) {
+        console.error('Attacker signup failed:', aErr);
+        process.exit(1);
+    }
     const attacker = attackerAuth.user;
 
-    await new Promise(r => setTimeout(r, 1500));
+    log('Waiting for triggers to create orgs...');
+    await new Promise(r => setTimeout(r, 3000)); // Increased wait
 
     // Get orgs
-    const { data: victimOrg } = await adminClient.from('orgs').select('id').eq('owner_user_id', victim.id).single();
-    const { data: attackerOrg } = await adminClient.from('orgs').select('id').eq('owner_user_id', attacker.id).single();
+    const { data: victimOrg, error: vOrgErr } = await adminClient.from('orgs').select('id').eq('owner_user_id', victim.id).single();
+    if (vOrgErr || !victimOrg) {
+        console.error('Victim org not found:', vOrgErr);
+        process.exit(1);
+    }
+
+    const { data: attackerOrg, error: aOrgErr } = await adminClient.from('orgs').select('id').eq('owner_user_id', attacker.id).single();
+    if (aOrgErr || !attackerOrg) {
+        console.error('Attacker org not found:', aOrgErr);
+        process.exit(1);
+    }
 
     log(`Victim Org: ${victimOrg.id}`);
     log(`Attacker Org: ${attackerOrg.id}`);
 
     // Create victim obra
-    const { data: victimObra } = await adminClient.from('obras').insert({
+    const { data: victimObra, error: obraErr } = await adminClient.from('obras').insert({
         org_id: victimOrg.id,
         user_id: victim.id,
         nome: 'Victim Obra - Confidential',
@@ -74,6 +92,11 @@ async function run() {
         data_inicio: new Date().toISOString().split('T')[0],
         previsao_termino: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     }).select().single();
+
+    if (obraErr || !victimObra) {
+        console.error('Victim Obra creation failed:', obraErr);
+        process.exit(1);
+    }
 
     log(`Victim Obra ID: ${victimObra.id}\n`);
 

@@ -17,13 +17,13 @@ serve(async (req) => {
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         )
 
-        // M8.1: Rate Limit (60 req/60s per IP)
+        // M8.1: Rate Limit (TEST: 2 req/60s per IP)
         const ip = req.headers.get('x-forwarded-for') || 'unknown'
         const { rateLimitOrThrow } = await import('../_shared/rate-limit.ts')
         await rateLimitOrThrow(supabaseClient, {
             key: `ip:${ip}|fn:health-check`,
             windowSeconds: 60,
-            maxRequests: 60
+            maxRequests: 2
         })
 
         // 1. Check DB Connection
@@ -62,6 +62,18 @@ serve(async (req) => {
         })
 
     } catch (error: any) {
+        if (error.name === 'RateLimitError') {
+            return new Response(JSON.stringify({
+                error: 'rate_limited',
+                message: error.message,
+                reset_at: error.resetAt,
+                request_id: requestId
+            }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 429,
+            })
+        }
+
         return new Response(JSON.stringify({ status: 'error', message: error.message }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 500,

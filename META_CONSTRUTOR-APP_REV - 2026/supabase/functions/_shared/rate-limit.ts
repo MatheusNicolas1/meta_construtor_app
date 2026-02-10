@@ -6,6 +6,16 @@ export interface RateLimitContext {
     maxRequests: number;
 }
 
+export class RateLimitError extends Error {
+    public readonly resetAt: string;
+
+    constructor(resetAt: string) {
+        super(`Too Many Requests. Reset at ${resetAt}`);
+        this.name = 'RateLimitError';
+        this.resetAt = resetAt;
+    }
+}
+
 export async function rateLimitOrThrow(
     supabaseClient: SupabaseClient,
     context: RateLimitContext
@@ -16,11 +26,9 @@ export async function rateLimitOrThrow(
         p_max_requests: context.maxRequests
     });
 
+    // Fail open if DB error to avoid outage
     if (error) {
-        console.error('Rate limit check failed:', error);
-        // Fail open if DB error, or closed? Let's fail open to not block users on infra error, but log it.
-        // Actually, for security, usually fail closed, but this is a soft limit.
-        // Let's return allowed for now if error, to avoid outage.
+        console.error('Rate limit check failed (fail open):', error);
         return;
     }
 
@@ -28,7 +36,7 @@ export async function rateLimitOrThrow(
         const { allowed, remaining, reset_at } = data[0];
 
         if (!allowed) {
-            throw new Error(`Too Many Requests. Reset at ${reset_at}`);
+            throw new RateLimitError(reset_at);
         }
     }
 }

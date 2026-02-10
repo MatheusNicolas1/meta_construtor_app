@@ -352,6 +352,26 @@ serve(async (req) => {
         })
     } catch (error: any) {
         const latency = performance.now() - start
+
+        // Handle Rate Limit specifically
+        if (error.name === 'RateLimitError') {
+            logger.warn(`Rate limit exceeded: ${error.message}`, {
+                request_id: requestId,
+                function_name: 'stripe-webhook',
+                latency_ms: latency,
+                status_code: 429
+            })
+            return new Response(JSON.stringify({
+                error: 'rate_limited',
+                message: error.message,
+                reset_at: error.resetAt,
+                retry_after: 60
+            }), {
+                headers: { 'Content-Type': 'application/json', 'Retry-After': '60' },
+                status: 429
+            })
+        }
+
         logger.error(`Webhook error: ${error.message}`, {
             request_id: requestId,
             function_name: 'stripe-webhook',

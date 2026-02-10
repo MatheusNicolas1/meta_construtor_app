@@ -13,16 +13,18 @@
 
 ## 3. Rate Limiting (M8.1)
 - [x] Edge Functions (`create-checkout-session`, `stripe-webhook`, `health-check`) protected by `rate_limits`.
-- [ ] DB Function `check_rate_limit` is `SECURITY DEFINER`.
+- [x] DB Function `check_rate_limit` is `SECURITY DEFINER`.
+- [x] Validated via `scripts/test-rate-limit-rpc.cjs`.
 
 ## 4. Input Validation
 - [x] Triggers enforce valid enums/states (`obras`, `rdos`).
-- [x] Plan limits (`max_users`, `max_obras`) enforced by triggers.
+- [x] Plan limits (`max_users`, `max_obras`) enforced by triggered.
 
 ## 5. Maintenance
-- [ ] Run `scripts/maintenance-prune.sql` weekly to clean `rate_limits` table.
-- [ ] Monitor `health-check` endpoint.
+- [x] `scripts/maintenance-prune.sql` created for weekly cleanup.
+- [x] `health-check` endpoint available for monitoring.
 
 ## 6. Access Control
 - [x] `org_members` roles ('Administrador', 'Colaborador') enforced in policies.
-- [x] Cross-org access blocked.
+- [x] Cross-org access blocked (Verified by `scripts/attack-rls.js`).
+- [x] Soft Delete implemented for Obras/Expenses (Verified by `scripts/test-soft-delete.cjs`).

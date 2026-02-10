@@ -166,8 +166,21 @@ serve(async (req) => {
     )
   } catch (error: any) {
     const duration = performance.now() - start;
-    const status = error.message.includes('Unauthorized') ? 401 :
+    let status = error.message.includes('Unauthorized') ? 401 :
       error.message.includes('Forbidden') ? 403 : 400;
+
+    let errorBody: any = { error: error.message };
+
+    if (error.name === 'RateLimitError') {
+      status = 429;
+      errorBody = {
+        error: 'rate_limited',
+        message: error.message,
+        reset_at: error.resetAt,
+        request_id: requestId,
+        retry_after_seconds: 60 // Simple heuristic
+      };
+    }
 
     logger.error(error.message, {
       request_id: requestId,
@@ -180,7 +193,7 @@ serve(async (req) => {
     }, error);
 
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify(errorBody),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status,

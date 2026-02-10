@@ -19,12 +19,26 @@ serve(async (req) => {
 
         // M8.1: Rate Limit (TEST: 2 req/60s per IP)
         const ip = req.headers.get('x-forwarded-for') || 'unknown'
-        const { rateLimitOrThrow } = await import('../_shared/rate-limit.ts')
-        await rateLimitOrThrow(supabaseClient, {
+        const { checkRateLimit } = await import('../_shared/rate-limit.ts')
+
+        const { allowed, resetAt } = await checkRateLimit(supabaseClient, {
             key: `ip:${ip}|fn:health-check`,
             windowSeconds: 60,
             maxRequests: 2
         })
+
+        if (!allowed) {
+            return new Response(JSON.stringify({
+                error: 'rate_limited',
+                message: 'Too Many Requests',
+                reset_at: resetAt,
+                request_id: requestId,
+                retry_after_seconds: 60
+            }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '60' },
+                status: 429,
+            })
+        }
 
         // 1. Check DB Connection
         const { error: dbError } = await supabaseClient.from('orgs').select('id').limit(1).single()
@@ -62,19 +76,26 @@ serve(async (req) => {
         })
 
     } catch (error: any) {
-        if (error.name === 'RateLimitError') {
+        // Handle Rate Limit (Name check or Message check fallback)
+        if (error.name === 'RateLimitError' || error.message?.includes('Too Many Requests')) {
+            const resetAt = error.resetAt || new Date(Date.now() + 60000).toISOString();
             return new Response(JSON.stringify({
                 error: 'rate_limited',
-                message: error.message,
-                reset_at: error.resetAt,
-                request_id: requestId
+                message: error.message || 'Too Many Requests',
+                reset_at: resetAt,
+                request_id: requestId,
+                retry_after_seconds: 60
             }), {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '60' },
                 status: 429,
             })
         }
 
-        return new Response(JSON.stringify({ status: 'error', message: error.message }), {
+        return new Response(JSON.stringify({
+            status: 'error',
+            message: error.message,
+            error_name: error.name // Debug info
+        }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 500,
         })

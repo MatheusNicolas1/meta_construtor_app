@@ -1,14 +1,16 @@
--- M8.4: Maintenance Scripts
--- Prune old logs and rate limits to prevent bloat
+-- M8.4 Maintenance Script
+-- Prune old rate limit records (older than 24 hours)
+-- Run this weekly via pg_cron or scheduled job
 
--- 1. Prune Rate Limits (> 24h old)
-DELETE FROM rate_limits
-WHERE created_at < NOW() - INTERVAL '24 hours';
+BEGIN;
 
--- 2. Prune old audit logs (optional, e.g. > 1 year)
--- DELETE FROM audit_logs WHERE created_at < NOW() - INTERVAL '1 year';
+-- 1. Prune rate_limits
+DELETE FROM public.rate_limits
+WHERE window_start < now() - interval '24 hours';
 
--- 3. Prune old webhook events (e.g. > 30 days)
--- DELETE FROM stripe_events WHERE created_at < NOW() - INTERVAL '30 days';
+-- 2. Prune stripe_events (Optional - keep for 30 days)
+-- DELETE FROM public.stripe_events
+-- WHERE created_at < now() - interval '30 days'
+-- AND processed = true;
 
-VACUUM (ANALYZE) rate_limits;
+COMMIT;

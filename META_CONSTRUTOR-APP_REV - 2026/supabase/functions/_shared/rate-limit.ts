@@ -16,7 +16,8 @@ export class RateLimitError extends Error {
     }
 }
 
-export async function rateLimitOrThrow(
+// Non-throwing version
+export async function checkRateLimit(
     supabaseClient: SupabaseClient,
     context: RateLimitContext
 ) {
@@ -26,17 +27,25 @@ export async function rateLimitOrThrow(
         p_max_requests: context.maxRequests
     });
 
-    // Fail open if DB error to avoid outage
     if (error) {
         console.error('Rate limit check failed (fail open):', error);
-        return;
+        return { allowed: true, resetAt: new Date().toISOString() };
     }
 
     if (data && data.length > 0) {
-        const { allowed, remaining, reset_at } = data[0];
+        const { allowed, reset_at } = data[0];
+        return { allowed, resetAt: reset_at };
+    }
 
-        if (!allowed) {
-            throw new RateLimitError(reset_at);
-        }
+    return { allowed: true, resetAt: new Date().toISOString() };
+}
+
+export async function rateLimitOrThrow(
+    supabaseClient: SupabaseClient,
+    context: RateLimitContext
+) {
+    const { allowed, resetAt } = await checkRateLimit(supabaseClient, context);
+    if (!allowed) {
+        throw new RateLimitError(resetAt);
     }
 }

@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Stripe from 'https://esm.sh/stripe@14.21.0?target=deno'
 import { writeAuditLog } from '../_shared/audit.ts'
+import { logger } from '../_shared/logger.ts'
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
     apiVersion: '2023-10-16',
@@ -18,10 +19,18 @@ const PLAN_CREDITS: Record<string, number> = {
 }
 
 serve(async (req) => {
+    const start = performance.now()
+    const requestId = crypto.randomUUID()
+
     const signature = req.headers.get('Stripe-Signature')
     const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET')
 
     if (!signature || !webhookSecret) {
+        logger.error('Webhook signature or secret missing', {
+            request_id: requestId,
+            function_name: 'stripe-webhook',
+            status_code: 400
+        })
         return new Response('Webhook signature or secret missing', { status: 400 })
     }
 
@@ -48,7 +57,11 @@ serve(async (req) => {
             .single()
 
         if (existingEvent?.processed) {
-            console.log(`Event ${event.id} already processed, skipping`)
+            logger.info(`Event ${event.id} already processed, skipping`, {
+                request_id: requestId,
+                function_name: 'stripe-webhook'
+            }, { event_id: event.id })
+
             return new Response(JSON.stringify({ received: true, skipped: true }), {
                 headers: { 'Content-Type': 'application/json' },
                 status: 200,
@@ -67,7 +80,10 @@ serve(async (req) => {
             })
 
         if (insertError && !insertError.message.includes('duplicate')) {
-            console.error('Error recording event:', insertError)
+            logger.error(`Error recording event: ${insertError.message}`, {
+                request_id: requestId,
+                function_name: 'stripe-webhook'
+            }, { event_id: event.id, error: insertError })
         }
 
         // M5.3: Audit log webhook received
@@ -82,7 +98,10 @@ serve(async (req) => {
                     const orgId = session.metadata?.org_id
 
                     if (!userId || !orgId) {
-                        console.error('Missing user_id or org_id in checkout session metadata')
+                        logger.error('Missing user_id or org_id in checkout session metadata', {
+                            request_id: requestId,
+                            function_name: 'stripe-webhook'
+                        }, { session_id: session.id })
                         break
                     }
 
@@ -93,7 +112,12 @@ serve(async (req) => {
                     // M4 STEP 2: Map Stripe price_id to plan_id (do not trust metadata alone)
                     const priceId = subscription.items.data[0]?.price.id
                     if (!priceId) {
-                        console.error('No price_id found in subscription items')
+                        logger.error('No price_id found in subscription items', {
+                            request_id: requestId,
+                            function_name: 'stripe-webhook',
+                            org_id: orgId,
+                            user_id: userId
+                        })
                         break
                     }
 
@@ -116,11 +140,20 @@ serve(async (req) => {
                     const billingCycle = monthlyPlan ? 'monthly' : 'yearly'
 
                     if (!plan) {
-                        console.error(`Plan not found for price_id: ${priceId}`)
+                        logger.error(`Plan not found for price_id: ${priceId}`, {
+                            request_id: requestId,
+                            function_name: 'stripe-webhook',
+                            org_id: orgId
+                        })
                         break
                     }
 
-                    console.log(`✓ Mapped price_id ${priceId} → plan ${plan.slug} (${plan.id}) [${billingCycle}]`)
+                    logger.info(`✓ Mapped price_id ${priceId} → plan ${plan.slug} (${plan.id}) [${billingCycle}]`, {
+                        request_id: requestId,
+                        function_name: 'stripe-webhook',
+                        org_id: orgId,
+                        user_id: userId
+                    })
 
                     // M4.5: Write subscription truth to DB
                     const { error: subError } = await supabaseAdmin
@@ -138,7 +171,11 @@ serve(async (req) => {
                         }, { onConflict: 'stripe_subscription_id' })
 
                     if (subError) {
-                        console.error('Error creating subscription:', subError)
+                        logger.error(`Error creating subscription: ${subError.message}`, {
+                            request_id: requestId,
+                            function_name: 'stripe-webhook',
+                            org_id: orgId
+                        }, subError)
                         throw subError
                     }
 
@@ -153,7 +190,12 @@ serve(async (req) => {
                         })
                         .eq('id', userId)
 
-                    console.log(`✅ Subscription activated for org ${orgId}`)
+                    logger.info(`✅ Subscription activated for org ${orgId}`, {
+                        request_id: requestId,
+                        function_name: 'stripe-webhook',
+                        org_id: orgId,
+                        user_id: userId
+                    })
 
                     // M5.3: Audit subscription creation
                     await writeAuditLog(supabaseAdmin, {
@@ -189,7 +231,10 @@ serve(async (req) => {
                         .eq('stripe_subscription_id', subscription.id)
 
                     if (updateError) {
-                        console.error('Error updating subscription:', updateError)
+                        logger.error(`Error updating subscription: ${updateError.message}`, {
+                            request_id: requestId,
+                            function_name: 'stripe-webhook'
+                        }, { subscription_id: subscription.id, error: updateError })
                     }
 
                     // Legacy: keep profiles in sync
@@ -199,7 +244,10 @@ serve(async (req) => {
                         .update({ subscription_status: subscription.status })
                         .eq('stripe_customer_id', customerId)
 
-                    console.log(`✅ Subscription updated: ${subscription.id}`)
+                    logger.info(`✅ Subscription updated: ${subscription.id}`, {
+                        request_id: requestId,
+                        function_name: 'stripe-webhook'
+                    }, { subscription_id: subscription.id })
                     break
                 }
 
@@ -216,7 +264,10 @@ serve(async (req) => {
                         .eq('stripe_subscription_id', subscription.id)
 
                     if (cancelError) {
-                        console.error('Error canceling subscription:', cancelError)
+                        logger.error(`Error canceling subscription: ${cancelError.message}`, {
+                            request_id: requestId,
+                            function_name: 'stripe-webhook'
+                        }, { subscription_id: subscription.id, error: cancelError })
                     }
 
                     // Legacy: downgrade profile to free
@@ -230,7 +281,10 @@ serve(async (req) => {
                         })
                         .eq('stripe_customer_id', customerId)
 
-                    console.log(`✅ Subscription canceled: ${subscription.id}`)
+                    logger.info(`✅ Subscription canceled: ${subscription.id}`, {
+                        request_id: requestId,
+                        function_name: 'stripe-webhook'
+                    }, { subscription_id: subscription.id })
                     break
                 }
 
@@ -243,16 +297,26 @@ serve(async (req) => {
                             .update({ status: 'past_due' })
                             .eq('stripe_subscription_id', invoice.subscription as string)
                     }
-                    console.log(`⚠️ Payment failed for invoice: ${invoice.id}`)
+                    logger.warn(`⚠️ Payment failed for invoice: ${invoice.id}`, {
+                        request_id: requestId,
+                        function_name: 'stripe-webhook'
+                    }, { invoice_id: invoice.id })
                     break
                 }
 
                 default:
-                    console.log(`Unhandled event type: ${event.type}`)
+                    logger.info(`Unhandled event type: ${event.type}`, {
+                        request_id: requestId,
+                        function_name: 'stripe-webhook'
+                    }, { event_type: event.type })
             }
         } catch (error: any) {
             processError = error.message
-            console.error(`Error processing ${event.type}:`, error)
+            logger.error(`Error processing ${event.type}: ${error.message}`, {
+                request_id: requestId,
+                function_name: 'stripe-webhook',
+                latency_ms: performance.now() - start
+            }, error)
         }
 
         // M4.4: Mark event as processed
@@ -265,12 +329,26 @@ serve(async (req) => {
             })
             .eq('stripe_event_id', event.id)
 
+        const latency = performance.now() - start
+        logger.info(`Webhook processed in ${latency}ms`, {
+            request_id: requestId,
+            function_name: 'stripe-webhook',
+            latency_ms: latency,
+            status_code: 200
+        })
+
         return new Response(JSON.stringify({ received: true }), {
             headers: { 'Content-Type': 'application/json' },
             status: 200,
         })
     } catch (error: any) {
-        console.error('Webhook error:', error.message)
+        const latency = performance.now() - start
+        logger.error(`Webhook error: ${error.message}`, {
+            request_id: requestId,
+            function_name: 'stripe-webhook',
+            latency_ms: latency,
+            status_code: 400
+        }, error)
         return new Response(
             JSON.stringify({ error: error.message }),
             {

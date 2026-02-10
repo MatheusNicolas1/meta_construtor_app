@@ -2,17 +2,17 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import Stripe from 'https://esm.sh/stripe@14.21.0?target=deno'
 import { corsHeaders } from '../_shared/cors.ts'
 import { createScopedClient } from '../_shared/supabase-client.ts'
-import { requireAuth, requireOrgRole, logRequest } from '../_shared/guards.ts'
+import { requireAuth, requireOrgRole } from '../_shared/guards.ts'
 import { writeAuditLog } from '../_shared/audit.ts'
+import { logger } from '../_shared/logger.ts'
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
   apiVersion: '2023-10-16',
   httpClient: Stripe.createFetchHttpClient(),
 })
 
-// M4.3: Price IDs now come from database (plans table)
-
 serve(async (req) => {
+  const start = performance.now();
   const requestId = crypto.randomUUID();
 
   // Handle CORS
@@ -21,6 +21,7 @@ serve(async (req) => {
   }
 
   let user_id: string | undefined;
+  let targetOrgId: string | null = null;
 
   try {
     const supabaseClient = createScopedClient(req)
@@ -50,7 +51,7 @@ serve(async (req) => {
     }
 
     // M4.3: Get user's org_id (use provided org_id or fallback to personal org)
-    let targetOrgId = org_id
+    targetOrgId = org_id
     if (!targetOrgId) {
       // Get user's personal org (where they are owner)
       const { data: personalOrg } = await supabaseClient
@@ -121,7 +122,16 @@ serve(async (req) => {
       },
     })
 
-    logRequest(requestId, user_id, null, 'create-checkout-session', 'success', `Session created: ${session.id}`);
+    const latency = performance.now() - start;
+    logger.info(`Session created: ${session.id}`, {
+      request_id: requestId,
+      function_name: 'create-checkout-session',
+      user_id,
+      org_id: targetOrgId,
+      latency_ms: latency,
+      method: req.method,
+      status_code: 200
+    });
 
     // M5.3: Audit log billing event
     await writeAuditLog(supabaseClient, {
@@ -147,10 +157,19 @@ serve(async (req) => {
       }
     )
   } catch (error: any) {
-    logRequest(requestId, user_id, null, 'create-checkout-session', 'error', error.message);
-
+    const duration = performance.now() - start;
     const status = error.message.includes('Unauthorized') ? 401 :
       error.message.includes('Forbidden') ? 403 : 400;
+
+    logger.error(error.message, {
+      request_id: requestId,
+      function_name: 'create-checkout-session',
+      user_id,
+      org_id: targetOrgId || undefined,
+      latency_ms: duration,
+      method: req.method,
+      status_code: status
+    }, error);
 
     return new Response(
       JSON.stringify({ error: error.message }),

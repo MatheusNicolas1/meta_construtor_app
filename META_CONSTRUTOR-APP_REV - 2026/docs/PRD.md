@@ -1,5 +1,11 @@
 PRD — META CONSTRUTOR | MILESTONES EM ORDEM CRONOLÓGICA (COM CAMPOS DE VALIDAÇÃO VAZIOS)
 
+> [!IMPORTANT]
+> **REGRA PARA A LLM:** 
+> 1. Never create new milestone headers; only update existing numbered items.
+> 2. Each item number (e.g., 6.1, 6.2) must exist exactly once in this file.
+> 3. Do not add duplicate "Milestone X" sections. Update the canonical one.
+
 ANÁLISE (POR QUE ESTA ORDEM)
 
 * Primeiro: base técnica + modelo de dados multi-tenant (org/empresa) para evitar retrabalho estrutural.
@@ -195,7 +201,7 @@ MILESTONE 4 — PLANOS, PREÇOS E ASSINATURAS (BILLING) (P0)
 
 ======================================================================
 
-## Milestone 5: Audit Logs (Rastreio Imutável)
+MILESTONE 5 — AUDIT LOGS (RASTREIO IMUTÁVEL) (P0)
 
 ### OBJETIVO: Sistema de auditoria append-only para compliance e debugging
 
@@ -203,73 +209,36 @@ MILESTONE 4 — PLANOS, PREÇOS E ASSINATURAS (BILLING) (P0)
 
 * Tabela append-only com org isolation, RLS e anti-tampering
   STATUS: DONE (2026-02-09)
-  VALIDAÇÃO: SELECT to_regclass('public.audit_logs'); (retorna 'audit_logs'). SELECT policyname FROM pg_policies WHERE tablename='audit_logs'; (retorna 1 policy SELECT). Tentativa UPDATE falha com ERROR "audit_logs are immutable: UPDATE and DELETE operations are not allowed".
-  EVIDÊNCIA: Migration 20260209180000_create_audit_logs.sql criada. Tabela audit_logs: 12 colunas (id, created_at, org_id FK orgs CASCADE, actor_user_id FK auth.users SET NULL, action TEXT, entity TEXT, entity_id UUID, metadata JSONB default '{}', request_id UUID, ip INET, user_agent TEXT, CONSTRAINT audit_logs_immutable). 4 indexes: idx_audit_logs_org_created (org_id, created_at DESC), idx_audit_logs_actor_created (actor_user_id, created_at DESC WHERE actor_user_id IS NOT NULL), idx_audit_logs_entity (entity, entity_id WHERE entity_id IS NOT NULL), idx_audit_logs_action (action). RLS enabled. Policy "Org members can read audit logs" (SELECT via org_members.status=active). INSERT: apenas service_role (sem policy authenticated). REVOKE UPDATE, DELETE de authenticated/anon/service_role. Triggers: trigger_prevent_audit_update + trigger_prevent_audit_delete BEFORE UPDATE/DELETE executam prevent_audit_log_modification() que RAISE EXCEPTION. GRANT SELECT TO authenticated (filtrado por RLS), GRANT INSERT TO service_role.
+  VALIDAÇÃO: SELECT to_regclass('public.audit_logs'); (retorna 'audit_logs'). SELECT policyname FROM pg_policies WHERE tablename='audit_logs'; (retorna 1 policy SELECT). Tentativa UPDATE falha com ERROR "audit_logs are immutable". VERIFICAÇÃO T1: audit_logs table exists, 1 RLS policy, UDPATE/DELETE blocked.
+  EVIDÊNCIA: Migration 20260209180000_create_audit_logs.sql criada. Tabela audit_logs: 12 colunas, 4 indexes. RLS enabled. Policy "Org members can read audit logs". INSERT service_role only. Triggers de imutabilidade ativos. Artifacts: m5_test_t1_results.md.
 
 5.2 Criar helper server-side para audit logs
 
 * Implementar writeAuditLog() em _shared/audit.ts para edge functions
   STATUS: DONE (2026-02-09)
-  VALIDAÇÃO: Code review audit.ts. Helper valida org_id/action/entity required, inserta via adminClient (service_role). Retorna {id, created_at, action} ou lança erro.
-  EVIDÊNCIA: Helper supabase/functions/_shared/audit.ts criado. Interface AuditLogPayload (org_id, action, entity required; entity_id, actor_user_id, metadata, request_id, ip, user_agent optional). Function writeAuditLog(adminClient, payload): valida required fields, INSERT audit_logs via service_role (bypassa RLS), SELECT inserted row, retorna {id, created_at, action} ou throw error. Log pattern: "✓ Audit log written: {action} ({id}) at {created_at}". Usage: await writeAuditLog(supabaseAdmin, { org_id, action, entity, ... }).
+  VALIDAÇÃO: Code review audit.ts. Helper valida org_id/action/entity required, inserta via adminClient.
+  EVIDÊNCIA: Helper supabase/functions/_shared/audit.ts criado. Interface AuditLogPayload. Usage: await writeAuditLog(supabaseAdmin, { org_id, action, entity, ... }).
 
 5.3 Auditar eventos críticos (billing + membership)
 
 * Integrar writeAuditLog em billing (checkout, webhook) e membership (org_members)
   STATUS: DONE (2026-02-09)
-  VALIDAÇÃO: Code review create-checkout-session/index.ts e stripe-webhook/index.ts. Audit logs escritos via writeAuditLog após eventos críticos. Migration audit_org_members_triggers.sql aplicada (2 triggers AFTER INSERT/DELETE).
-  EVIDÊNCIA: create-checkout-session/index.ts: import writeAuditLog (L6), após stripe.checkout.sessions.create chama writeAuditLog(supabaseClient, { org_id: targetOrgId, actor_user_id: user.id, action: 'billing.checkout_created', entity: 'checkout_session', entity_id: session.id, metadata: {plan, billing, stripe_session_id, amount}, request_id }) (L125-139). stripe-webhook/index.ts: import writeAuditLog (L4), após subscription UPSERT chama writeAuditLog(supabaseAdmin, { org_id, actor_user_id: userId, action: 'billing.subscription_created', entity: 'subscription', entity_id: subscription.id, metadata: {plan_slug, billing_cycle, status, stripe_event_id} }) (L153-167). Migration 20260209181000_audit_org_members_triggers.sql: 2 funções SECURITY DEFINER (audit_org_member_insert/delete) + 2 triggers AFTER INSERT/DELETE em org_members, escrevem audit_logs com action='membership.member_added/removed', entity='org_member', metadata={user_id, role, status}. Billing events logados via edge functions, membership via DB triggers (non-bypassable).
+  VALIDAÇÃO: Code review create-checkout-session e stripe-webhook. Audit logs escritos via writeAuditLog. Migration audit_org_members_triggers.sql aplicada.
+  EVIDÊNCIA: Billing events logados via edge functions (checkout.session.created, subscription.created). Membership events (member_added/removed) via DB triggers (non-bypassable).
 
 5.4 Query audit logs (admin-only)
 
 * Postgres function get_audit_logs() com RLS-safe access e admin check
   STATUS: DONE (2026-02-09)
-  VALIDAÇÃO: \df get_audit_logs; (retorna function signature). Function executa admin role check before query. Filters por action/entity pattern com pagination.
-  EVIDÊNCIA: Migration 20260209182000_get_audit_logs_function.sql criada. Function get_audit_logs(p_org_id, p_limit DEFAULT 100, p_offset DEFAULT 0, p_action_filter TEXT DEFAULT NULL, p_entity_filter TEXT DEFAULT NULL) RETURNS TABLE (id, created_at, actor_user_id, action, entity, entity_id, metadata, request_id). SECURITY DEFINER. Lógica: 1) Check EXISTS org_members WHERE user_id=auth.uid() AND role IN ('Administrador', 'Proprietário') AND status='active' → RAISE EXCEPTION 'Forbidden' se not exists, 2) RETURN QUERY audit_logs WHERE org_id=p_org_id filtered by action LIKE/entity = patterns ORDER BY created_at DESC LIMIT/OFFSET. GRANT EXECUTE TO authenticated. Usage: SELECT * FROM get_audit_logs('org-uuid', 50, 0, 'billing.%', NULL);
+  VALIDAÇÃO: \df get_audit_logs; Function executa admin role check before query. Filters por action/entity pattern com pagination.
+  EVIDÊNCIA: Migration 20260209182000_get_audit_logs_function.sql criada. SECURITY DEFINER. Check EXISTS org_members Admin/Owner.
 
 5.5 DB triggers para critical domain mutations
 
 * Triggers AFTER INSERT/UPDATE/DELETE em obras e expenses para audit non-bypassable
   STATUS: DONE (2026-02-09)
-  VALIDAÇÃO: SELECT tgname FROM pg_trigger WHERE tgname LIKE '%audit%'; (retorna 6+ triggers incluindo audit_obras_changes e audit_expenses_changes). Triggers escrevem audit_logs mesmo se PostgREST bypassa edge functions.
-  EVIDÊNCIA: Migration 20260209183000_audit_domain_triggers.sql criada. Helper write_audit_from_trigger(org_id, action, entity, entity_id, metadata) SECURITY DEFINER: INSERT audit_logs com actor_user_id=auth.uid(). 2 trigger functions: audit_obras_changes() e audit_expenses_changes() para INSERT/UPDATE/DELETE → escrevem domain.obra_created/updated/deleted e domain.expense_created/updated/deleted com metadata incluindo nome/status/amount e changed_fields. 2 triggers: trigger_audit_obras_changes AFTER INSERT OR UPDATE OR DELETE ON obras, trigger_audit_expenses_changes AFTER INSERT OR UPDATE OR DELETE ON expenses. GRANT EXECUTE TO authenticated (SECURITY DEFINER bypassa RLS). Org isolation garantido por org_id em cada row. Audit non-bypassable mesmo via PostgREST.
-
-### M5 TEST GATE (Verification before Milestone 6)
-
-**STEP T1 - Database-level verification:**
-Commands executed:
-```sql
-SELECT to_regclass('public.audit_logs');  -- confirms table exists
-SELECT * FROM pg_policies WHERE tablename='audit_logs';  -- confirms 1 RLS policy (SELECT)
-UPDATE/DELETE audit_logs WHERE id='...';  -- both FAIL with "audit_logs are immutable"
-SELECT tgname FROM pg_trigger WHERE tgname ILIKE '%audit%';  -- confirms 6 triggers
-```
-Results: ✅ audit_logs table exists, ✅ 1 RLS policy (Org members can read), ✅ UPDATE/DELETE blocked by triggers (immutable), ✅ 6 audit triggers active (2 immutability, 2 org_members, 2 domain obras/expenses).
-
-**STEP T2 - Runtime verification:**
-Script: scripts/test-audit.sql (SQL-based trigger testing)
-Tests executed:
-- TEST A: INSERT obra → domain.obra_created (✅ PASS: audit row created)
-- TEST B: UPDATE obra → domain.obra_updated (✅ PASS: audit row created)
-- TEST C: DELETE obra → domain.obra_deleted (✅ PASS: audit row created)
-- TEST D: INSERT expense → domain.expense_created (✅ PASS: audit row created)
-All tests PASSED. Triggers fire correctly for critical domain mutations.
-
-**VALIDATION STATUS:** M5 VERIFIED BY TESTS — OK FOR MILESTONE 6
-Evidence artifacts: m5_test_t1_results.md, scripts/test-audit.sql
-
-======================================================================
-
-## Milestone 6: Domain State Machines (Consistência Operacional)
-
-### OBJETIVO: Enforce business logic and prevent invalid state transitions at DB level
-
-6.1 Obra status enum + transition enforcement (DB-level)
-
-* Add obra_status enum + obras.status column + DB trigger validation
-  STATUS: DONE (2026-02-09)
-  VALIDAÇÃO: Migration aplicada. obra_status enum criado com 5 estados (DRAFT, ACTIVE, ON_HOLD, COMPLETED, CANCELED). Trigger enforce_obras_status_transition() valida transições: DRAFT→ACTIVE|CANCELED, ACTIVE→ON_HOLD|COMPLETED|CANCELED, ON_HOLD→ACTIVE|CANCELED, COMPLETED→(terminal), CANCELED→(terminal). Invalid transitions raise exception. Audit logs escritos com action='domain.obra_status_changed', metadata={from,to,obra_nome}.
-  EVIDÊNCIA: Migration 20260209190000_obras_status_state_machine.sql. CREATE TYPE obra_status AS ENUM ('DRAFT', 'ACTIVE', 'ON_HOLD', 'COMPLETED', 'CANCELED'). ALTER TABLE obras ADD COLUMN status obra_status NOT NULL DEFAULT 'DRAFT'. CREATE INDEX idx_obras_status (status). Function enforce_obras_status_transition(): CASE statement validates old_status→new_status transitions, RAISE EXCEPTION on invalid, INSERT audit_logs for valid transitions (org_id, action='domain.obra_status_changed', metadata=jsonb_build_object('from', old, 'to', new, 'obra_nome')). Trigger BEFORE UPDATE OF status on obras executes function. GRANT EXECUTE TO authenticated. Estado terminal: COMPLETED e CANCELED não permitem transições.
+  VALIDAÇÃO: SELECT tgname FROM pg_trigger WHERE tgname LIKE '%audit%'; (retorna 6+ triggers). Runtime tests (scripts/test-audit.sql): TEST A (INSERT obra), TEST B (UPDATE obra), TEST C (DELETE obra), TEST D (INSERT expense) -> ALL PASS (audit row created).
+  EVIDÊNCIA: Migration 20260209183000_audit_domain_triggers.sql criada. Triggers audit_obras_changes / audit_expenses_changes. Script de validação: `scripts/test-audit.sql`.
 
 ======================================================================
 
@@ -277,37 +246,46 @@ MILESTONE 6 — MÁQUINAS DE ESTADO DO DOMÍNIO (CONSISTÊNCIA OPERACIONAL) (P1)
 6.1 Estados de Obra (Project)
 
 * Implementar enum e regras de transição (DRAFT, ACTIVE, ON_HOLD, COMPLETED, CANCELED)
-  STATUS:
-  VALIDAÇÃO:
+  STATUS: DONE (2026-02-10)
+  VALIDAÇÃO: Migration aplicada. obra_status enum criado. Trigger enforce_obras_status_transition() valida transições. Runtime verificado OK.
   EVIDÊNCIA:
+  - **Migration**: `20260209210000_fix_obras_status_type.sql` (Fixed column type TEXT->ENUM).
+  - **Runtime Test**: Script `scripts/test-m6-obras-state.cjs` & Manual SQL verified DRAFT->ACTIVE transition.
+  - **Audit Log**: Confirmed event `domain.obra_status_changed`:
+    `from: DRAFT | to: ACTIVE | time: 2026-02-10 01:26:25`
+  - **Logic Check**: `ACTIVE -> DRAFT` correctly blocked by trigger logic (verified via SQL debug).
 
 6.2 Timestamps por estado
 
 * Campos como activated_at, completed_at, canceled_at etc.
-  STATUS:
-  VALIDAÇÃO:
-  EVIDÊNCIA:
+  STATUS: DONE (2026-02-09)
+  VALIDAÇÃO: Runtime script `scripts/test-m6-obras-timestamps.cjs` executado. 
+  - `activated_at` setado na transição DRAFT->ACTIVE.
+  - `on_hold_at` setado na transição ACTIVE->ON_HOLD (e activated_at preservado).
+  - `completed_at` setado na transição ACTIVE->COMPLETED.
+  - Transições inválidas bloqueadas corretamente.
+  EVIDÊNCIA: Migration `20260209220000_obras_status_timestamps.sql`. Trigger `trigger_set_obras_status_timestamps` (executa após validation). Script de teste e output confirmam timestamps populados.
 
 6.3 Estados de RDO (se aplicável)
 
 * Fluxo DRAFT, SUBMITTED, APPROVED, REJECTED com validação server-side
-  STATUS:
-  VALIDAÇÃO:
-  EVIDÊNCIA:
+  STATUS: DONE (2026-02-10)
+  VALIDAÇÃO: Tabela `rdos` recriada com schema corrigido e ENUM `rdo_status`. Trigger `enforce_rdo_status_transition` garante fluxo linear. Teste SQL validou DRAFT->SUBMITTED->APPROVED e bloqueou APPROVED->DRAFT.
+  EVIDÊNCIA: Migration `20260209231000_recreate_rdos.sql` (Nuclear Fix). Script `scripts/test-m6-rdos-state.sql` (Pass). Audit logs confirmados.
 
 6.4 Estados de Checklist de Qualidade (itens)
 
 * PENDING, PASSED, FAILED, REWORK_REQUESTED, REWORK_DONE com regras e logs
-  STATUS:
-  VALIDAÇÃO:
-  EVIDÊNCIA:
+  STATUS: DONE (2026-02-10)
+  VALIDAÇÃO: Tabelas `quality_checklists` e `quality_items` criadas. Trigger enforce_quality_item_transition valida ciclo de rework. Teste SQL validou fluxo completo e bloqueio de saltos inválidos.
+  EVIDÊNCIA: Migration `20260209240000_quality_state_machine.sql`. Script `scripts/test-m6-quality-state.sql` (Pass).
 
 6.5 Bloquear transições inválidas via API
 
 * Garantir que não exista “pulo de estado” por requisição direta
-  STATUS:
-  VALIDAÇÃO:
-  EVIDÊNCIA:
+  STATUS: DONE (2026-02-10)
+  VALIDAÇÃO: Script de ataque simula bypass SQL direto (DRAFT->APPROVED, PENDING->REWORK_DONE). Ambos bloqueados com sucesso pelo banco de dados.
+  EVIDÊNCIA: Script `scripts/attack-m6-state-skip.sql`. Logs confirmam: `✅ RDO Attack Blocked`, `✅ Quality Attack Blocked`.
 
 ======================================================================
 
